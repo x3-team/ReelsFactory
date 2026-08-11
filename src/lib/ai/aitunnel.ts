@@ -29,21 +29,20 @@ export function shouldUseMockAi() {
 }
 
 /**
- * Базовая модель: лучший баланс цена/качество для JSON-сценариев.
- * deepseek-v4-flash ≈ 18/36 ₽ за 1M (AITunnel) — сильно дешевле gpt-4o при хорошей структуре.
+ * Базовая модель (Free/Start): приоритет живости/пользы, затем цена.
+ * gemini-3.5-flash-lite — самые живые хуки + конкретная польза при ~0.3–0.4₽/стратегию.
  */
 export function llmModel() {
   return (
     process.env.AITUNNEL_LLM_MODEL ||
     process.env.OPENAI_MODEL ||
-    "deepseek-v4-flash"
+    "gemini-3.5-flash-lite"
   );
 }
 
 /**
- * Pro/Agency: сильнее креатив без «reasoning tax».
- * gpt-5.6-terra ≈ 20/1200 ₽ за 1M — заметно лучше flash, всё ещё дёшево vs gpt-4o/sol.
- * (deepseek-v4-pro тратит max_tokens на reasoning и иногда отдаёт пустой content)
+ * Pro/Agency: максимум пользы и структуры в сценариях.
+ * gpt-5.6-terra ≈ 1₽/стратегию — всё ещё копейки vs Whisper/тариф.
  */
 export function llmModelPro() {
   return process.env.AITUNNEL_LLM_MODEL_PRO || "gpt-5.6-terra";
