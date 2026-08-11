@@ -1,0 +1,200 @@
+// ReelsFactory — Prisma schema (PostgreSQL)
+// Models: User, ProfileAnalysis, Script, Payment, Referral
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProfileGoal {
+  GROW_AUDIENCE
+  SELL_PRODUCT
+}
+
+enum ToneOfVoice {
+  DIRECT
+  HUMOROUS
+  EXPERT
+  STORYTELLING
+}
+
+enum SubscriptionPlan {
+  FREE
+  START
+  PRO
+}
+
+enum AnalysisStatus {
+  PENDING
+  SCRAPING
+  TRANSCRIBING
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentProvider {
+  YOOKASSA
+  CLOUDPAYMENTS
+}
+
+enum ReferralStatus {
+  PENDING
+  CREDITED
+  PAID_OUT
+}
+
+/// Telegram Mini App user + onboarding / subscription state
+model User {
+  id        String @id @default(cuid())
+  telegramId BigInt @unique
+  username   String?
+  firstName  String?
+  lastName   String?
+  languageCode String?
+  photoUrl   String?
+
+  /// Instagram / TikTok @username or YouTube channel URL
+  socialHandle String?
+  /// instagram | tiktok | youtube
+  platform     String?
+
+  profileGoal  ProfileGoal?
+  websiteUrl   String?
+  offerSummary String?
+  toneOfVoice  ToneOfVoice?
+
+  subscriptionPlan      SubscriptionPlan @default(FREE)
+  subscriptionExpiresAt DateTime?
+  /// Referral credit balance (RUB). Credited 30% of referred payments.
+  referralBalance       Decimal          @default(0) @db.Decimal(12, 2)
+
+  referrerId String?
+  referrer   User?   @relation("UserReferrals", fields: [referrerId], references: [id])
+  referredUsers User[] @relation("UserReferrals")
+
+  analyses          ProfileAnalysis[]
+  scripts           Script[]
+  payments          Payment[]
+  referralsGiven    Referral[] @relation("Referrer")
+  referralsReceived Referral[] @relation("Referred")
+
+  onboardedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([referrerId])
+}
+
+/// One analysis run for a social profile (bio + top videos + LLM strategy)
+model ProfileAnalysis {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  socialHandle String
+  platform     String
+  status       AnalysisStatus @default(PENDING)
+
+  niche            String?
+  targetAudience   String?
+  /// [{ "title": string, "description": string }]
+  contentPillars   Json?
+  /// string[]
+  profileAuditTips Json?
+  /// Scraped bio, followers, top video metadata
+  rawProfileData   Json?
+  /// Whisper transcriptions for top videos
+  transcriptions   Json?
+  errorMessage     String?
+
+  scripts Script[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Generated reel / short script with teleprompter text
+model Script {
+  id         String @id @default(cuid())
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysisId String
+  analysis   ProfileAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  title              String
+  format             String
+  /// string[] — alternative hooks
+  hookOptions        Json
+  teleprompterScript String  @db.Text
+  caption            String  @db.Text
+  cta                String
+  /// Free-plan teaser (1 script) vs full unlocked script
+  isTeaser           Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([analysisId])
+}
+
+/// Subscription payment (YoKassa / CloudPayments)
+model Payment {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount   Decimal          @db.Decimal(12, 2)
+  currency String           @default("RUB")
+  plan     SubscriptionPlan
+  status   PaymentStatus    @default(PENDING)
+  provider PaymentProvider  @default(YOOKASSA)
+
+  providerPaymentId String? @unique
+  metadata          Json?
+
+  referral Referral?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Referral edge + payout credit (30% of referred payment)
+model Referral {
+  id         String @id @default(cuid())
+  referrerId String
+  referrer   User   @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId String
+  referred   User   @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+
+  paymentId String?  @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  creditAmount Decimal        @db.Decimal(12, 2)
+  status       ReferralStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([referrerId, referredId])
+  @@index([referrerId])
+  @@index([referredId])
+}
