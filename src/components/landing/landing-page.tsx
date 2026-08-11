@@ -58,17 +58,17 @@ export function LandingPage() {
 
           <div className="relative grid flex-1 items-end gap-6 md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-12">
             <div className="animate-rf-rise relative z-10 space-y-5 [animation-delay:80ms]">
-              <h1 className="font-display max-w-[16ch] text-[2.2rem] font-semibold leading-[1.12] tracking-tight text-white md:text-5xl md:leading-[1.08]">
-                Сценарии рилсов под твой профиль — за 60 секунд
+              <h1 className="font-display max-w-[15ch] text-[2.2rem] font-semibold leading-[1.12] tracking-tight text-white md:text-5xl md:leading-[1.08]">
+                Расти в Reels проще — без ступора «что снимать»
               </h1>
-              <p className="max-w-[34ch] text-[1.05rem] leading-7 text-white/72">
-                AI разбирает аккаунт и выдаёт готовый текст + суфлёр. Без
-                сценариста и без воды.
+              <p className="max-w-[36ch] text-[1.05rem] leading-7 text-white/72">
+                Разберём твой профиль и выдадим готовые сценарии с суфлёром —
+                снимай сегодня и копи аудиторию быстрее.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button asChild size="lg" className="rf-cta-pulse h-12 px-6 text-base">
                   <Link href={APP_HREF}>
-                    Получить разбор бесплатно
+                    Начать бесплатно
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
