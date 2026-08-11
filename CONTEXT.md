@@ -22,8 +22,8 @@ The service analyzes Instagram/TikTok/YouTube profiles, extracts viral patterns 
 ## Pricing & Economics
 
 - **Unit Costs:** ~10-12 RUB per full generation cycle (Scraping + Whisper + LLM).
-- **Free Demo:** Profile Audit + 1 teaser script.
-- **Start Plan (Mass Market):** 590 RUB / month (12 scripts, full teleprompter view, 1 pillar).
+- **Free Demo:** Profile audit + 1 full script with teleprompter.
+- **Start Plan (Mass Market):** 590 RUB / month (12 scripts, teleprompter, content themes).
 - **Pro Plan (Expert):** 1,990 RUB / month (30 scripts, competitor analysis, Telegram post adaptation).
 - **Agency Plan:** 4,990 RUB / month (up to 5 client accounts).
 
