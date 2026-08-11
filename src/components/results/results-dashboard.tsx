@@ -78,14 +78,16 @@ export function ResultsDashboard({
           <p className="font-display text-lg font-semibold tracking-tight">
             Reels<span className="text-primary">Factory</span>
           </p>
-          <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             @{analysis.socialHandle} · {analysis.platform}
           </p>
           <h1 className="font-display mt-1 text-2xl font-semibold tracking-tight">
             Снимай это
           </h1>
           {analysis.niche && (
-            <p className="mt-1 text-sm text-muted-foreground">{analysis.niche}</p>
+            <p className="mt-1 text-[15px] leading-6 text-muted-foreground">
+              {analysis.niche}
+            </p>
           )}
         </div>
         <Badge variant="secondary" className="shrink-0 rounded-lg">
@@ -112,24 +114,20 @@ export function ResultsDashboard({
           </div>
           {analysis.targetAudience && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Кому снимать
-              </p>
-              <p className="mt-1 text-sm leading-relaxed">
+              <p className="rf-label">Кому снимать</p>
+              <p className="mt-1.5 text-[15px] leading-7 text-foreground/85">
                 {analysis.targetAudience}
               </p>
             </div>
           )}
           {tips.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Что поправить
-              </p>
+              <p className="rf-label mb-2">Что поправить</p>
               <ul className="space-y-2">
                 {tips.slice(0, isFree ? 3 : tips.length).map((tip) => (
                   <li
                     key={tip}
-                    className="flex gap-2 rounded-xl bg-secondary/70 px-3 py-2 text-sm leading-relaxed"
+                    className="flex gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5 text-[14px] leading-6 text-foreground"
                   >
                     <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
                     <span>{tip}</span>
@@ -140,14 +138,12 @@ export function ResultsDashboard({
           )}
           {pillars.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Темы на неделю
-              </p>
+              <p className="rf-label mb-2">Темы на неделю</p>
               <div className="flex flex-wrap gap-2">
                 {pillars.map((pillar) => (
                   <span
                     key={pillar.title}
-                    className="rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-medium"
+                    className="rounded-lg border border-border/60 bg-card px-2.5 py-1.5 text-[13px] font-medium leading-5 text-foreground"
                   >
                     {pillar.title}
                   </span>
@@ -207,16 +203,16 @@ export function ResultsDashboard({
                 )}
                 <div
                   className={cn(
-                    "mb-1 text-[11px] uppercase tracking-wide",
+                    "mb-1 text-[12px] font-medium",
                     active && !locked
-                      ? "text-primary-foreground/80"
+                      ? "text-primary-foreground/85"
                       : "text-muted-foreground",
                   )}
                 >
                   {index + 1}
                   {locked ? " · PRO" : script.id === freeScriptId && isFree ? " · твой" : ""}
                 </div>
-                <div className="line-clamp-2 text-sm font-semibold leading-snug">
+                <div className="line-clamp-2 text-[14px] font-semibold leading-6">
                   {script.title}
                 </div>
               </button>
@@ -329,22 +325,20 @@ function ScriptViewer({
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Выбери хук (0–3 сек)
-        </p>
+        <p className="rf-label mb-2">Выбери хук (0–3 сек)</p>
         <ul className="space-y-2">
           {hooks.map((hook, i) => (
             <li
               key={hook}
               className={cn(
-                "rounded-xl px-3 py-2.5 text-sm leading-snug",
+                "rounded-xl px-3 py-2.5 text-[14px] leading-6",
                 i === 0
                   ? "border border-primary/30 bg-primary/5 font-medium"
-                  : "bg-secondary/80",
+                  : "border border-border/60 bg-card",
               )}
             >
               {i === 0 && (
-                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary">
+                <span className="mb-1 block text-[12px] font-medium text-primary">
                   Рекомендуем
                 </span>
               )}
@@ -355,16 +349,16 @@ function ScriptViewer({
       </div>
 
       <div>
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="rf-label mb-2 flex items-center gap-1.5">
           <Camera className="size-3.5" /> Как снимать
         </p>
         <ul className="space-y-2">
           {tips.map((tip) => (
             <li
               key={tip}
-              className="flex gap-2 text-sm leading-relaxed text-foreground/90"
+              className="flex gap-2 text-[14px] leading-6 text-foreground/90"
             >
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+              <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
               {tip}
             </li>
           ))}
@@ -372,10 +366,8 @@ function ScriptViewer({
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Текст для суфлёра
-        </p>
-        <pre className="whitespace-pre-wrap rounded-xl bg-foreground/[0.03] p-3 text-sm leading-relaxed">
+        <p className="rf-label mb-2">Текст для суфлёра</p>
+        <pre className="whitespace-pre-wrap rounded-xl border border-border/60 bg-card p-3 text-[14px] leading-7 text-foreground">
           {script.teleprompterScript}
         </pre>
       </div>

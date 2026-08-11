@@ -1,20 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Unbounded } from "next/font/google";
+import { Onest } from "next/font/google";
 
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
 
 import "./globals.css";
 
-const manrope = Manrope({
+/** Onest — спокойный UI-шрифт с нормальной кириллицей (без «мельтешения» Unbounded) */
+const onest = Onest({
   subsets: ["latin", "cyrillic"],
   variable: "--font-sans",
   display: "swap",
-});
-
-const unbounded = Unbounded({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-display",
-  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -41,9 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body
-        className={`${manrope.variable} ${unbounded.variable} font-sans antialiased`}
-      >
+      <body className={`${onest.variable} font-sans antialiased`}>
         <TelegramProvider>{children}</TelegramProvider>
       </body>
     </html>

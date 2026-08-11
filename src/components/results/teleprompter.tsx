@@ -39,7 +39,7 @@ export function TeleprompterMode({
     <div className="fixed inset-0 z-50 flex flex-col bg-[#07080c] text-white">
       <div className="flex items-start justify-between gap-3 p-4 pb-2">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-white/50">
+          <p className="text-[12px] font-medium text-white/55">
             Суфлёр · снимай
           </p>
           <h2 className="font-display mt-1 truncate text-base font-semibold">
@@ -61,7 +61,7 @@ export function TeleprompterMode({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-[#07080c] to-transparent" />
         <div className="pointer-events-none absolute inset-x-6 top-[42%] z-10 h-px bg-primary/70" />
         <div
-          className="whitespace-pre-wrap text-center font-display text-[1.85rem] font-semibold leading-[1.35] tracking-tight transition-transform"
+          className="whitespace-pre-wrap text-center text-[1.75rem] font-medium leading-[1.45] transition-transform"
           style={{ transform: `translateY(${120 - offset}px)` }}
         >
           {script}

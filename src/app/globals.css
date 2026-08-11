@@ -3,70 +3,79 @@
 @tailwind utilities;
 
 @layer base {
-  /* Film Signal — cool mist + ink + record coral (не purple / не cream-terracotta) */
+  /* Film Signal — cool mist + ink + record coral */
   :root {
-    --background: 210 20% 97%;
-    --foreground: 230 25% 8%;
+    --background: 210 16% 97%;
+    --foreground: 230 22% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 8%;
+    --card-foreground: 230 22% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 8%;
-    --primary: 347 86% 48%;
+    --popover-foreground: 230 22% 10%;
+    --primary: 347 86% 46%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 18% 93%;
-    --secondary-foreground: 230 20% 16%;
-    --muted: 210 16% 94%;
-    --muted-foreground: 220 10% 42%;
-    --accent: 210 18% 93%;
-    --accent-foreground: 230 20% 16%;
+    --secondary: 210 14% 94%;
+    --secondary-foreground: 230 18% 14%;
+    --muted: 210 12% 94%;
+    /* Было ~42% — слишком бледно, «мельтешит». Темнее для читаемости */
+    --muted-foreground: 220 10% 34%;
+    --accent: 210 14% 94%;
+    --accent-foreground: 230 18% 14%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 16% 88%;
-    --input: 214 16% 88%;
-    --ring: 347 86% 48%;
+    --border: 214 12% 86%;
+    --input: 214 12% 86%;
+    --ring: 347 86% 46%;
     --radius: 1rem;
-    --rf-ink: 230 25% 8%;
-    --rf-mist: 210 24% 94%;
-    --rf-signal: 347 86% 48%;
   }
 
   .dark {
-    --background: 230 20% 7%;
-    --foreground: 210 20% 97%;
-    --card: 230 16% 11%;
-    --card-foreground: 210 20% 97%;
-    --popover: 230 16% 11%;
-    --popover-foreground: 210 20% 97%;
-    --primary: 347 86% 55%;
+    --background: 230 18% 8%;
+    --foreground: 210 16% 96%;
+    --card: 230 14% 12%;
+    --card-foreground: 210 16% 96%;
+    --popover: 230 14% 12%;
+    --popover-foreground: 210 16% 96%;
+    --primary: 347 80% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 230 14% 16%;
-    --secondary-foreground: 210 20% 96%;
-    --muted: 230 14% 16%;
-    --muted-foreground: 215 12% 65%;
-    --accent: 230 14% 16%;
-    --accent-foreground: 210 20% 96%;
+    --secondary: 230 12% 16%;
+    --secondary-foreground: 210 16% 96%;
+    --muted: 230 12% 16%;
+    --muted-foreground: 215 10% 72%;
+    --accent: 230 12% 16%;
+    --accent-foreground: 210 16% 96%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 230 12% 20%;
-    --input: 230 12% 20%;
-    --ring: 347 86% 55%;
+    --border: 230 10% 22%;
+    --input: 230 10% 22%;
+    --ring: 347 80% 55%;
   }
 
   * {
     @apply border-border;
   }
 
+  html {
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "kern" 1;
+    font-size: 15px;
+    line-height: 1.55;
+    letter-spacing: 0;
     background:
       radial-gradient(
         120% 80% at 10% -10%,
-        hsl(347 86% 48% / 0.08),
+        hsl(347 86% 48% / 0.06),
         transparent 45%
       ),
       radial-gradient(
         90% 60% at 100% 0%,
-        hsl(210 40% 70% / 0.18),
+        hsl(210 30% 70% / 0.12),
         transparent 40%
       ),
       var(--tg-theme-bg-color, hsl(var(--background)));
@@ -76,8 +85,18 @@
 
   h1,
   h2,
+  h3,
   .font-display {
-    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+    /* Тот же Onest — без декоративного шрифта в UI */
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  p,
+  li,
+  pre {
+    line-height: 1.55;
   }
 }
 
@@ -88,6 +107,12 @@
   }
 
   .rf-surface {
-    @apply rounded-2xl border border-border/80 bg-card/90;
+    @apply rounded-2xl border border-border bg-card;
+  }
+
+  .rf-label {
+    @apply text-[12px] font-medium text-muted-foreground;
+    letter-spacing: 0.01em;
+    text-transform: none;
   }
 }

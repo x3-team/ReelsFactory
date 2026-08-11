@@ -86,7 +86,7 @@ export function PaywallDrawer({
               {"hint" in item && item.hint ? (
                 <span
                   className={cn(
-                    "ml-1.5 text-[10px] font-bold uppercase tracking-wide",
+                    "ml-1.5 text-[11px] font-semibold",
                     billingPeriod === item.id
                       ? "text-primary"
                       : "text-muted-foreground",
@@ -128,7 +128,7 @@ export function PaywallDrawer({
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{plan.name}</span>
                       {recommended && (
-                        <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+                        <span className="rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
                           Хит
                         </span>
                       )}
