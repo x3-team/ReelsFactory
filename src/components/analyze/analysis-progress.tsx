@@ -28,7 +28,7 @@ const STEPS = [
   {
     key: "GENERATING",
     label: "Пишем сценарии",
-    detail: "Столпы, суфлёр и CTA",
+    detail: "Темы на неделю, суфлёр и призывы",
     expectedSec: 20,
     range: [74, 97] as const,
   },
