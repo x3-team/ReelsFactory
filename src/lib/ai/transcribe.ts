@@ -11,7 +11,12 @@ export async function transcribeAudio(input: {
 
   try {
     const openai = getAiTunnelClient();
-    const audioRes = await fetch(input.audioUrl);
+    const audioRes = await fetch(input.audioUrl, {
+      // Instagram CDN часто тормозит — не блокируем пайплайн навечно
+      signal: AbortSignal.timeout(
+        Number(process.env.WHISPER_DOWNLOAD_TIMEOUT_MS || 20_000),
+      ),
+    });
     if (!audioRes.ok) {
       throw new Error(`Не удалось скачать аудио (${audioRes.status})`);
     }

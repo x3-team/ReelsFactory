@@ -1,35 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { key: "scan", label: "Сканируем био…" },
-  { key: "transcribe", label: "Расшифровываем топ‑видео…" },
-  { key: "pillars", label: "Собираем контент‑столпы…" },
+  {
+    key: "SCRAPING",
+    label: "Сканируем профиль в Instagram…",
+    hint: "Apify обычно 20–40 сек",
+  },
+  {
+    key: "TRANSCRIBING",
+    label: "Разбираем топ‑рилсы…",
+    hint: "Whisper по видео — до минуты",
+  },
+  {
+    key: "GENERATING",
+    label: "Пишем сценарии и столпы…",
+    hint: "gpt-4o-mini через AITunnel",
+  },
 ] as const;
 
+function stepIndex(status?: string | null) {
+  switch (status) {
+    case "QUEUED":
+    case "PENDING":
+    case "SCRAPING":
+      return 0;
+    case "TRANSCRIBING":
+      return 1;
+    case "GENERATING":
+      return 2;
+    case "COMPLETED":
+      return 3;
+    default:
+      return 0;
+  }
+}
+
 export function AnalysisProgress({
-  active = true,
+  status,
   failedMessage,
+  elapsedSec = 0,
 }: {
-  active?: boolean;
+  status?: string | null;
   failedMessage?: string | null;
+  elapsedSec?: number;
 }) {
-  const [index, setIndex] = useState(0);
+  const index = stepIndex(status);
+  const progress = failedMessage
+    ? 100
+    : Math.min(95, 12 + index * 28 + Math.min(20, elapsedSec / 4));
 
-  useEffect(() => {
-    if (!active || failedMessage) return;
-    const id = window.setInterval(() => {
-      setIndex((prev) => (prev + 1) % STEPS.length);
-    }, 2200);
-    return () => window.clearInterval(id);
-  }, [active, failedMessage]);
-
-  const progress = failedMessage ? 100 : Math.min(92, (index + 1) * 30);
+  const activeHint =
+    STEPS[Math.min(index, STEPS.length - 1)]?.hint ||
+    "Обычно весь анализ занимает 1–2 минуты";
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 p-4">
@@ -44,7 +71,9 @@ export function AnalysisProgress({
           Анализируем профиль
         </h1>
         <p className="text-sm text-muted-foreground">
-          Достаём хуки из топ‑видео и собираем сценарии.
+          {failedMessage
+            ? "Не удалось завершить анализ"
+            : `${activeHint}. Прошло ${elapsedSec} сек.`}
         </p>
       </div>
 
@@ -53,7 +82,7 @@ export function AnalysisProgress({
       <ul className="space-y-3">
         {STEPS.map((step, i) => {
           const state =
-            failedMessage && i === STEPS.length - 1
+            failedMessage && i === Math.min(index, STEPS.length - 1)
               ? "failed"
               : i < index
                 ? "done"

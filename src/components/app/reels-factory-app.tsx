@@ -47,6 +47,8 @@ export function ReelsFactoryApp() {
   >([]);
   const [error, setError] = useState<string | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
+  const [analysisElapsedSec, setAnalysisElapsedSec] = useState(0);
 
   const displayName = useMemo(() => {
     if (user?.firstName) {
@@ -147,13 +149,23 @@ export function ReelsFactoryApp() {
 
   async function pollAnalysis(analysisId: string, startedAt: number) {
     const terminal = new Set(["COMPLETED", "FAILED"]);
+    const maxMs = 180_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
     for (;;) {
+      const elapsed = Date.now() - startedAt;
+      setAnalysisElapsedSec(Math.floor(elapsed / 1000));
+      if (elapsed > maxMs) {
+        throw new Error(
+          "Анализ занимает слишком долго. Обнови страницу — если статус COMPLETED, результаты уже готовы.",
+        );
+      }
+
       const data = await api<{ analysis: AppAnalysis }>(
         `/api/analyze?id=${encodeURIComponent(analysisId)}`,
       );
+      setAnalysisStatus(data.analysis.status);
+
       if (terminal.has(data.analysis.status)) {
-        const elapsed = Date.now() - startedAt;
-        const minMs = 4500;
+        const minMs = 2500;
         if (elapsed < minMs) {
           await new Promise((resolve) => setTimeout(resolve, minMs - elapsed));
         }
@@ -162,19 +174,22 @@ export function ReelsFactoryApp() {
         }
         return data.analysis;
       }
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
   async function runAnalysis(userId: string, clientAccountId?: string) {
     setScreen("analyzing");
     setError(null);
+    setAnalysisStatus("QUEUED");
+    setAnalysisElapsedSec(0);
     const startedAt = Date.now();
     try {
       const data = await api<{ analysis: AppAnalysis }>("/api/analyze", {
         method: "POST",
         body: JSON.stringify({ userId, clientAccountId }),
       });
+      setAnalysisStatus(data.analysis.status);
       const analysisResult = await pollAnalysis(data.analysis.id, startedAt);
       setAnalysis(analysisResult);
       setScreen("results");
@@ -262,7 +277,11 @@ export function ReelsFactoryApp() {
     return (
       <>
         <TelegramBackButton show={false} />
-        <AnalysisProgress failedMessage={null} />
+        <AnalysisProgress
+          status={analysisStatus}
+          elapsedSec={analysisElapsedSec}
+          failedMessage={null}
+        />
       </>
     );
   }

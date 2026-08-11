@@ -48,8 +48,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
+    // 3 ролика достаточно для стратегии; 5 × Whisper сильно раздувают ожидание
     const transcriptions: string[] = [];
-    for (const video of profile.topVideos.slice(0, 5)) {
+    for (const video of profile.topVideos.slice(0, 3)) {
       const { text } = await transcribeAudio({
         audioUrl: video.audioUrl || video.url,
         hint: video.caption,
