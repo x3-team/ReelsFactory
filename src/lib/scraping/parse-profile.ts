@@ -1,7 +1,19 @@
 import { isMockMode } from "@/lib/config";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
 import { normalizeHandle, type Platform } from "@/lib/platform";
+import {
+  fetchInstagramViaApify,
+  hasApifyCredentials,
+} from "@/lib/scraping/apify";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
+
+function hasRapidApiCredentials() {
+  return Boolean(process.env.RAPIDAPI_KEY);
+}
+
+export function hasScrapingCredentials() {
+  return hasApifyCredentials() || hasRapidApiCredentials();
+}
 
 export async function parseProfile(input: {
   handle: string;
@@ -9,15 +21,32 @@ export async function parseProfile(input: {
 }): Promise<ScrapedProfile> {
   const handle = normalizeHandle(input.handle, input.platform);
 
-  if (isMockMode() || !process.env.RAPIDAPI_KEY) {
+  if (isMockMode() || !hasScrapingCredentials()) {
     return mockScrapedProfile(handle, input.platform);
   }
 
   if (input.platform === "instagram") {
-    return fetchInstagramViaRapidApi(handle);
+    // Apify first (videoUrl для Whisper), RapidAPI — fallback
+    if (hasApifyCredentials()) {
+      try {
+        const profile = await fetchInstagramViaApify(handle);
+        if (profile.topVideos.length === 0) {
+          // Профиль есть, но без видео — не падаем в mock-био
+          return profile;
+        }
+        return profile;
+      } catch (error) {
+        console.error("Apify Instagram scrape failed, trying RapidAPI", error);
+        if (!hasRapidApiCredentials()) throw error;
+      }
+    }
+
+    if (hasRapidApiCredentials()) {
+      return fetchInstagramViaRapidApi(handle);
+    }
   }
 
-  // Fallback for TikTok/YouTube until dedicated scrapers are wired
+  // TikTok/YouTube — пока mock, пока нет отдельного актора
   return mockScrapedProfile(handle, input.platform);
 }
 
@@ -90,7 +119,7 @@ async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile
           likes: item.like_count,
           audioUrl: item.video_url,
           durationSec: item.video_duration,
-        } satisfies ScrapedProfile["topVideos"][number];
+        } satisfies ScrapedVideo;
       })
       .sort((a, b) => b.views - a.views)
       .slice(0, 5);
@@ -104,9 +133,6 @@ async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile
     followers: json.data?.follower_count || 0,
     following: json.data?.following_count,
     postsCount: json.data?.media_count,
-    topVideos:
-      topVideos.length > 0
-        ? topVideos
-        : mockScrapedProfile(handle, "instagram").topVideos,
+    topVideos,
   };
 }

@@ -29,7 +29,7 @@ export type AppUser = {
   toneOfVoice?: "DIRECT" | "HUMOROUS" | "EXPERT" | "STORYTELLING" | null;
   websiteUrl?: string | null;
   offerSummary?: string | null;
-  subscriptionPlan: "FREE" | "START" | "PRO";
+  subscriptionPlan: "FREE" | "START" | "PRO" | "AGENCY";
   subscriptionExpiresAt?: string | null;
   referralBalance: number;
   onboardedAt?: string | null;

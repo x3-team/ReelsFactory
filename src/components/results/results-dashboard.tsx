@@ -9,7 +9,9 @@ import {
   Users,
 } from "lucide-react";
 
+import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
 import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
+import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { TeleprompterMode } from "@/components/results/teleprompter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,16 +31,25 @@ export function ResultsDashboard({
   user,
   analysis,
   referralUrl,
+  clientAccounts = [],
   onSelectPlan,
   loadingPlan,
   onReanalyze,
+  onAnalyzeClient,
 }: {
   user: AppUser;
   analysis: AppAnalysis;
   referralUrl: string;
+  clientAccounts?: Array<{
+    id: string;
+    socialHandle: string;
+    platform: string;
+    label?: string | null;
+  }>;
   onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
   loadingPlan?: string | null;
   onReanalyze: () => void;
+  onAnalyzeClient?: (clientAccountId: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState(analysis.scripts[0]?.id);
   const [teleprompterOpen, setTeleprompterOpen] = useState(false);
@@ -67,6 +78,14 @@ export function ResultsDashboard({
         </div>
         <Badge variant="secondary">{planLabel}</Badge>
       </header>
+
+      {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
+        <AgencyClientsPanel
+          userId={user.id}
+          initialAccounts={clientAccounts}
+          onAnalyzeClient={onAnalyzeClient}
+        />
+      )}
 
       <div className="grid gap-3">
         <Card>
@@ -156,6 +175,7 @@ export function ResultsDashboard({
         {selected && (
           <ScriptViewer
             script={selected}
+            referralUrl={referralUrl}
             lockedTeleprompter={isFree && selected.isTeaser}
             onOpenTeleprompter={() => {
               if (isFree && selected.isTeaser) {
@@ -201,11 +221,13 @@ export function ResultsDashboard({
 
 function ScriptViewer({
   script,
+  referralUrl,
   lockedTeleprompter,
   onOpenTeleprompter,
   onUnlock,
 }: {
   script: AppScript;
+  referralUrl: string;
   lockedTeleprompter: boolean;
   onOpenTeleprompter: () => void;
   onUnlock: () => void;
@@ -261,6 +283,7 @@ function ScriptViewer({
               <Lock className="size-4" /> Смотреть все сценарии
             </Button>
           )}
+          <ReferralShareBar referralUrl={referralUrl} />
         </div>
       </CardContent>
     </Card>

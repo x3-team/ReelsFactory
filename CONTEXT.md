@@ -30,8 +30,8 @@ The service analyzes Instagram/TikTok/YouTube profiles, extracts viral patterns 
 ## Primary Tech Stack
 
 - Frontend: Next.js (App Router, TypeScript), Tailwind CSS, shadcn/ui, `@telegram-apps/sdk-react`.
-- Backend: Node.js (NestJS or Next.js API routes), PostgreSQL + Prisma ORM (Supabase/Selectel), BullMQ (Redis) for queues.
-- AI: Apify/RapidAPI (Scraping), OpenAI Whisper API (STT), Claude 3.5 Sonnet / GPT-4o (LLM).
+- Backend: Node.js (Next.js API routes), PostgreSQL + Prisma ORM (Supabase/Selectel), BullMQ (Redis) for queues (in-process fallback without Redis).
+- AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) as OpenAI-compatible gateway to GPT / Claude / Whisper and others; Apify/RapidAPI for scraping.
 - Payments: YoKassa / CloudPayments API + internal balance & referral tracking.
 
 ## Notes for agents
