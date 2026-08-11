@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
-  Download,
   Pause,
   Play,
   RotateCcw,
+  Share2,
   Square,
   Type,
   X,
@@ -47,8 +47,10 @@ export function TeleprompterMode({
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const [recSeconds, setRecSeconds] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [shareHint, setShareHint] = useState<string | null>(null);
 
   const stopCamera = useCallback(() => {
     recorderRef.current?.stop();
@@ -57,6 +59,7 @@ export function TeleprompterMode({
     streamRef.current = null;
     setCameraReady(false);
     setRecording(false);
+    setCountdown(null);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -70,6 +73,7 @@ export function TeleprompterMode({
         audio: true,
         video: {
           facingMode: "user",
+          aspectRatio: { ideal: 9 / 16 },
           width: { ideal: 1080 },
           height: { ideal: 1920 },
         },
@@ -98,12 +102,12 @@ export function TeleprompterMode({
   }, [mode, startCamera, stopCamera]);
 
   useEffect(() => {
-    if (!playing || videoUrl) return;
+    if (!playing || videoUrl || countdown !== null) return;
     const id = window.setInterval(() => {
       setOffset((v) => v + 1);
     }, speed.ms);
     return () => window.clearInterval(id);
-  }, [playing, speed.ms, videoUrl]);
+  }, [playing, speed.ms, videoUrl, countdown]);
 
   useEffect(() => {
     if (!recording) return;
@@ -121,7 +125,7 @@ export function TeleprompterMode({
     return candidates.find((t) => MediaRecorder.isTypeSupported(t)) || "";
   }
 
-  function startRecording() {
+  function beginRecording() {
     const stream = streamRef.current;
     if (!stream) return;
     chunksRef.current = [];
@@ -154,6 +158,28 @@ export function TeleprompterMode({
     setPlaying(true);
   }
 
+  function startWithCountdown() {
+    if (!cameraReady || recording || countdown !== null) return;
+    setPlaying(false);
+    setOffset(0);
+    setCountdown(3);
+  }
+
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) {
+      setCountdown(null);
+      beginRecording();
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setCountdown((c) => (c === null ? null : c - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+    // beginRecording is stable enough for this flow
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown]);
+
   function stopRecording() {
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
       recorderRef.current.stop();
@@ -163,8 +189,10 @@ export function TeleprompterMode({
 
   async function shareOrDownload() {
     if (!videoUrl) return;
+    setShareHint(null);
     const blob = await fetch(videoUrl).then((r) => r.blob());
-    const file = new File([blob], `reelsfactory-${Date.now()}.webm`, {
+    const ext = blob.type.includes("mp4") ? "mp4" : "webm";
+    const file = new File([blob], `reelsfactory-${Date.now()}.${ext}`, {
       type: blob.type || "video/webm",
     });
 
@@ -173,8 +201,9 @@ export function TeleprompterMode({
         await navigator.share({
           files: [file],
           title: title,
-          text: "Ролик из ReelsFactory",
+          text: "Ролик из ReelsFactory — готов к Reels / TikTok",
         });
+        setShareHint("Отправлено. Выложи в Instagram или TikTok.");
         return;
       } catch {
         // user cancelled or share failed → download
@@ -185,6 +214,7 @@ export function TeleprompterMode({
     a.href = videoUrl;
     a.download = file.name;
     a.click();
+    setShareHint("Сохранено. Открой галерею и выложи в Reels / TikTok.");
   }
 
   return (
@@ -193,7 +223,7 @@ export function TeleprompterMode({
         <div className="min-w-0">
           <p className="text-[12px] font-medium text-white/55">
             {mode === "record"
-              ? "Суфлёр + камера · один телефон"
+              ? "Суфлёр + камера · 9:16"
               : "Суфлёр · только текст"}
           </p>
           <h2 className="font-display mt-1 truncate text-base font-semibold">
@@ -219,6 +249,7 @@ export function TeleprompterMode({
           onClick={() => {
             setMode("record");
             setOffset(0);
+            setCountdown(null);
           }}
           className={cn(
             "flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition",
@@ -233,6 +264,7 @@ export function TeleprompterMode({
             setMode("read");
             setOffset(0);
             setVideoUrl(null);
+            setCountdown(null);
           }}
           className={cn(
             "flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition",
@@ -244,6 +276,20 @@ export function TeleprompterMode({
       </div>
 
       <div className="relative flex-1 overflow-hidden">
+        {/* 9:16 safe frame for record mode */}
+        {mode === "record" && !videoUrl && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-1/2 z-[5] w-[min(100%,calc(100dvh*9/16))] -translate-x-1/2"
+          >
+            <div className="absolute inset-y-0 left-0 w-px bg-white/25" />
+            <div className="absolute inset-y-0 right-0 w-px bg-white/25" />
+            <div className="absolute left-2 top-2 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-medium text-white/70">
+              9:16
+            </div>
+          </div>
+        )}
+
         {mode === "record" && (
           <>
             <video
@@ -269,7 +315,18 @@ export function TeleprompterMode({
           </>
         )}
 
-        {!videoUrl && (
+        {countdown !== null && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45">
+            <span
+              key={countdown}
+              className="font-display animate-rf-rise text-7xl font-semibold tabular-nums text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
+            >
+              {countdown === 0 ? "Go" : countdown}
+            </span>
+          </div>
+        )}
+
+        {!videoUrl && countdown === null && (
           <>
             <div
               className={cn(
@@ -317,7 +374,7 @@ export function TeleprompterMode({
       </div>
 
       <div className="relative z-20 space-y-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">
-        {!videoUrl && (
+        {!videoUrl && countdown === null && (
           <div className="flex gap-2">
             {SPEEDS.map((item) => (
               <button
@@ -343,7 +400,7 @@ export function TeleprompterMode({
               className="h-12 bg-white text-black hover:bg-white/90"
               onClick={() => void shareOrDownload()}
             >
-              <Download className="size-4" />
+              <Share2 className="size-4" />
               Сохранить / отправить в Reels
             </Button>
             <Button
@@ -354,6 +411,7 @@ export function TeleprompterMode({
                   if (prev) URL.revokeObjectURL(prev);
                   return null;
                 });
+                setShareHint(null);
                 setOffset(0);
                 setPlaying(true);
                 if (mode === "record") void startCamera();
@@ -362,18 +420,39 @@ export function TeleprompterMode({
               <RotateCcw className="size-4" />
               Переснять
             </Button>
+            {shareHint ? (
+              <p className="text-center text-[12px] leading-5 text-white/65">
+                {shareHint}
+              </p>
+            ) : (
+              <p className="text-center text-[12px] leading-5 text-white/45">
+                Формат вертикальный. В Instagram выбери «Reels» из галереи.
+              </p>
+            )}
           </div>
         ) : mode === "record" ? (
           <div className="flex items-center justify-center gap-3">
-            {!recording ? (
+            {!recording && countdown === null ? (
               <Button
                 size="lg"
                 className="min-w-44 bg-primary"
                 disabled={!cameraReady}
-                onClick={startRecording}
+                onClick={startWithCountdown}
               >
                 <span className="size-3 rounded-full bg-white" />
-                Запись
+                Запись · 3–2–1
+              </Button>
+            ) : countdown !== null ? (
+              <Button
+                size="lg"
+                variant="outline"
+                className="min-w-44 border-white/20 bg-transparent text-white hover:bg-white/10"
+                onClick={() => {
+                  setCountdown(null);
+                  setPlaying(true);
+                }}
+              >
+                Отмена
               </Button>
             ) : (
               <Button
@@ -427,10 +506,10 @@ export function TeleprompterMode({
           </div>
         )}
 
-        {mode === "record" && !videoUrl && (
+        {mode === "record" && !videoUrl && countdown === null && (
           <p className="text-center text-[12px] leading-5 text-white/55">
-            Текст виден только тебе на экране. После записи сохрани ролик и
-            выложи в Instagram / TikTok.
+            Текст виден только тебе. Кадр 9:16 — как в Reels. После записи
+            сохрани и выложи в Instagram / TikTok.
           </p>
         )}
       </div>

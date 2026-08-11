@@ -18,7 +18,7 @@ function scriptsLimit(user: User) {
   return WEEKLY_PACK_SIZE;
 }
 
-function pillarsLimit(_user: User) {
+function pillarsLimit() {
   return WEEKLY_PACK_SIZE;
 }
 
@@ -102,7 +102,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
 
     const paid = hasPaidAccess(user);
     const scriptsToSave = strategy.scripts.slice(0, scriptsLimit(user));
-    const pillars = strategy.content_pillars.slice(0, pillarsLimit(user));
+    const pillars = strategy.content_pillars.slice(0, pillarsLimit());
 
     await prisma.$transaction(async (tx) => {
       await tx.script.deleteMany({ where: { analysisId } });

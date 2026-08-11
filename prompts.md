@@ -4,7 +4,7 @@
 
 ReelsFactory is an AI-powered Telegram Mini App (TMA) for content creators, SMM managers, and experts. 
 
-It analyzes Instagram/TikTok/YouTube profiles, extracts viral hooks from past top videos, identifies content pillars, and generates ready-to-record video scripts with a built-in teleprompter layout.
+It analyzes Instagram/TikTok profiles, extracts viral hooks from past top videos, identifies content pillars, and generates ready-to-record video scripts with a built-in teleprompter layout.
 
 ---
 
@@ -32,7 +32,7 @@ It analyzes Instagram/TikTok/YouTube profiles, extracts viral hooks from past to
 
 1. Read Telegram User Data via `window.Telegram.WebApp.initDataUnsafe`.
 2. Form fields:
-  - Instagram / TikTok `@username` or YouTube Channel link.
+  - Instagram / TikTok `@username`.
   - Profile Goal: `Grow Audience` or `Sell Product/Service`.
   - Optional: Website URL or offer summary.
   - Tone of Voice selection `Direct`, `Humorous`, `Expert`, `Storytelling`).

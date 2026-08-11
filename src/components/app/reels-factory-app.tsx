@@ -37,6 +37,24 @@ export function ReelsFactoryApp() {
   const [screen, setScreen] = useState<Screen>("boot");
   const [user, setUser] = useState<AppUser | null>(null);
   const [analysis, setAnalysis] = useState<AppAnalysis | null>(null);
+  const [previousAnalysis, setPreviousAnalysis] = useState<{
+    id: string;
+    niche?: string | null;
+    targetAudience?: string | null;
+    contentPillars?: Array<{ title: string; description: string }> | null;
+    profileAuditTips?: string[] | null;
+    createdAt?: string;
+  } | null>(null);
+  const [analyses, setAnalyses] = useState<
+    Array<{
+      id: string;
+      socialHandle: string;
+      platform: string;
+      niche?: string | null;
+      createdAt: string;
+      status: string;
+    }>
+  >([]);
   const [referralUrl, setReferralUrl] = useState("");
   const [clientAccounts, setClientAccounts] = useState<
     Array<{
@@ -84,6 +102,8 @@ export function ReelsFactoryApp() {
     const data = await api<{
       user: AppUser;
       latestAnalysis: AppAnalysis | null;
+      previousAnalysis?: typeof previousAnalysis;
+      analyses?: typeof analyses;
       referralLink: string;
       clientAccounts?: Array<{
         id: string;
@@ -99,6 +119,8 @@ export function ReelsFactoryApp() {
     setUser(data.user);
     setReferralUrl(data.referralLink || referralLink(data.user.telegramId));
     setClientAccounts(data.clientAccounts || []);
+    setPreviousAnalysis(data.previousAnalysis || null);
+    setAnalyses(data.analyses || []);
 
     const paidFlag =
       typeof window !== "undefined" &&
@@ -224,7 +246,12 @@ export function ReelsFactoryApp() {
         payment: { providerPaymentId?: string };
       }>("/api/payments/create", {
         method: "POST",
-        body: JSON.stringify({ userId: user.id, plan, billingPeriod }),
+        body: JSON.stringify({
+          userId: user.id,
+          product: "subscription",
+          plan,
+          billingPeriod,
+        }),
       });
 
       if (data.confirmationUrl) {
@@ -237,6 +264,44 @@ export function ReelsFactoryApp() {
       setError(err instanceof Error ? err.message : "Ошибка оплаты");
     } finally {
       setLoadingPlan(null);
+    }
+  }
+
+  async function handleBuyScriptPack() {
+    if (!user || !analysis) return;
+    setLoadingPlan("SCRIPT_PACK");
+    try {
+      const data = await api<{ confirmationUrl?: string }>("/api/payments/create", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.id,
+          product: "SCRIPT_PACK",
+          analysisId: analysis.id,
+        }),
+      });
+      if (data.confirmationUrl) {
+        window.location.href = data.confirmationUrl;
+        return;
+      }
+      throw new Error("Не получен URL оплаты");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка оплаты");
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
+
+  async function handleLoadAnalysis(analysisId: string) {
+    try {
+      const data = await api<{ analysis: AppAnalysis }>(
+        `/api/analyze?id=${encodeURIComponent(analysisId)}`,
+      );
+      if (data.analysis.status === "COMPLETED") {
+        setAnalysis(data.analysis);
+        setScreen("results");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось открыть разбор");
     }
   }
 
@@ -305,8 +370,12 @@ export function ReelsFactoryApp() {
           analysis={analysis}
           referralUrl={referralUrl}
           clientAccounts={clientAccounts}
+          previousAnalysis={previousAnalysis}
+          analyses={analyses}
           onSelectPlan={handleSelectPlan}
           loadingPlan={loadingPlan}
+          onBuyScriptPack={() => void handleBuyScriptPack()}
+          onLoadAnalysis={(id) => void handleLoadAnalysis(id)}
           onReanalyze={() => {
             if (user) void runAnalysis(user.id);
           }}

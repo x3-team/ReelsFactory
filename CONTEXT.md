@@ -4,7 +4,7 @@
 
 Build a high-margin SaaS Telegram Mini App (TMA) for creators, experts, and SMM managers in the CIS / RU market.
 
-The service analyzes Instagram/TikTok/YouTube profiles, extracts viral patterns from past top-performing videos (via OCR/transcription), identifies content pillars, and generates ready-to-record video scripts formatted for a teleprompter view.
+The service analyzes Instagram/TikTok profiles, extracts viral patterns from past top-performing videos (via OCR/transcription), identifies content pillars, and generates ready-to-record video scripts formatted for a teleprompter view.
 
 ## Core Features
 

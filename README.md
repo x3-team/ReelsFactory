@@ -1,6 +1,6 @@
 # ReelsFactory
 
-AI-powered Telegram Mini App that analyzes Instagram / TikTok / YouTube profiles and generates ready-to-record reel scripts with a teleprompter.
+AI-powered Telegram Mini App that analyzes Instagram / TikTok profiles and generates ready-to-record reel scripts with a teleprompter.
 
 Product requirements: [`prompts.md`](./prompts.md).
 

@@ -57,4 +57,14 @@ export type AppAnalysis = {
   platform: string;
   errorMessage?: string | null;
   scripts: AppScript[];
+  createdAt?: string;
+  rawProfileData?: {
+    _meta?: {
+      videoCount?: number;
+      whisperCount?: number;
+      lowVideoSignal?: boolean;
+    };
+    topVideos?: unknown[];
+    reminders?: unknown[];
+  } | null;
 };

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
+import { AgencyReportButton } from "@/components/agency/agency-report";
 import { AppVersion } from "@/components/app/app-version";
 import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
 import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
@@ -486,6 +487,9 @@ export function ResultsDashboard({
       <div className="space-y-3">
         <ReferralShareBar referralUrl={referralUrl} />
         <div className="grid gap-2">
+          {user.subscriptionPlan === "AGENCY" ? (
+            <AgencyReportButton analysis={analysis} />
+          ) : null}
           <Button variant="outline" onClick={() => setPaywallOpen(true)}>
             Тарифы
           </Button>
@@ -514,6 +518,8 @@ export function ResultsDashboard({
         currentPlan={user.subscriptionPlan}
         onSelectPlan={onSelectPlan}
         loadingPlan={loadingPlan}
+        onBuyScriptPack={onBuyScriptPack}
+        showScriptPack={isFree && lockedCount > 0}
       />
     </div>
   );

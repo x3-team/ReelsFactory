@@ -104,7 +104,7 @@ export function LandingPage() {
               {
                 n: "01",
                 t: "Кидаешь @ник",
-                d: "Instagram, TikTok или YouTube — разберём то, что уже залетает.",
+                d: "Instagram или TikTok — разберём то, что уже залетает.",
               },
               {
                 n: "02",
@@ -212,6 +212,53 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Cases */}
+      <section className="border-t border-border/60 bg-[#0f1218] px-5 py-16 text-white md:px-8 md:py-20">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
+            Как это выглядит на практике
+          </h2>
+          <p className="mt-3 max-w-[42ch] text-[1.05rem] leading-7 text-white/75">
+            Типичные сценарии авторов, которые приходят с «не знаю, что снимать».
+          </p>
+          <ul className="mt-10 space-y-8">
+            {[
+              {
+                who: "Кондитер · Instagram",
+                before: "Сторис с тортом и «напишите в директ» — охваты стоят.",
+                after:
+                  "3 сценария на неделю: текстура зефира, ошибка новичков, CTA в комментарии. Первый ролик — в день разбора.",
+              },
+              {
+                who: "Эксперт по карьере · TikTok",
+                before: "Длинные советы без хука — зритель свайпает на 2-й секунде.",
+                after:
+                  "Хуки из топ‑роликов профиля + сценарии 15/30/45. Суфлёр на одном телефоне — без второго экрана.",
+              },
+              {
+                who: "SMM‑агентство · 3 клиента",
+                before: "Брифы вручную, сценарии «на глаз», отчёты в Google Docs.",
+                after:
+                  "Тариф Агентство: разбор до 5 аккаунтов и печатный отчёт для клиента за один тап.",
+              },
+            ].map((item) => (
+              <li
+                key={item.who}
+                className="border-b border-white/10 pb-8 last:border-0 last:pb-0"
+              >
+                <p className="text-[13px] font-medium text-primary">{item.who}</p>
+                <p className="mt-2 text-[15px] leading-6 text-white/55">
+                  Было: {item.before}
+                </p>
+                <p className="mt-1.5 text-[15px] leading-6 text-white/90">
+                  Стало: {item.after}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       {/* Killer offer */}
       <section className="border-t border-border/60 bg-background px-5 py-16 md:px-8 md:py-24">
         <div className="mx-auto max-w-3xl">
@@ -231,7 +278,7 @@ export function LandingPage() {
               </Link>
             </Button>
             <p className="text-sm leading-5 text-muted-foreground sm:max-w-[26ch]">
-              Платить не нужно. Регистрация через Telegram — около минуты.
+              Платить не нужно. Разбор обычно 1–2 минуты.
             </p>
           </div>
         </div>

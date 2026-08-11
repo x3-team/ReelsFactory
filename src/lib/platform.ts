@@ -23,7 +23,8 @@ export function detectPlatform(input: string): Platform {
   return "instagram";
 }
 
-export function normalizeHandle(input: string, platform: Platform): string {
+export function normalizeHandle(input: string, platform?: Platform): string {
+  void platform;
   const trimmed = input.trim();
   const withoutUrl = trimmed
     .replace(/^https?:\/\/(www\.)?(instagram|tiktok)\.com\//i, "")

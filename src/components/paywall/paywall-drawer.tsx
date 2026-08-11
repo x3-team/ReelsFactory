@@ -14,6 +14,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import {
   PLANS,
+  SCRIPT_PACK,
   planMonthlyEquivalentRub,
   planPriceRub,
   type BillingPeriod,
@@ -28,7 +29,9 @@ export function PaywallDrawer({
   referralBalance,
   currentPlan,
   onSelectPlan,
+  onBuyScriptPack,
   loadingPlan,
+  showScriptPack,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,7 +42,9 @@ export function PaywallDrawer({
     plan: Exclude<PlanId, "FREE">,
     billingPeriod: BillingPeriod,
   ) => Promise<void> | void;
+  onBuyScriptPack?: () => void;
   loadingPlan?: string | null;
+  showScriptPack?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("month");
@@ -63,6 +68,33 @@ export function PaywallDrawer({
             сценарии и суфлёр без ограничений.
           </DialogDescription>
         </DialogHeader>
+
+        {showScriptPack && onBuyScriptPack ? (
+          <button
+            type="button"
+            disabled={!!loadingPlan}
+            onClick={() => onBuyScriptPack()}
+            className="w-full rounded-2xl border border-primary/30 bg-primary/5 p-4 text-left transition hover:bg-primary/10"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">{SCRIPT_PACK.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {SCRIPT_PACK.description}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-semibold tabular-nums">
+                  {SCRIPT_PACK.priceRub.toLocaleString("ru-RU")} ₽
+                </p>
+                <p className="text-xs text-muted-foreground">разово</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm font-semibold text-primary">
+              {loadingPlan === "SCRIPT_PACK" ? "Создаём оплату…" : "Купить пакет"}
+            </p>
+          </button>
+        ) : null}
 
         <div className="grid grid-cols-2 rounded-2xl bg-secondary/80 p-1">
           {(

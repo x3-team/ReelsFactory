@@ -49,6 +49,9 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 - Юридические страницы: `/legal/offer`, `/legal/terms`, `/legal/privacy`. Реквизиты — `NEXT_PUBLIC_LEGAL_*` и `NEXT_PUBLIC_SUPPORT_EMAIL` в `.env`. Если не заданы — в футере плейсхолдеры (можно деплоить без них в dev; перед продом лучше заполнить).
 - Package manager **pnpm**; `allowBuilds` в `pnpm-workspace.yaml`.
 - Версия сервиса: `package.json` → `version` (сейчас показывается в UI как `vX.Y.Z`, также `GET /api/version`).
+- Платформы: **Instagram и TikTok** (YouTube не поддерживаем — явный отказ в `detectPlatform` / онбординге).
+- Разовый продукт: **SCRIPT_PACK** 390₽ («Ещё 3 сценария») без подписки.
+- Агентство: печатный HTML‑отчёт для клиента из результатов разбора.
 - Вне Telegram клиент хранит `localStorage` telegram id; `initData` валидируется на сервере при `TELEGRAM_BOT_TOKEN`.
 - Не коммитить `.env`.
 

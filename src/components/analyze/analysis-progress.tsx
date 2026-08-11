@@ -14,23 +14,23 @@ const STEPS = [
   {
     key: "SCRAPING",
     label: "Сканируем профиль",
-    detail: "Био и топ‑рилсы из Instagram",
-    expectedSec: 40,
-    range: [8, 62] as const,
+    detail: "Био и топ‑рилсы · обычно 30–50 сек",
+    expectedSec: 45,
+    range: [8, 55] as const,
   },
   {
     key: "TRANSCRIBING",
-    label: "Собираем хуки",
-    detail: "Цепляющие фразы из роликов",
-    expectedSec: 5,
-    range: [62, 74] as const,
+    label: "Разбираем речь",
+    detail: "Подписи или Whisper (на тарифе) · 5–40 сек",
+    expectedSec: 25,
+    range: [55, 78] as const,
   },
   {
     key: "GENERATING",
     label: "Пишем сценарии",
-    detail: "Темы на неделю, суфлёр и призывы",
-    expectedSec: 20,
-    range: [74, 97] as const,
+    detail: "3 темы + 3 сценария · обычно 15–30 сек",
+    expectedSec: 25,
+    range: [78, 97] as const,
   },
 ] as const;
 
@@ -149,6 +149,11 @@ export function AnalysisProgress({
               ? "Готово"
               : `${activeStep.label} · ${elapsedSec} сек`}
         </p>
+        {!failedMessage && status !== "COMPLETED" ? (
+          <p className="text-[12px] leading-5 text-muted-foreground/80">
+            Обычно 1–2 минуты. Сканирование ленты — самый долгий шаг.
+          </p>
+        ) : null}
       </div>
 
       <Progress value={percent} className="h-2.5" />

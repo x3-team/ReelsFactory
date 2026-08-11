@@ -88,7 +88,7 @@ export function OnboardingForm({
             Какой аккаунт разбираем?
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Один шаг — и через ~минуту готовые сценарии под съёмку.
+            Один шаг — и через 1–2 минуты готовые сценарии под съёмку.
           </p>
         </div>
       </header>
