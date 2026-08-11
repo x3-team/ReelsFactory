@@ -4,26 +4,27 @@
 
 ### Product
 
-ReelsFactory is a Telegram Mini App (Next.js 14 App Router). Spec: `prompts.md`.
+ReelsFactory Telegram Mini App. Spec: `prompts.md`. Phases 1–3 are implemented.
 
 ### Services
 
 | Service | Required | How to run |
 | --- | --- | --- |
-| Next.js app | Yes | `pnpm dev` (port 3000) |
-| PostgreSQL | Required for DB features / migrate | Provide `DATABASE_URL` in `.env` (see `.env.example`). Prisma Client generate works without a live DB. |
+| PostgreSQL | Yes for app data / analyze / payments | Local `postgresql://reels:reels@localhost:5432/reelsfactory` (see `.env.example`). Start with `sudo pg_ctlcluster 16 main start` if needed. |
+| Next.js | Yes | `pnpm dev` → http://localhost:3000 |
+| External AI / scrape / YooKassa | Optional | When keys are absent, `MOCK_EXTERNAL_APIS` auto-enables demo responses. |
 
 ### Commands
 
-- Lint: `pnpm lint`
-- Tests: none yet (Phase 1)
-- Build: `pnpm build` (runs fine without a live Postgres if client is generated)
-- Prisma client: `pnpm db:generate` (also via `postinstall`)
-- Schema push / migrate: `pnpm db:push` / `pnpm db:migrate` — needs a reachable `DATABASE_URL`
+- Lint / build: `pnpm lint`, `pnpm build`
+- DB: `pnpm db:generate`, `pnpm db:push`
+- No automated test suite yet; smoke via UI or `curl` against `/api/*`
 
 ### Gotchas
 
-- Package manager is **pnpm**. Build scripts allowlist lives in `pnpm-workspace.yaml` (`allowBuilds`), not `package.json`.
-- Telegram SDK must only be initialized in client components (`TelegramProvider`). Outside Telegram WebView, init failures are swallowed so browser `pnpm dev` still works.
-- Referral start param format: `ref_{telegram_id}` via `t.me/ReelsFactoryBot?start=ref_{telegram_id}`.
-- Do not commit `.env`; use `.env.example`.
+- Package manager is **pnpm**. Allowed build scripts live in `pnpm-workspace.yaml` (`allowBuilds`).
+- Outside Telegram WebView the client invents a stable `localStorage` telegram id (`reelsfactory.devTelegramId`) so browser demos work.
+- Analysis UI waits ≥4.5s so the progress steps remain visible even when mocks return instantly.
+- Mock payments redirect through `/api/payments/mock-complete?paymentId=...` then `/?paid=1`.
+- Referral start param: `ref_{telegram_id}` → 30% of paid amount credited to referrer on webhook success.
+- Do not commit `.env`.

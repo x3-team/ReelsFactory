@@ -1,0 +1,133 @@
+"use client";
+
+import { useState } from "react";
+import { Check, Copy, Gift, Crown } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { PLANS, type PlanId } from "@/lib/config";
+import { cn } from "@/lib/utils";
+
+export function PaywallDrawer({
+  open,
+  onOpenChange,
+  referralUrl,
+  referralBalance,
+  currentPlan,
+  onSelectPlan,
+  loadingPlan,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  referralUrl: string;
+  referralBalance: number;
+  currentPlan: PlanId;
+  onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
+  loadingPlan?: string | null;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyReferral() {
+    await navigator.clipboard.writeText(referralUrl);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Crown className="size-5" />
+            Unlock full scripts
+          </DialogTitle>
+          <DialogDescription>
+            Free demo includes the audit + 1 teaser. Upgrade for full teleprompter
+            access.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {(["START", "PRO"] as const).map((planId) => {
+            const plan = PLANS[planId];
+            const active = currentPlan === planId;
+            return (
+              <button
+                key={planId}
+                type="button"
+                disabled={!!loadingPlan || active}
+                onClick={() => void onSelectPlan(planId)}
+                className={cn(
+                  "w-full rounded-xl border p-4 text-left transition",
+                  planId === "PRO"
+                    ? "border-primary bg-primary/5"
+                    : "border-border",
+                  active && "opacity-70",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{plan.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {plan.description}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-semibold">{plan.priceRub} ₽</div>
+                    <div className="text-xs text-muted-foreground">/ month</div>
+                  </div>
+                </div>
+                <div className="mt-3 text-sm font-medium">
+                  {active
+                    ? "Current plan"
+                    : loadingPlan === planId
+                      ? "Creating payment…"
+                      : "Choose plan"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3 rounded-xl border p-4">
+          <div className="flex items-center gap-2 font-medium">
+            <Gift className="size-4" />
+            Referral program
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Share your link and earn 30% of each paid subscription.
+          </p>
+          <p className="text-sm">
+            Balance: <span className="font-semibold">{referralBalance} ₽</span>
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => void copyReferral()}
+          >
+            {copied ? (
+              <>
+                <Check className="size-4" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="size-4" /> Copy referral link
+              </>
+            )}
+          </Button>
+          <p className="break-all text-xs text-muted-foreground">{referralUrl}</p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

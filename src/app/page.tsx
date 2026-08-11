@@ -1,5 +1,5 @@
-import { HomeStatus } from "@/components/home-status";
+import { ReelsFactoryApp } from "@/components/app/reels-factory-app";
 
 export default function HomePage() {
-  return <HomeStatus />;
+  return <ReelsFactoryApp />;
 }
