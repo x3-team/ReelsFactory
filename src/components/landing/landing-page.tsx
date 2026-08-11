@@ -43,8 +43,8 @@ export function LandingPage() {
           }}
         />
 
-        <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col px-5 pb-10 pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8">
-          <header className="animate-rf-rise flex items-center justify-between">
+        <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8">
+          <header className="animate-rf-rise sticky top-0 z-20 -mx-5 mb-6 flex items-center justify-between bg-gradient-to-b from-[#0c0e14] via-[#0c0e14]/95 to-transparent px-5 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:-mx-8 md:px-8">
             <p className="font-display text-[1.65rem] font-semibold tracking-tight text-white md:text-3xl">
               Reels<span className="text-primary">Factory</span>
             </p>
@@ -56,9 +56,9 @@ export function LandingPage() {
             </Link>
           </header>
 
-          <div className="relative mt-8 grid flex-1 items-end gap-8 md:mt-0 md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-12">
-            <div className="animate-rf-rise relative z-10 space-y-6 [animation-delay:80ms]">
-              <h1 className="font-display max-w-[16ch] text-[2.35rem] font-semibold leading-[1.12] tracking-tight text-white md:text-5xl md:leading-[1.08]">
+          <div className="relative grid flex-1 items-end gap-6 md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-12">
+            <div className="animate-rf-rise relative z-10 space-y-5 [animation-delay:80ms]">
+              <h1 className="font-display max-w-[16ch] text-[2.2rem] font-semibold leading-[1.12] tracking-tight text-white md:text-5xl md:leading-[1.08]">
                 Сценарии рилсов под твой профиль — за 60 секунд
               </h1>
               <p className="max-w-[34ch] text-[1.05rem] leading-7 text-white/72">
@@ -81,7 +81,7 @@ export function LandingPage() {
               </div>
             </div>
 
-            <div className="animate-rf-rise relative mx-auto w-full max-w-[260px] translate-y-4 md:max-w-[320px] md:translate-y-0 [animation-delay:160ms]">
+            <div className="animate-rf-rise relative mx-auto w-full max-w-[240px] md:max-w-[320px] [animation-delay:160ms]">
               <PhoneDemo />
             </div>
           </div>
@@ -162,12 +162,8 @@ export function LandingPage() {
       </section>
 
       {/* Killer offer */}
-      <section className="relative overflow-hidden border-t border-border/60 bg-background px-5 py-16 md:px-8 md:py-24">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 top-0 h-64 w-64 rounded-full bg-primary/15 blur-3xl"
-        />
-        <div className="relative mx-auto max-w-3xl">
+      <section className="border-t border-border/60 bg-background px-5 py-16 md:px-8 md:py-24">
+        <div className="mx-auto max-w-3xl">
           <p className="text-[13px] font-medium text-primary">Оффер</p>
           <h2 className="font-display mt-2 max-w-[18ch] text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.08]">
             Бесплатно: разбор + 1 полный сценарий с суфлёром
