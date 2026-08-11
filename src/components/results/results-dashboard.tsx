@@ -176,57 +176,76 @@ export function ResultsDashboard({
           </Button>
         )}
 
-        <div className="rf-surface overflow-hidden p-2">
-          <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {analysis.scripts.map((script, index) => {
-              const locked = isLocked(script);
-              const active = selected?.id === script.id;
-              return (
-                <button
-                  key={script.id}
-                  type="button"
-                  onClick={() => {
-                    if (locked) {
-                      setPaywallOpen(true);
-                      return;
-                    }
-                    setSelectedId(script.id);
-                  }}
+        <div className="space-y-2">
+          {analysis.scripts.map((script, index) => {
+            const locked = isLocked(script);
+            const active = selected?.id === script.id;
+            const badge = locked
+              ? "PRO"
+              : script.id === freeScriptId && isFree
+                ? "твой"
+                : null;
+            return (
+              <button
+                key={script.id}
+                type="button"
+                onClick={() => {
+                  if (locked) {
+                    setPaywallOpen(true);
+                    return;
+                  }
+                  setSelectedId(script.id);
+                }}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition",
+                  active && !locked
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border/80 bg-card",
+                  locked && "opacity-95",
+                )}
+              >
+                <span
                   className={cn(
-                    "relative h-[5.75rem] w-[10.25rem] shrink-0 rounded-xl border px-3 py-2.5 text-left transition",
+                    "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg text-[13px] font-semibold tabular-nums",
                     active && !locked
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-transparent bg-secondary/80 text-foreground",
-                    locked && "opacity-95",
+                      ? "bg-primary-foreground/15 text-primary-foreground"
+                      : "bg-secondary text-foreground",
                   )}
                 >
-                  {locked && (
-                    <span className="absolute right-2 top-2 rounded-md bg-foreground/90 p-1 text-background">
-                      <Lock className="size-3" />
-                    </span>
-                  )}
-                  <div
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p
+                      className={cn(
+                        "text-[15px] font-semibold leading-5",
+                        active && !locked
+                          ? "text-primary-foreground"
+                          : "text-foreground",
+                      )}
+                    >
+                      {script.title}
+                    </p>
+                    {locked ? (
+                      <Lock className="mt-0.5 size-4 shrink-0 opacity-80" />
+                    ) : null}
+                  </div>
+                  <p
                     className={cn(
-                      "mb-1 text-[12px] font-medium",
+                      "mt-1 text-[12px] leading-4",
                       active && !locked
-                        ? "text-primary-foreground/85"
+                        ? "text-primary-foreground/80"
                         : "text-muted-foreground",
                     )}
                   >
-                    {index + 1}
-                    {locked
-                      ? " · PRO"
-                      : script.id === freeScriptId && isFree
-                        ? " · твой"
-                        : ""}
-                  </div>
-                  <div className="line-clamp-2 text-[13px] font-semibold leading-5">
-                    {script.title}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    {script.format}
+                    {badge ? ` · ${badge}` : ""}
+                    {locked ? " · нажми, чтобы открыть" : ""}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {selected && !isLocked(selected) && (
