@@ -12,7 +12,7 @@ export function mockScrapedProfile(
       .split(/[._-]/)
       .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
       .join(" "),
-    bio: `Helping creators grow with practical ${platform} tips. Free guide in bio 🔗`,
+    bio: `Помогаю авторам расти через практичные советы для ${platform}. Гайд — в шапке профиля 🔗`,
     followers: 48200,
     following: 312,
     postsCount: 186,
@@ -20,7 +20,7 @@ export function mockScrapedProfile(
       {
         id: "v1",
         url: `https://${platform}.com/${clean}/video/1`,
-        caption: "The one mistake killing your retention",
+        caption: "Одна ошибка, из‑за которой падает удержание",
         views: 920_000,
         likes: 61_000,
         audioUrl: "https://example.com/audio/1.mp3",
@@ -29,7 +29,7 @@ export function mockScrapedProfile(
       {
         id: "v2",
         url: `https://${platform}.com/${clean}/video/2`,
-        caption: "3 hooks that always stop the scroll",
+        caption: "3 хука, которые всегда останавливают скролл",
         views: 710_000,
         likes: 44_000,
         audioUrl: "https://example.com/audio/2.mp3",
@@ -38,7 +38,7 @@ export function mockScrapedProfile(
       {
         id: "v3",
         url: `https://${platform}.com/${clean}/video/3`,
-        caption: "My weekly content system",
+        caption: "Моя система контента на неделю",
         views: 530_000,
         likes: 29_000,
         audioUrl: "https://example.com/audio/3.mp3",
@@ -47,7 +47,7 @@ export function mockScrapedProfile(
       {
         id: "v4",
         url: `https://${platform}.com/${clean}/video/4`,
-        caption: "Behind the scenes of a viral reel",
+        caption: "За кадром вирусного рилса",
         views: 410_000,
         likes: 21_000,
         audioUrl: "https://example.com/audio/4.mp3",
@@ -56,7 +56,7 @@ export function mockScrapedProfile(
       {
         id: "v5",
         url: `https://${platform}.com/${clean}/video/5`,
-        caption: "CTA formulas that get comments",
+        caption: "Формулы CTA, которые собирают комментарии",
         views: 365_000,
         likes: 18_500,
         audioUrl: "https://example.com/audio/5.mp3",
@@ -68,10 +68,10 @@ export function mockScrapedProfile(
 
 export function mockTranscription(videoCaption?: string) {
   return [
-    "Hook: stop scrolling if your reels die after three seconds.",
-    videoCaption ? `Topic: ${videoCaption}.` : "Topic: content growth.",
-    "Then I show the exact pattern I use: pattern interrupt, proof, and a clear CTA.",
-    "People comment the keyword for the free checklist.",
+    "Хук: остановитесь, если ваши рилсы умирают после трёх секунд.",
+    videoCaption ? `Тема: ${videoCaption}.` : "Тема: рост контента.",
+    "Дальше показываю рабочий паттерн: перехват внимания, доказательство и чёткий CTA.",
+    "Люди комментируют ключевое слово, чтобы получить бесплатный чеклист.",
   ].join(" ");
 }
 
@@ -81,69 +81,83 @@ export function mockStrategy(input: {
   tone: string;
   offerSummary?: string | null;
 }): StrategyPayload {
-  const offer = input.offerSummary?.trim() || "a free content checklist";
+  const offer = input.offerSummary?.trim() || "бесплатный чеклист по контенту";
+  const goalLabel =
+    input.goal === "SELL_PRODUCT"
+      ? "продажи продукта/услуги"
+      : "роста аудитории";
+  const toneLabel =
+    (
+      {
+        DIRECT: "прямым",
+        HUMOROUS: "юмористичным",
+        EXPERT: "экспертным",
+        STORYTELLING: "сторителлинговым",
+      } as Record<string, string>
+    )[input.tone] || "прямым";
+
   return {
-    niche: "Short-form content growth & education",
+    niche: "Короткий контент: рост и обучение авторов",
     target_audience:
-      "Creators, SMM managers, and experts who want predictable Reels performance",
+      "Авторы, SMM-менеджеры и эксперты, которым нужны стабильные Reels",
     content_pillars: [
       {
-        title: "Scroll-stopping Hooks",
-        description: "Openers that create curiosity in the first 1–3 seconds",
+        title: "Хуки, которые останавливают скролл",
+        description: "Открытия, которые цепляют за 1–3 секунды",
       },
       {
-        title: "Proof & Systems",
-        description: "Frameworks, routines, and behind-the-scenes process content",
+        title: "Доказательства и системы",
+        description: "Фреймворки, рутины и закулисье процесса",
       },
       {
-        title: "Offer CTAs",
-        description: `Soft-sell clips that drive comments and DMs for ${offer}`,
+        title: "Мягкие CTA под оффер",
+        description: `Клипы, которые ведут к комментариям и сообщениям за ${offer}`,
       },
     ],
     profile_audit_tips: [
-      `Make the bio promise explicit for @${input.handle}: what subscribers get this week.`,
-      "Pin your highest-retention video and remake it with a stronger first frame.",
-      `Align the grid with your goal (${input.goal.replaceAll("_", " ").toLowerCase()}) and ${input.tone.toLowerCase()} tone.`,
-      "Add a keyword CTA in the caption of every educational reel.",
+      `Сделайте обещание в био @${input.handle} явным: что подписчик получит на этой неделе.`,
+      "Закрепите ролик с лучшим удержанием и переснимите его с более сильным первым кадром.",
+      `Выровняйте сетку под цель (${goalLabel}) и ${toneLabel} тоном.`,
+      "Добавляйте ключевое слово-CTA в подпись каждого обучающего рилса.",
     ],
     scripts: [
       {
-        title: "Why your hooks flop in 3 seconds",
-        format: "Reels / Shorts (15 sec)",
+        title: "Почему хуки умирают за 3 секунды",
+        format: "Reels / Shorts (15 сек)",
         hook_options: [
-          "Stop blaming the algorithm — your first line is the problem.",
-          "If people swipe away instantly, check this one habit.",
+          "Хватит винить алгоритм — проблема в первой фразе.",
+          "Если уходят сразу, проверьте эту одну привычку.",
         ],
         teleprompter_script:
-          "0-3s: Hook — look at camera, say the strong opener.\n3-10s: Show 2 bad vs 1 good hook examples on screen.\n10-15s: CTA — comment HOOK for the free checklist.",
+          "0–3с: Хук — смотрите в камеру, произнесите сильное открытие.\n3–10с: Покажите 2 плохих и 1 хороший хук на экране.\n10–15с: CTA — комментируйте ХУК за бесплатный чеклист.",
         caption:
-          "Most creators lose viewers before the tip starts. Steal this hook formula. Comment HOOK for the checklist.",
-        cta: "Comment 'HOOK'",
+          "Большинство авторов теряет зрителей до начала пользы. Заберите формулу хука. Комментируйте ХУК — пришлю чеклист.",
+        cta: "Комментируйте «ХУК»",
       },
       {
-        title: "The 3-block viral script",
-        format: "Reels / Shorts (30 sec)",
+        title: "Вирусный сценарий из 3 блоков",
+        format: "Reels / Shorts (30 сек)",
         hook_options: [
-          "I batch 12 reels with one template — here it is.",
-          "This 3-block script prints saves every week.",
+          "Я собираю 12 рилсов по одному шаблону — вот он.",
+          "Этот сценарий из 3 блоков стабильно даёт сохранения.",
         ],
         teleprompter_script:
-          "0-3s: Hook with the template promise.\n3-20s: Walk through Hook → Proof → CTA blocks with on-screen labels.\n20-30s: Show your offer and ask for a keyword comment.",
+          "0–3с: Хук с обещанием шаблона.\n3–20с: Разберите блоки Хук → Доказательство → CTA с подписями на экране.\n20–30с: Покажите оффер и попросите ключевое слово в комментариях.",
         caption:
-          "Save this template before you film tomorrow. Keyword in the comments unlocks the full checklist.",
-        cta: "Comment 'SCRIPT'",
+          "Сохраните шаблон до съёмки завтра. Ключевое слово в комментариях откроет полный чеклист.",
+        cta: "Комментируйте «СКРИПТ»",
       },
       {
-        title: "Soft-sell without looking salesy",
-        format: "Reels / Shorts (20 sec)",
+        title: "Мягкие продажи без «продажности»",
+        format: "Reels / Shorts (20 сек)",
         hook_options: [
-          "Hard CTAs kill reach. Try this soft close instead.",
-          "I stopped saying 'link in bio' and comments doubled.",
+          "Жёсткие CTA убивают охват. Попробуйте мягкое закрытие.",
+          "Я перестал говорить «ссылка в био» — и комментарии выросли вдвое.",
         ],
         teleprompter_script:
-          `0-3s: Hook about soft CTAs.\n3-14s: Demonstrate a value tip tied to ${offer}.\n14-20s: Ask viewers to comment the keyword for ${offer}.`,
-        caption: `Teach first, sell second. Comment to get ${offer}.`,
-        cta: "Comment 'GUIDE'",
+          `0–3с: Хук про мягкие CTA.\n3–14с: Дайте полезный совет, связанный с ${offer}.\n14–20с: Попросите прокомментировать ключевое слово, чтобы получить ${offer}.`,
+        caption: `Сначала польза, потом продажа. Комментируйте, чтобы получить ${offer}.`,
+        cta: "Комментируйте «ГАЙД»",
       },
     ],
   };

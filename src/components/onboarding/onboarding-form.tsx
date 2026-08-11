@@ -20,21 +20,21 @@ export type OnboardingValues = {
 const GOALS = [
   {
     id: "GROW_AUDIENCE" as const,
-    title: "Grow Audience",
-    description: "More followers, saves, and reach",
+    title: "Рост аудитории",
+    description: "Больше подписчиков, сохранений и охватов",
   },
   {
     id: "SELL_PRODUCT" as const,
-    title: "Sell Product / Service",
-    description: "Scripts that drive comments and DMs",
+    title: "Продажа продукта / услуги",
+    description: "Сценарии, которые ведут к комментариям и сообщениям",
   },
 ];
 
 const TONES = [
-  { id: "DIRECT" as const, label: "Direct" },
-  { id: "HUMOROUS" as const, label: "Humorous" },
-  { id: "EXPERT" as const, label: "Expert" },
-  { id: "STORYTELLING" as const, label: "Storytelling" },
+  { id: "DIRECT" as const, label: "Прямой" },
+  { id: "HUMOROUS" as const, label: "Юмор" },
+  { id: "EXPERT" as const, label: "Эксперт" },
+  { id: "STORYTELLING" as const, label: "Сторителлинг" },
 ];
 
 export function OnboardingForm({
@@ -59,7 +59,7 @@ export function OnboardingForm({
   async function next() {
     setError(null);
     if (step === 0 && socialHandle.trim().length < 2) {
-      setError("Enter an Instagram/TikTok @username or YouTube link");
+      setError("Укажите @username Instagram/TikTok или ссылку на YouTube");
       return;
     }
     if (step < 2) {
@@ -81,12 +81,12 @@ export function OnboardingForm({
         <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Clapperboard className="size-5" />
         </div>
-        <p className="text-sm text-muted-foreground">Welcome, {userName}</p>
+        <p className="text-sm text-muted-foreground">Привет, {userName}</p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Set up your content engine
+          Настроим контент-машину
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Step {step + 1} of 3
+          Шаг {step + 1} из 3
         </p>
         <div className="mt-3 flex gap-2">
           {[0, 1, 2].map((i) => (
@@ -106,20 +106,20 @@ export function OnboardingForm({
           <Label htmlFor="handle">Instagram / TikTok / YouTube</Label>
           <Input
             id="handle"
-            placeholder="@username or channel URL"
+            placeholder="@username или ссылка на канал"
             value={socialHandle}
             onChange={(e) => setSocialHandle(e.target.value)}
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            We&apos;ll scan bio + top 5 videos to extract viral hooks.
+            Мы проанализируем био и топ‑5 видео, чтобы вытащить вирусные хуки.
           </p>
         </section>
       )}
 
       {step === 1 && (
         <section className="space-y-3">
-          <Label>Profile goal</Label>
+          <Label>Цель профиля</Label>
           <div className="grid gap-2">
             {GOALS.map((goal) => (
               <button
@@ -141,7 +141,7 @@ export function OnboardingForm({
             ))}
           </div>
 
-          <Label className="pt-2">Tone of voice</Label>
+          <Label className="pt-2">Тон голоса</Label>
           <div className="grid grid-cols-2 gap-2">
             {TONES.map((tone) => (
               <button
@@ -165,16 +165,16 @@ export function OnboardingForm({
       {step === 2 && (
         <section className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="offer">Offer summary (optional)</Label>
+            <Label htmlFor="offer">Оффер (необязательно)</Label>
             <Textarea
               id="offer"
-              placeholder="Free checklist, consultation, course…"
+              placeholder="Бесплатный чеклист, консультация, курс…"
               value={offerSummary}
               onChange={(e) => setOfferSummary(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="website">Website URL (optional)</Label>
+            <Label htmlFor="website">Сайт (необязательно)</Label>
             <Input
               id="website"
               placeholder="https://"
@@ -196,7 +196,7 @@ export function OnboardingForm({
             onClick={() => setStep((s) => s - 1)}
             disabled={loading}
           >
-            Back
+            Назад
           </Button>
         )}
         <Button
@@ -205,7 +205,11 @@ export function OnboardingForm({
           onClick={() => void next()}
           disabled={loading}
         >
-          {step === 2 ? (loading ? "Starting…" : "Analyze profile") : "Continue"}
+          {step === 2
+            ? loading
+              ? "Запускаем…"
+              : "Анализировать профиль"
+            : "Продолжить"}
           <ArrowRight className="size-4" />
         </Button>
       </div>

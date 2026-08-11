@@ -30,7 +30,7 @@ export function TeleprompterMode({
       <div className="flex items-center justify-between gap-3 p-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-white/60">
-            Teleprompter
+            Суфлёр
           </p>
           <h2 className="text-sm font-medium">{title}</h2>
         </div>
@@ -63,11 +63,11 @@ export function TeleprompterMode({
         >
           {playing ? (
             <>
-              <Pause className="size-4" /> Pause
+              <Pause className="size-4" /> Пауза
             </>
           ) : (
             <>
-              <Play className="size-4" /> Play
+              <Play className="size-4" /> Старт
             </>
           )}
         </Button>
@@ -79,7 +79,7 @@ export function TeleprompterMode({
             setPlaying(true);
           }}
         >
-          Restart
+          Сначала
         </Button>
       </div>
     </div>

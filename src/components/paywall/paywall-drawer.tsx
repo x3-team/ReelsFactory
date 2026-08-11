@@ -46,11 +46,11 @@ export function PaywallDrawer({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Crown className="size-5" />
-            Unlock full scripts
+            Открыть все сценарии
           </DialogTitle>
           <DialogDescription>
-            Free demo includes the audit + 1 teaser. Upgrade for full teleprompter
-            access.
+            В бесплатной версии — аудит и 1 тизер. Подписка даёт полный доступ к
+            суфлёру.
           </DialogDescription>
         </DialogHeader>
 
@@ -81,15 +81,15 @@ export function PaywallDrawer({
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-semibold">{plan.priceRub} ₽</div>
-                    <div className="text-xs text-muted-foreground">/ month</div>
+                    <div className="text-xs text-muted-foreground">/ месяц</div>
                   </div>
                 </div>
                 <div className="mt-3 text-sm font-medium">
                   {active
-                    ? "Current plan"
+                    ? "Текущий план"
                     : loadingPlan === planId
-                      ? "Creating payment…"
-                      : "Choose plan"}
+                      ? "Создаём оплату…"
+                      : "Выбрать план"}
                 </div>
               </button>
             );
@@ -101,13 +101,13 @@ export function PaywallDrawer({
         <div className="space-y-3 rounded-xl border p-4">
           <div className="flex items-center gap-2 font-medium">
             <Gift className="size-4" />
-            Referral program
+            Реферальная программа
           </div>
           <p className="text-sm text-muted-foreground">
-            Share your link and earn 30% of each paid subscription.
+            Делитесь ссылкой и получайте 30% с каждой оплаченной подписки.
           </p>
           <p className="text-sm">
-            Balance: <span className="font-semibold">{referralBalance} ₽</span>
+            Баланс: <span className="font-semibold">{referralBalance} ₽</span>
           </p>
           <Button
             type="button"
@@ -117,11 +117,11 @@ export function PaywallDrawer({
           >
             {copied ? (
               <>
-                <Check className="size-4" /> Copied
+                <Check className="size-4" /> Скопировано
               </>
             ) : (
               <>
-                <Copy className="size-4" /> Copy referral link
+                <Copy className="size-4" /> Скопировать реферальную ссылку
               </>
             )}
           </Button>

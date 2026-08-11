@@ -20,7 +20,7 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "ReelsFactory",
   description:
-    "AI Telegram Mini App that analyzes social profiles and generates viral reel scripts with a teleprompter.",
+    "AI Telegram Mini App: анализ профилей и генерация сценариев для Reels с суфлёром.",
 };
 
 export const viewport: Viewport = {
@@ -40,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >

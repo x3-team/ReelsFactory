@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import type { AppAnalysis, AppScript, AppUser } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
+import { PLANS } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 export function ResultsDashboard({
@@ -51,6 +52,7 @@ export function ResultsDashboard({
   const tips = analysis.profileAuditTips || [];
   const pillars = analysis.contentPillars || [];
   const isFree = user.subscriptionPlan === "FREE";
+  const planLabel = PLANS[user.subscriptionPlan]?.name || user.subscriptionPlan;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 p-4 pb-10">
@@ -60,17 +62,17 @@ export function ResultsDashboard({
             @{analysis.socialHandle} · {analysis.platform}
           </p>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Content strategy
+            Контент‑стратегия
           </h1>
         </div>
-        <Badge variant="secondary">{user.subscriptionPlan}</Badge>
+        <Badge variant="secondary">{planLabel}</Badge>
       </header>
 
       <div className="grid gap-3">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="size-4" /> Niche
+              <Target className="size-4" /> Ниша
             </CardTitle>
             <CardDescription>{analysis.niche}</CardDescription>
           </CardHeader>
@@ -78,7 +80,7 @@ export function ResultsDashboard({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="size-4" /> Target audience
+              <Users className="size-4" /> Целевая аудитория
             </CardTitle>
             <CardDescription>{analysis.targetAudience}</CardDescription>
           </CardHeader>
@@ -87,7 +89,7 @@ export function ResultsDashboard({
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Audit tips
+          Советы по аудиту
         </h2>
         <div className="space-y-2">
           {tips.map((tip) => (
@@ -103,7 +105,7 @@ export function ResultsDashboard({
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Content pillars
+          Контент‑столпы
         </h2>
         <div className="grid gap-2">
           {pillars.map((pillar) => (
@@ -120,11 +122,11 @@ export function ResultsDashboard({
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Scripts
+            Сценарии
           </h2>
           {isFree && (
             <Button size="sm" variant="outline" onClick={() => setPaywallOpen(true)}>
-              <Lock className="size-3.5" /> Unlock all
+              <Lock className="size-3.5" /> Открыть все
             </Button>
           )}
         </div>
@@ -143,8 +145,8 @@ export function ResultsDashboard({
               )}
             >
               <div className="mb-1 text-xs text-muted-foreground">
-                Script {index + 1}
-                {script.isTeaser ? " · teaser" : ""}
+                Сценарий {index + 1}
+                {script.isTeaser ? " · тизер" : ""}
               </div>
               <div className="line-clamp-2 font-medium">{script.title}</div>
             </button>
@@ -169,10 +171,10 @@ export function ResultsDashboard({
 
       <div className="grid gap-2">
         <Button variant="outline" onClick={() => setPaywallOpen(true)}>
-          Plans & referral link
+          Тарифы и реферальная ссылка
         </Button>
         <Button variant="ghost" onClick={onReanalyze}>
-          Run new analysis
+          Запустить новый анализ
         </Button>
       </div>
 
@@ -219,7 +221,7 @@ function ScriptViewer({
       <CardContent className="space-y-4">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Hook options
+            Варианты хуков
           </p>
           <ul className="space-y-2">
             {hooks.map((hook) => (
@@ -235,7 +237,7 @@ function ScriptViewer({
 
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Teleprompter script
+            Текст для суфлёра
           </p>
           <pre className="whitespace-pre-wrap rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed">
             {script.teleprompterScript}
@@ -252,11 +254,11 @@ function ScriptViewer({
         <div className="grid gap-2">
           <Button onClick={onOpenTeleprompter}>
             <Clapperboard className="size-4" />
-            {lockedTeleprompter ? "Unlock Teleprompter Mode" : "Teleprompter Mode"}
+            {lockedTeleprompter ? "Открыть режим суфлёра" : "Режим суфлёра"}
           </Button>
           {lockedTeleprompter && (
             <Button variant="outline" onClick={onUnlock}>
-              <Lock className="size-4" /> See all scripts
+              <Lock className="size-4" /> Смотреть все сценарии
             </Button>
           )}
         </div>

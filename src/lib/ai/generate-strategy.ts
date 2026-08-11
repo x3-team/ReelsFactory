@@ -4,8 +4,9 @@ import { isMockMode } from "@/lib/config";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
-const STRATEGY_SYSTEM_PROMPT = `You are a short-form content strategist for Instagram Reels, TikTok, and YouTube Shorts.
-Return ONLY valid JSON matching this schema:
+const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для Instagram Reels, TikTok и YouTube Shorts.
+Все текстовые значения в JSON пиши на русском языке.
+Верни ТОЛЬКО валидный JSON по схеме:
 {
   "niche": string,
   "target_audience": string,
@@ -20,7 +21,7 @@ Return ONLY valid JSON matching this schema:
     "cta": string
   }]
 }
-Generate 3 scripts with timed teleprompter_script blocks. No markdown.`;
+Сгенерируй 3 сценария с таймкодами в teleprompter_script. Без markdown.`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;

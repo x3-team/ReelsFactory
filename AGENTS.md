@@ -21,6 +21,7 @@ ReelsFactory Telegram Mini App. Spec: `prompts.md`. Phases 1–3 are implemented
 - No automated test suite yet; smoke via UI or `curl` against `/api/*`
 
 ### Gotchas
+- UI and mock strategy content are **Russian** (`lang="ru"`). LLM system prompt asks for Russian JSON.
 
 - Package manager is **pnpm**. Allowed build scripts live in `pnpm-workspace.yaml` (`allowBuilds`).
 - Outside Telegram WebView the client invents a stable `localStorage` telegram id (`reelsfactory.devTelegramId`) so browser demos work.

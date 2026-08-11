@@ -47,7 +47,7 @@ export function ReelsFactoryApp() {
     if (tgUser?.first_name) {
       return [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ");
     }
-    return user?.username || tgUser?.username || "Creator";
+    return user?.username || tgUser?.username || "Автор";
   }, [user, tgUser]);
 
   const bootstrap = useCallback(async () => {
@@ -58,9 +58,9 @@ export function ReelsFactoryApp() {
     const payload = {
       telegramId,
       username: tgUser?.username ?? (isTelegram ? null : "local_dev"),
-      firstName: tgUser?.first_name ?? (isTelegram ? null : "Local"),
-      lastName: tgUser?.last_name ?? (isTelegram ? null : "Creator"),
-      languageCode: tgUser?.language_code ?? "en",
+      firstName: tgUser?.first_name ?? (isTelegram ? null : "Локальный"),
+      lastName: tgUser?.last_name ?? (isTelegram ? null : "Автор"),
+      languageCode: tgUser?.language_code ?? "ru",
       photoUrl: tgUser?.photo_url ?? null,
       startParam:
         startParam ||
@@ -199,14 +199,14 @@ export function ReelsFactoryApp() {
     return (
       <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4 text-center">
         <TelegramBackButton show={false} />
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
+        <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
         <p className="text-sm text-muted-foreground">{error}</p>
         <button
           type="button"
           className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
           onClick={() => void bootstrap()}
         >
-          Retry
+          Повторить
         </button>
       </div>
     );

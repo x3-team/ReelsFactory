@@ -1,24 +1,24 @@
 export const PLANS = {
   FREE: {
     id: "FREE" as const,
-    name: "Free Demo",
+    name: "Бесплатно",
     priceRub: 0,
     scriptsPerMonth: 1,
-    description: "Profile audit + 1 teaser script",
+    description: "Аудит профиля + 1 тизер-сценарий",
   },
   START: {
     id: "START" as const,
-    name: "Start",
+    name: "Старт",
     priceRub: 590,
     scriptsPerMonth: 12,
-    description: "12 scripts / month · full teleprompter",
+    description: "12 сценариев / месяц · полный суфлёр",
   },
   PRO: {
     id: "PRO" as const,
-    name: "Pro",
+    name: "Про",
     priceRub: 1990,
     scriptsPerMonth: 30,
-    description: "30 scripts / month · competitor analysis",
+    description: "30 сценариев / месяц · анализ конкурентов",
   },
 } as const;
 

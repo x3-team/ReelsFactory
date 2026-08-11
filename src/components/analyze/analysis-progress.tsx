@@ -7,9 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { key: "scan", label: "Scanning Bio..." },
-  { key: "transcribe", label: "Transcribing Top Videos..." },
-  { key: "pillars", label: "Building Content Pillars..." },
+  { key: "scan", label: "Сканируем био…" },
+  { key: "transcribe", label: "Расшифровываем топ‑видео…" },
+  { key: "pillars", label: "Собираем контент‑столпы…" },
 ] as const;
 
 export function AnalysisProgress({
@@ -41,10 +41,10 @@ export function AnalysisProgress({
 
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">
-          Analyzing your profile
+          Анализируем профиль
         </h1>
         <p className="text-sm text-muted-foreground">
-          Extracting hooks from your top videos and drafting scripts.
+          Достаём хуки из топ‑видео и собираем сценарии.
         </p>
       </div>
 
