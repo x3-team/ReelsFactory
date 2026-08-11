@@ -20,7 +20,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 - AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — ключ `AITUNNEL_API_KEY`
   - Default LLM: **`gemini-3.5-flash-lite`** (Free/Start)
   - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`)
-  - Whisper: по умолчанию **выкл** (`ENABLE_WHISPER=false`); captions хватает для стратегии. Вкл. реально улучшает тон/хуки из речи, но +время/₽
+  - Whisper: **только paid** — START топ‑3, PRO/AGENCY топ‑5 (по views, с `audioUrl`, приоритет роликам ≥12с). FREE = captions. Kill-switch: `ENABLE_WHISPER=false`
 - Scraping Instagram: **`APIFY_TOKEN`** (`resultsLimit` default **24** публикаций сетки → фильтр видео → топ по views) → fallback `RAPIDAPI_KEY` → mock
 - Очередь анализа: BullMQ при `REDIS_URL`, иначе in-process memory queue + polling `GET /api/analyze?id=`
 - Ключи только в `.env` / секретах Cursor — **не** в `.env.example`
@@ -55,5 +55,9 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 
 Реальный прогон с Whisper ×5 + gpt-4o-mini ≈ **1.67₽** (Whisper ~91%).
 
-Текущий default **без Whisper**: LLM ~0.3–1.2₽ + Apify отдельно.  
-`ENABLE_WHISPER=true` — максимум 1 ролик.
+Текущая политика:
+- **FREE** — без Whisper (captions), быстро/дёшево  
+- **START** — Whisper ×3 топ‑рилсов  
+- **PRO/AGENCY** — Whisper ×5 + более сильная LLM  
+
+Kill-switch: `ENABLE_WHISPER=false`.

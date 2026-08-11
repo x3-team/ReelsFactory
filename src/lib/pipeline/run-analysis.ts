@@ -1,10 +1,7 @@
 import { AnalysisStatus, type User } from "@prisma/client";
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
-import {
-  captionAsTranscript,
-  transcribeAudio,
-} from "@/lib/ai/transcribe";
+import { buildVideoEvidence } from "@/lib/ai/transcribe";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { parseProfile } from "@/lib/scraping/parse-profile";
@@ -53,21 +50,17 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
-    // В LLM уходят captions топ-роликов. Whisper — только при ENABLE_WHISPER=true, макс 1 ролик.
-    // Берём до 5 сильных видео в контекст (сценариев всё равно 3).
-    const videos = profile.topVideos.slice(0, 5);
-    const transcriptions = await Promise.all(
-      videos.map(async (video, index) => {
-        if (index === 0) {
-          const { text } = await transcribeAudio({
-            audioUrl: video.audioUrl || video.url,
-            hint: video.caption,
-          });
-          return text;
-        }
-        return captionAsTranscript(video.caption);
-      }),
-    );
+    // FREE: captions. START: Whisper×3. PRO/AGENCY: Whisper×5 (kill-switch ENABLE_WHISPER=false)
+    const evidence = await buildVideoEvidence({
+      videos: profile.topVideos,
+      plan: user.subscriptionPlan,
+    });
+    const transcriptions = evidence.map((item) => {
+      if (item.source === "whisper") {
+        return `[whisper · ${item.views} views] ${item.transcript}`;
+      }
+      return `[caption · ${item.views} views] ${item.transcript}`;
+    });
 
     await prisma.profileAnalysis.update({
       where: { id: analysisId },
@@ -80,6 +73,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     const { strategy } = await generateStrategy({
       profile,
       transcriptions,
+      videoEvidence: evidence,
       goal: user.profileGoal,
       tone: user.toneOfVoice,
       offerSummary: user.offerSummary,

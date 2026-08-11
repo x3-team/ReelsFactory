@@ -6,12 +6,17 @@ import { transcribeAudio } from "@/lib/ai/transcribe";
 const bodySchema = z.object({
   audioUrl: z.string().url(),
   hint: z.string().optional(),
+  useWhisper: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
-    const result = await transcribeAudio(body);
+    const result = await transcribeAudio({
+      audioUrl: body.audioUrl,
+      hint: body.hint,
+      useWhisper: body.useWhisper ?? true,
+    });
     return NextResponse.json(result);
   } catch (error) {
     console.error("POST /api/transcribe", error);

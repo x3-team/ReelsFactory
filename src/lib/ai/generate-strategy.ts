@@ -3,6 +3,7 @@ import {
   llmModelForPlan,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
+import type { VideoEvidence } from "@/lib/ai/transcribe";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
@@ -38,7 +39,9 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 4) НЕ копируй цены, «1300 рублей», «обучение в шапке» в каждый сценарий.
    Цену/оффер можно упомянуть МАКСИМУМ в 1 из 3 сценариев и только если это уместно цели.
 5) Не клонируй одни и те же фразы между сценариями. Разные форматы (ошибка, процесс, до/после, миф, чеклист).
-6) Опирайся на реальные темы из captions/transcriptions профиля, но улучшай хуки и структуру — не пересказывай дословно.
+6) Опирайся на реальные темы профиля. Если есть блоки source="whisper" — это речь автора:
+   приоритетно бери оттуда живые формулировки, тон и хуки; caption — вторичен.
+   Если только caption — не выдумывай «голос», опирайся на подписи и bio.
 7) format — кратко, напр. «Reels 30с · ошибка», «Reels 15с · хук-приём».
 
 ЖЁСТКИЕ ПРАВИЛА ТЕМ (content_pillars):
@@ -49,6 +52,7 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
   transcriptions: string[];
+  videoEvidence?: VideoEvidence[];
   goal: string;
   tone: string;
   offerSummary?: string | null;
@@ -85,6 +89,13 @@ export async function generateStrategy(input: {
           durationSec: v.durationSec,
         })),
       },
+      // Структурированные доказательства: whisper = речь, caption = подпись
+      video_evidence:
+        input.videoEvidence ||
+        input.transcriptions.map((t) => ({
+          source: "caption",
+          transcript: t,
+        })),
       transcriptions: input.transcriptions,
       goal: input.goal,
       tone: input.tone,
@@ -96,6 +107,7 @@ export async function generateStrategy(input: {
         durations_sec: [15, 30, 45],
         max_scripts_with_price_mention: 1,
         avoid_greetings: true,
+        prefer_spoken_hooks_from_whisper: true,
       },
     },
     null,
