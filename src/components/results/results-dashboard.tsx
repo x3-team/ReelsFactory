@@ -41,7 +41,10 @@ export function ResultsDashboard({
     platform: string;
     label?: string | null;
   }>;
-  onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
+  onSelectPlan: (
+    plan: Exclude<PlanId, "FREE">,
+    billingPeriod: import("@/lib/config").BillingPeriod,
+  ) => Promise<void> | void;
   loadingPlan?: string | null;
   onReanalyze: () => void;
   onAnalyzeClient?: (clientAccountId: string) => void;

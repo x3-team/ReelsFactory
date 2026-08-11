@@ -1,6 +1,14 @@
 import { createHash, randomUUID } from "crypto";
 
-import { appUrl, isMockMode, PLANS, type PlanId } from "@/lib/config";
+import {
+  appUrl,
+  billingPeriodLabel,
+  isMockMode,
+  planPriceRub,
+  PLANS,
+  type BillingPeriod,
+  type PlanId,
+} from "@/lib/config";
 
 export type YooKassaPayment = {
   id: string;
@@ -12,11 +20,14 @@ export type YooKassaPayment = {
 
 export async function createYooKassaPayment(input: {
   plan: Exclude<PlanId, "FREE">;
+  billingPeriod?: BillingPeriod;
   userId: string;
   telegramId: string;
 }): Promise<{ payment: YooKassaPayment; mocked: boolean }> {
+  const period: BillingPeriod = input.billingPeriod || "month";
   const plan = PLANS[input.plan];
-  const amountValue = plan.priceRub.toFixed(2);
+  const amountValue = planPriceRub(input.plan, period).toFixed(2);
+  const periodRu = billingPeriodLabel(period);
 
   if (
     isMockMode() ||
@@ -37,6 +48,7 @@ export async function createYooKassaPayment(input: {
         metadata: {
           userId: input.userId,
           plan: input.plan,
+          billingPeriod: period,
           telegramId: input.telegramId,
         },
       },
@@ -61,10 +73,11 @@ export async function createYooKassaPayment(input: {
         type: "redirect",
         return_url: `${appUrl()}/?paid=1`,
       },
-      description: `ReelsFactory — тариф «${plan.name}»`,
+      description: `ReelsFactory — «${plan.name}» на ${periodRu}`,
       metadata: {
         userId: input.userId,
         plan: input.plan,
+        billingPeriod: period,
         telegramId: input.telegramId,
       },
     }),
@@ -80,7 +93,6 @@ export async function createYooKassaPayment(input: {
 }
 
 export function verifyYooKassaBasicAuth(header: string | null): boolean {
-  // Optional shared-secret style check for webhook endpoints behind a proxy.
   const secret = process.env.YOOKASSA_WEBHOOK_SECRET;
   if (!secret) return true;
   if (!header) return false;

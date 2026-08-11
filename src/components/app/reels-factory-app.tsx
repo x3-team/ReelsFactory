@@ -211,9 +211,12 @@ export function ReelsFactoryApp() {
     await runAnalysis(data.user.id);
   }
 
-  async function handleSelectPlan(plan: Exclude<PlanId, "FREE">) {
+  async function handleSelectPlan(
+    plan: Exclude<PlanId, "FREE">,
+    billingPeriod: import("@/lib/config").BillingPeriod = "month",
+  ) {
     if (!user) return;
-    setLoadingPlan(plan);
+    setLoadingPlan(`${plan}:${billingPeriod}`);
     try {
       const data = await api<{
         confirmationUrl?: string;
@@ -221,7 +224,7 @@ export function ReelsFactoryApp() {
         payment: { providerPaymentId?: string };
       }>("/api/payments/create", {
         method: "POST",
-        body: JSON.stringify({ userId: user.id, plan }),
+        body: JSON.stringify({ userId: user.id, plan, billingPeriod }),
       });
 
       if (data.confirmationUrl) {

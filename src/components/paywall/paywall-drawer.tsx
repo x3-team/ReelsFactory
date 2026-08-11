@@ -12,7 +12,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { PLANS, type PlanId } from "@/lib/config";
+import {
+  PLANS,
+  planMonthlyEquivalentRub,
+  planPriceRub,
+  type BillingPeriod,
+  type PlanId,
+} from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 export function PaywallDrawer({
@@ -29,10 +35,14 @@ export function PaywallDrawer({
   referralUrl: string;
   referralBalance: number;
   currentPlan: PlanId;
-  onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
+  onSelectPlan: (
+    plan: Exclude<PlanId, "FREE">,
+    billingPeriod: BillingPeriod,
+  ) => Promise<void> | void;
   loadingPlan?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("month");
 
   async function copyReferral() {
     await navigator.clipboard.writeText(referralUrl);
@@ -49,22 +59,62 @@ export function PaywallDrawer({
             Открыть все сценарии
           </DialogTitle>
           <DialogDescription>
-            Бесплатно — аудит и 1 тизер. Подписка даёт полный суфлёр и больше
-            сценариев.
+            Бесплатно — аудит и 1 полный сценарий. Подписка открывает все
+            сценарии и суфлёр без ограничений.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid grid-cols-2 rounded-2xl bg-secondary/80 p-1">
+          {(
+            [
+              { id: "month" as const, label: "Месяц" },
+              { id: "year" as const, label: "Год", hint: "−2 мес" },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setBillingPeriod(item.id)}
+              className={cn(
+                "rounded-xl px-3 py-2.5 text-sm font-semibold transition",
+                billingPeriod === item.id
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground",
+              )}
+            >
+              {item.label}
+              {"hint" in item && item.hint ? (
+                <span
+                  className={cn(
+                    "ml-1.5 text-[10px] font-bold uppercase tracking-wide",
+                    billingPeriod === item.id
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {item.hint}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
 
         <div className="space-y-3">
           {(["START", "PRO", "AGENCY"] as const).map((planId) => {
             const plan = PLANS[planId];
             const active = currentPlan === planId;
             const recommended = planId === "START";
+            const price = planPriceRub(planId, billingPeriod);
+            const perMonth =
+              billingPeriod === "year"
+                ? planMonthlyEquivalentRub(planId)
+                : plan.priceRub;
             return (
               <button
                 key={planId}
                 type="button"
                 disabled={!!loadingPlan || active}
-                onClick={() => void onSelectPlan(planId)}
+                onClick={() => void onSelectPlan(planId, billingPeriod)}
                 className={cn(
                   "w-full rounded-2xl border p-4 text-left transition",
                   recommended
@@ -88,16 +138,25 @@ export function PaywallDrawer({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-semibold">{plan.priceRub} ₽</div>
-                    <div className="text-xs text-muted-foreground">/ мес</div>
+                    <div className="text-lg font-semibold tabular-nums">
+                      {price.toLocaleString("ru-RU")} ₽
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {billingPeriod === "year"
+                        ? `≈ ${perMonth.toLocaleString("ru-RU")} ₽/мес`
+                        : "/ мес"}
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 text-sm font-semibold text-primary">
                   {active
                     ? "Текущий план"
-                    : loadingPlan === planId
+                    : loadingPlan === `${planId}:${billingPeriod}` ||
+                        loadingPlan === planId
                       ? "Создаём оплату…"
-                      : "Выбрать"}
+                      : billingPeriod === "year"
+                        ? "Выбрать на год"
+                        : "Выбрать"}
                 </div>
               </button>
             );

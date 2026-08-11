@@ -7,8 +7,10 @@ import {
 import { Decimal } from "@prisma/client/runtime/library";
 
 import {
+  billingPeriodDays,
   REFERRAL_FIRST_COMMISSION_RATE,
   REFERRAL_RENEWAL_COMMISSION_RATE,
+  type BillingPeriod,
 } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 
@@ -17,8 +19,11 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
     return { payment, alreadyFulfilled: true as const };
   }
 
+  const meta = (payment.metadata || {}) as { billingPeriod?: string };
+  const period: BillingPeriod =
+    meta.billingPeriod === "year" ? "year" : "month";
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30);
+  expiresAt.setDate(expiresAt.getDate() + billingPeriodDays(period));
 
   const result = await prisma.$transaction(async (tx) => {
     const updatedPayment = await tx.payment.update({

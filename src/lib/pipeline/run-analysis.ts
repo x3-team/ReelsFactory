@@ -103,7 +103,8 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         },
       });
 
-      for (const [index, script] of scriptsToSave.entries()) {
+      for (let index = 0; index < scriptsToSave.length; index++) {
+        const script = scriptsToSave[index]!;
         await tx.script.create({
           data: {
             userId: user.id,

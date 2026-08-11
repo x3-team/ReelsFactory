@@ -69,7 +69,7 @@ function percentForStatus(
   const idx = stepIndex(status);
   if (idx < 0 || idx >= STEPS.length) return 5;
 
-  const step = STEPS[idx];
+  const step = STEPS[idx as 0 | 1 | 2];
   const [from, to] = step.range;
   // Линейный рост по ожидаемому времени этапа — не «залипает» у потолка
   const t = Math.min(0.92, stageElapsedSec / Math.max(6, step.expectedSec));
