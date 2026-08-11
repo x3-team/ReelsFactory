@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AppVersion } from "@/components/app/app-version";
 import { cn } from "@/lib/utils";
 
 export type OnboardingValues = {
@@ -229,6 +230,9 @@ export function OnboardingForm({
           <ArrowRight className="size-4" />
         </Button>
       </div>
+      <p className="pt-2 text-center text-[11px]">
+        <AppVersion className="text-muted-foreground/70" />
+      </p>
     </div>
   );
 }

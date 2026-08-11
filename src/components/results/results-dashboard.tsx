@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
+import { AppVersion } from "@/components/app/app-version";
 import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
 import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { TeleprompterMode } from "@/components/results/teleprompter";
@@ -276,6 +277,9 @@ export function ResultsDashboard({
             Новый анализ
           </Button>
         </div>
+        <p className="pb-1 text-center text-[11px]">
+          <AppVersion className="text-muted-foreground/80" />
+        </p>
       </div>
 
       {teleprompterOpen && selected && !isLocked(selected) && (

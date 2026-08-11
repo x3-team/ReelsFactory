@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Clapperboard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AppVersion } from "@/components/app/app-version";
 import { botUsername } from "@/lib/config";
 import { legalEntity } from "@/lib/legal";
 
@@ -298,9 +299,12 @@ function LandingFooter() {
           </div>
         </div>
 
-        <p className="text-[12px] leading-5 text-white/40">
-          © {year} {legal.brand}. Используя сервис, вы принимаете оферту и
-          политику конфиденциальности.
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] leading-5 text-white/40">
+          <span>
+            © {year} {legal.brand}. Используя сервис, вы принимаете оферту и
+            политику конфиденциальности.
+          </span>
+          <AppVersion tone="light" className="font-medium" />
         </p>
       </div>
     </footer>
