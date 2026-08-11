@@ -1,27 +1,28 @@
-import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
+import { AnalysisStatus, type User } from "@prisma/client";
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import {
   captionAsTranscript,
   transcribeAudio,
 } from "@/lib/ai/transcribe";
-import { PLANS } from "@/lib/config";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
 import type { ScrapedProfile } from "@/lib/types";
 
+/** В одном разборе всегда 3 сценария ↔ 3 темы на неделю */
+const WEEKLY_PACK_SIZE = 3;
+
 function scriptsLimit(user: User) {
   // Free: сохраняем 3 сценария (1 полный + 2 залоченных превью для конверсии)
-  if (!hasPaidAccess(user)) return 3;
-  return PLANS[user.subscriptionPlan]?.scriptsPerMonth ?? 12;
+  if (!hasPaidAccess(user)) return WEEKLY_PACK_SIZE;
+  // Платный пакет тоже выдаёт пачку из 3 за один анализ (лимит/мес — отдельно в тарифе)
+  return WEEKLY_PACK_SIZE;
 }
 
-function pillarsLimit(user: User) {
-  if (user.subscriptionPlan === SubscriptionPlan.START) return 1;
-  if (user.subscriptionPlan === SubscriptionPlan.FREE) return 3;
-  return 10;
+function pillarsLimit(_user: User) {
+  return WEEKLY_PACK_SIZE;
 }
 
 export async function runAnalysisForExisting(user: User, analysisId: string) {

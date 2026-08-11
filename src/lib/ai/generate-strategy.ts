@@ -39,7 +39,12 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
    Цену/оффер можно упомянуть МАКСИМУМ в 1 из 3 сценариев и только если это уместно цели.
 5) Не клонируй одни и те же фразы между сценариями. Разные форматы (ошибка, процесс, до/после, миф, чеклист).
 6) Опирайся на реальные темы из captions/transcriptions профиля, но улучшай хуки и структуру — не пересказывай дословно.
-7) format — кратко, напр. «Reels 30с · ошибка», «Reels 15с · хук-приём».`;
+7) format — кратко, напр. «Reels 30с · ошибка», «Reels 15с · хук-приём».
+
+ЖЁСТКИЕ ПРАВИЛА ТЕМ (content_pillars):
+8) Ровно 3 темы — по одной на каждый сценарий (1-й столп ↔ 1-й сценарий, 2↔2, 3↔3).
+9) title темы — коротко (2–5 слов), description — одна фраза: о чём снимать в этой теме.
+10) Не выдавай 4+ тем: лишние темы без сценария только путают.`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
@@ -139,5 +144,8 @@ function parseStrategyJson(raw: string): StrategyPayload {
   ) {
     throw new Error("LLM JSON не содержит обязательных полей");
   }
+  // Жёстко 3↔3: тема на каждый сценарий, без «лишних» тем
+  parsed.content_pillars = parsed.content_pillars.slice(0, 3);
+  parsed.scripts = parsed.scripts.slice(0, 3);
   return parsed;
 }

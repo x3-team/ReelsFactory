@@ -138,15 +138,22 @@ export function ResultsDashboard({
           )}
           {pillars.length > 0 && (
             <div>
-              <p className="rf-label mb-2">Темы на неделю</p>
-              <div className="flex flex-wrap gap-2">
-                {pillars.map((pillar) => (
-                  <span
+              <p className="rf-label mb-2">Темы на неделю · 3 под сценарии</p>
+              <div className="space-y-2">
+                {pillars.slice(0, 3).map((pillar, index) => (
+                  <div
                     key={pillar.title}
-                    className="rounded-lg border border-border/60 bg-card px-2.5 py-1.5 text-[13px] font-medium leading-5 text-foreground"
+                    className="rounded-xl border border-border/60 bg-card px-3 py-2.5"
                   >
-                    {pillar.title}
-                  </span>
+                    <p className="text-[13px] font-semibold leading-5 text-foreground">
+                      {index + 1}. {pillar.title}
+                    </p>
+                    {pillar.description ? (
+                      <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+                        {pillar.description}
+                      </p>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             </div>
