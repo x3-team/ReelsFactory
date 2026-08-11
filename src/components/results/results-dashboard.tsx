@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Camera,
   Check,
   Clapperboard,
   Copy,
+  History,
   Lock,
+  RefreshCw,
   Sparkles,
   Target,
 } from "lucide-react";
@@ -18,7 +20,7 @@ import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { TeleprompterMode } from "@/components/results/teleprompter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { AppAnalysis, AppScript, AppUser } from "@/lib/client-api";
+import { api, type AppAnalysis, type AppScript, type AppUser } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
 import { PLANS } from "@/lib/config";
 import { cn } from "@/lib/utils";
@@ -28,10 +30,14 @@ export function ResultsDashboard({
   analysis,
   referralUrl,
   clientAccounts = [],
+  previousAnalysis,
+  analyses,
   onSelectPlan,
   loadingPlan,
   onReanalyze,
   onAnalyzeClient,
+  onBuyScriptPack,
+  onLoadAnalysis,
 }: {
   user: AppUser;
   analysis: AppAnalysis;
@@ -42,6 +48,22 @@ export function ResultsDashboard({
     platform: string;
     label?: string | null;
   }>;
+  previousAnalysis?: {
+    id: string;
+    niche?: string | null;
+    targetAudience?: string | null;
+    contentPillars?: Array<{ title: string; description: string }> | null;
+    profileAuditTips?: string[] | null;
+    createdAt?: string;
+  } | null;
+  analyses?: Array<{
+    id: string;
+    socialHandle: string;
+    platform: string;
+    niche?: string | null;
+    createdAt: string;
+    status: string;
+  }>;
   onSelectPlan: (
     plan: Exclude<PlanId, "FREE">,
     billingPeriod: import("@/lib/config").BillingPeriod,
@@ -49,10 +71,16 @@ export function ResultsDashboard({
   loadingPlan?: string | null;
   onReanalyze: () => void;
   onAnalyzeClient?: (clientAccountId: string) => void;
+  onBuyScriptPack?: () => void;
+  onLoadAnalysis?: (analysisId: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState(analysis.scripts[0]?.id);
   const [teleprompterOpen, setTeleprompterOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  useEffect(() => {
+    setSelectedId(analysis.scripts[0]?.id);
+  }, [analysis.id, analysis.scripts]);
 
   const selected = useMemo(
     () => analysis.scripts.find((s) => s.id === selectedId) || analysis.scripts[0],
@@ -68,8 +96,63 @@ export function ResultsDashboard({
     analysis.scripts.find((s) => !s.isTeaser)?.id || analysis.scripts[0]?.id;
   const lockedCount = analysis.scripts.filter((s) => s.id !== freeScriptId).length;
 
+  const meta = (
+    analysis as {
+      rawProfileData?: {
+        _meta?: {
+          videoCount?: number;
+          whisperCount?: number;
+          lowVideoSignal?: boolean;
+        };
+        topVideos?: unknown[];
+      };
+    }
+  ).rawProfileData;
+  const whisperCount = meta?._meta?.whisperCount ?? 0;
+  const videoCount = meta?._meta?.videoCount ?? meta?.topVideos?.length;
+  const lowVideoSignal =
+    Boolean(meta) &&
+    (meta?._meta?.lowVideoSignal === true ||
+      (typeof videoCount === "number" && videoCount < 3));
+
+  const nicheChanged =
+    previousAnalysis?.niche &&
+    analysis.niche &&
+    previousAnalysis.niche !== analysis.niche;
+  const prevTip = previousAnalysis?.profileAuditTips?.[0];
+  const currTip = tips[0];
+  const tipChanged = Boolean(prevTip && currTip && prevTip !== currTip);
+  const showDiff = Boolean(previousAnalysis && (nicheChanged || tipChanged));
+
+  const pastAnalyses =
+    analyses?.filter((a) => a.id !== analysis.id && a.status === "COMPLETED") ??
+    [];
+
   function isLocked(script: AppScript) {
     return isFree && script.id !== freeScriptId;
+  }
+
+  function selectThemeOrScript(index: number) {
+    const script = analysis.scripts[index];
+    if (!script) return;
+    if (isLocked(script)) {
+      setPaywallOpen(true);
+      return;
+    }
+    setSelectedId(script.id);
+  }
+
+  function formatDate(iso?: string) {
+    if (!iso) return "";
+    try {
+      return new Date(iso).toLocaleDateString("ru-RU", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return iso;
+    }
   }
 
   return (
@@ -90,11 +173,53 @@ export function ResultsDashboard({
               {analysis.niche}
             </p>
           )}
+          {(whisperCount > 0 || lowVideoSignal) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {whisperCount > 0 ? (
+                <Badge variant="secondary" className="rounded-lg font-normal">
+                  Разобрали речь из {whisperCount} рилсов
+                </Badge>
+              ) : null}
+              {lowVideoSignal ? (
+                <Badge
+                  variant="outline"
+                  className="rounded-lg border-amber-500/40 bg-amber-500/10 font-normal text-amber-800 dark:text-amber-200"
+                >
+                  Мало рилсов в профиле — разбор опирается на bio/подписи
+                </Badge>
+              ) : null}
+            </div>
+          )}
         </div>
         <Badge variant="secondary" className="shrink-0 rounded-lg">
           {planLabel}
         </Badge>
       </header>
+
+      {showDiff && (
+        <section className="rounded-2xl border border-border/70 bg-secondary/40 px-3.5 py-3">
+          <p className="rf-label mb-1.5">Что изменилось</p>
+          <ul className="space-y-1.5 text-[13px] leading-5 text-foreground/85">
+            {nicheChanged ? (
+              <li>
+                Ниша:{" "}
+                <span className="text-muted-foreground line-through">
+                  {previousAnalysis?.niche}
+                </span>{" "}
+                → <span className="font-medium">{analysis.niche}</span>
+              </li>
+            ) : null}
+            {tipChanged ? (
+              <li>
+                Совет:{" "}
+                <span className="text-muted-foreground">{prevTip}</span>
+                {" → "}
+                <span className="font-medium">{currTip}</span>
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      )}
 
       {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
         <AgencyClientsPanel
@@ -142,19 +267,24 @@ export function ResultsDashboard({
               <p className="rf-label mb-2">Темы на неделю · 3 под сценарии</p>
               <div className="space-y-2">
                 {pillars.slice(0, 3).map((pillar, index) => (
-                  <div
+                  <button
                     key={pillar.title}
-                    className="rounded-xl border border-border/60 bg-card px-3 py-2.5"
+                    type="button"
+                    onClick={() => selectThemeOrScript(index)}
+                    className="w-full rounded-xl border border-border/60 bg-card px-3 py-2.5 text-left transition hover:border-primary/40"
                   >
                     <p className="text-[13px] font-semibold leading-5 text-foreground">
-                      {index + 1}. {pillar.title}
+                      Тема {index + 1} → сценарий {index + 1}
+                    </p>
+                    <p className="mt-1 text-[13px] font-medium leading-5 text-foreground/90">
+                      {pillar.title}
                     </p>
                     {pillar.description ? (
                       <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
                         {pillar.description}
                       </p>
                     ) : null}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -192,6 +322,11 @@ export function ResultsDashboard({
               ? "PRO"
               : script.id === freeScriptId && isFree
                 ? "твой"
+                : null;
+            const preview =
+              locked && script.teleprompterScript
+                ? script.teleprompterScript.slice(0, 80).trim() +
+                  (script.teleprompterScript.length > 80 ? "…" : "")
                 : null;
             return (
               <button
@@ -238,18 +373,29 @@ export function ResultsDashboard({
                       <Lock className="mt-0.5 size-4 shrink-0 opacity-80" />
                     ) : null}
                   </div>
-                  <p
-                    className={cn(
-                      "mt-1 text-[12px] leading-4",
-                      active && !locked
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {script.format}
-                    {badge ? ` · ${badge}` : ""}
-                    {locked ? " · нажми, чтобы открыть" : ""}
-                  </p>
+                  {preview ? (
+                    <p className="mt-1.5 line-clamp-2 text-[12px] leading-4 text-muted-foreground blur-[2.5px] select-none">
+                      {preview}
+                    </p>
+                  ) : (
+                    <p
+                      className={cn(
+                        "mt-1 text-[12px] leading-4",
+                        active && !locked
+                          ? "text-primary-foreground/80"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {script.format}
+                      {badge ? ` · ${badge}` : ""}
+                    </p>
+                  )}
+                  {locked ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {script.format}
+                      {badge ? ` · ${badge}` : ""} · нажми, чтобы открыть
+                    </p>
+                  ) : null}
                 </div>
               </button>
             );
@@ -257,15 +403,85 @@ export function ResultsDashboard({
         </div>
 
         {selected && !isLocked(selected) && (
-          <ScriptViewer
-            script={selected}
-            isFreeGift={isFree && selected.id === freeScriptId}
-            onOpenTeleprompter={() => setTeleprompterOpen(true)}
-            onUnlock={() => setPaywallOpen(true)}
-            lockedCount={lockedCount}
-          />
+          <>
+            <ScriptViewer
+              script={selected}
+              userId={user.id}
+              isFreeGift={isFree && selected.id === freeScriptId}
+              onOpenTeleprompter={() => setTeleprompterOpen(true)}
+              onUnlock={() => setPaywallOpen(true)}
+              lockedCount={lockedCount}
+            />
+            {isFree &&
+              selected.id === freeScriptId &&
+              lockedCount > 0 && (
+                <div className="rounded-2xl border border-border/70 bg-secondary/50 px-4 py-3.5">
+                  <p className="text-[14px] leading-6 text-foreground/90">
+                    Ещё {lockedCount} сценария уже готовы на эту неделю
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      className="flex-1"
+                      onClick={() => setPaywallOpen(true)}
+                    >
+                      Открыть подпиской
+                    </Button>
+                    {onBuyScriptPack ? (
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={onBuyScriptPack}
+                      >
+                        Ещё 3 сценария · 390₽
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+          </>
         )}
       </section>
+
+      {analyses && analyses.length > 1 && onLoadAnalysis && (
+        <section className="rf-surface space-y-3 p-4">
+          <div className="flex items-center gap-2">
+            <History className="size-4 text-primary" />
+            <h2 className="font-display text-base font-semibold">История</h2>
+          </div>
+          <ul className="space-y-2">
+            {(pastAnalyses.length > 0 ? pastAnalyses : analyses)
+              .filter((a) => a.id !== analysis.id)
+              .slice(0, 8)
+              .map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => onLoadAnalysis(item.id)}
+                    className="flex w-full items-start justify-between gap-3 rounded-xl border border-border/60 bg-card px-3 py-2.5 text-left transition hover:border-primary/40"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-medium">
+                        @{item.socialHandle}
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          · {item.platform}
+                        </span>
+                      </p>
+                      {item.niche ? (
+                        <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
+                          {item.niche}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      {formatDate(item.createdAt)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       <div className="space-y-3">
         <ReferralShareBar referralUrl={referralUrl} />
@@ -321,25 +537,58 @@ function filmingTips(format: string, script: string): string[] {
 
 function ScriptViewer({
   script,
+  userId,
   isFreeGift,
   onOpenTeleprompter,
   onUnlock,
   lockedCount,
 }: {
   script: AppScript;
+  userId: string;
   isFreeGift?: boolean;
   onOpenTeleprompter: () => void;
   onUnlock: () => void;
   lockedCount: number;
 }) {
-  const hooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
+  const initialHooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
+  const [hooks, setHooks] = useState(initialHooks);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [regenLoading, setRegenLoading] = useState(false);
+  const [regenError, setRegenError] = useState<string | null>(null);
   const tips = filmingTips(script.format, script.teleprompterScript);
+
+  useEffect(() => {
+    setHooks(Array.isArray(script.hookOptions) ? script.hookOptions : []);
+    setRegenError(null);
+  }, [script.id, script.hookOptions]);
 
   async function copyText(key: string, text: string) {
     await navigator.clipboard.writeText(text);
     setCopiedKey(key);
     window.setTimeout(() => setCopiedKey(null), 1500);
+  }
+
+  async function regenerateHooks() {
+    setRegenLoading(true);
+    setRegenError(null);
+    try {
+      const data = await api<{ hookOptions: string[] }>(
+        "/api/scripts/regenerate-hooks",
+        {
+          method: "POST",
+          body: JSON.stringify({ userId, scriptId: script.id }),
+        },
+      );
+      if (Array.isArray(data.hookOptions) && data.hookOptions.length > 0) {
+        setHooks(data.hookOptions);
+      }
+    } catch (err) {
+      setRegenError(
+        err instanceof Error ? err.message : "Не удалось обновить хуки",
+      );
+    } finally {
+      setRegenLoading(false);
+    }
   }
 
   function CopyBtn({
@@ -398,18 +647,36 @@ function ScriptViewer({
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="rf-label">Выбери хук (0–3 сек)</p>
-          {hooks[0] ? (
-            <CopyBtn
-              copyKey="hook-best"
-              label="Хук"
-              text={hooks[0]}
+          <div className="flex items-center gap-1.5">
+            {hooks[0] ? (
+              <CopyBtn
+                copyKey="hook-best"
+                label="Хук"
+                text={hooks[0]}
+                className="h-8 px-2.5 text-xs"
+              />
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
               className="h-8 px-2.5 text-xs"
-            />
-          ) : null}
+              disabled={regenLoading}
+              onClick={() => void regenerateHooks()}
+            >
+              <RefreshCw
+                className={cn("size-3.5", regenLoading && "animate-spin")}
+              />
+              Ещё 3 хука
+            </Button>
+          </div>
         </div>
+        {regenError ? (
+          <p className="mb-2 text-[12px] text-destructive">{regenError}</p>
+        ) : null}
         <ul className="space-y-2">
           {hooks.map((hook, i) => (
-            <li key={hook}>
+            <li key={`${i}-${hook}`}>
               <button
                 type="button"
                 onClick={() => void copyText(`hook-${i}`, hook)}
