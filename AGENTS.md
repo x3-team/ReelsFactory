@@ -17,7 +17,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 
 - Plans: Free / Start 590₽ / Pro 1990₽ / **Agency 4990₽** (до 5 клиентских аккаунтов)
 - Referral: **30%** первая оплата, **10%** продления; share под карточками сценариев
-- AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — единый ключ `AITUNNEL_API_KEY`
+- AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — единый ключ `AITUNNEL_API_KEY`; дефолт LLM `gpt-4o-mini` (`AITUNNEL_LLM_MODEL`)
 - Очередь анализа: BullMQ при `REDIS_URL`, иначе in-process memory queue + polling `GET /api/analyze?id=`
 
 ### Services
