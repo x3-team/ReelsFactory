@@ -17,10 +17,14 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 
 - Plans: Free / Start 590₽ / Pro 1990₽ / **Agency 4990₽** (до 5 клиентских аккаунтов)
 - Referral: **30%** первая оплата, **10%** продления; share под карточками сценариев
-- AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — единый ключ `AITUNNEL_API_KEY`; дефолт LLM `gpt-4o-mini` (`AITUNNEL_LLM_MODEL`)
+- AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — ключ `AITUNNEL_API_KEY`
+  - Default LLM: **`deepseek-v4-flash`** (Free/Start) — лучший баланс цена/качество для JSON-сценариев (~18/36 ₽ за 1M)
+  - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`, ~20/1200 ₽ за 1M)
+  - Whisper: `whisper-1` (основной AI-COGS)
 - Scraping Instagram: **`APIFY_TOKEN`** (актор `apify/instagram-profile-scraper`) → fallback `RAPIDAPI_KEY` → mock
 - Очередь анализа: BullMQ при `REDIS_URL`, иначе in-process memory queue + polling `GET /api/analyze?id=`
 - Ключи только в `.env` / секретах Cursor — **не** в `.env.example`
+- Сценарии: длины **15 / 30 / 45** сек, жёсткий каркас хук→проблема→демо→CTA; цену не копировать в каждый ролик
 
 ### Services
 

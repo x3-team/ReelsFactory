@@ -73,6 +73,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       tone: user.toneOfVoice,
       offerSummary: user.offerSummary,
       websiteUrl: user.websiteUrl,
+      plan: user.subscriptionPlan,
     });
 
     const paid = hasPaidAccess(user);

@@ -6,6 +6,8 @@ export type ContentPillar = {
 export type GeneratedScript = {
   title: string;
   format: string;
+  /** Target reel length in seconds (15 | 30 | 45 | 60) */
+  duration_sec?: number;
   hook_options: string[];
   teleprompter_script: string;
   caption: string;
