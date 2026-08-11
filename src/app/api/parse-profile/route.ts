@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
-import { parseProfile } from "@/lib/scraping/parse-profile";
+import {
+  hasScrapingCredentials,
+  parseProfile,
+} from "@/lib/scraping/parse-profile";
 import { isMockMode } from "@/lib/config";
 
 const bodySchema = z.object({
@@ -19,7 +22,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       profile,
-      mocked: isMockMode() || !process.env.RAPIDAPI_KEY,
+      mocked: isMockMode() || !hasScrapingCredentials(),
     });
   } catch (error) {
     console.error("POST /api/parse-profile", error);
