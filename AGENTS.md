@@ -46,6 +46,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 
 - UI и mock-стратегия на русском (`lang="ru"`).
 - Публичный лендинг: `/`. Telegram Mini App и продукт: `/app` (из TG на `/` редирект на `/app`).
+- Юридические страницы: `/legal/offer`, `/legal/terms`, `/legal/privacy`. Реквизиты — `NEXT_PUBLIC_LEGAL_*` и `NEXT_PUBLIC_SUPPORT_EMAIL` в `.env`.
 - Package manager **pnpm**; `allowBuilds` в `pnpm-workspace.yaml`.
 - Вне Telegram клиент хранит `localStorage` telegram id; `initData` валидируется на сервере при `TELEGRAM_BOT_TOKEN`.
 - Не коммитить `.env`.

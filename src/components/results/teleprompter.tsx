@@ -40,7 +40,7 @@ export function TeleprompterMode({
       <div className="flex items-start justify-between gap-3 p-4 pb-2">
         <div className="min-w-0">
           <p className="text-[12px] font-medium text-white/55">
-            Суфлёр · снимай
+            Суфлёр · второй экран перед камерой
           </p>
           <h2 className="font-display mt-1 truncate text-base font-semibold">
             {title}

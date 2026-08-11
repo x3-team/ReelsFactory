@@ -6,6 +6,7 @@ import { ArrowRight, Clapperboard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { botUsername } from "@/lib/config";
+import { legalEntity } from "@/lib/legal";
 
 const APP_HREF = "/app";
 const TG_HREF = `https://t.me/${botUsername()}`;
@@ -112,7 +113,7 @@ export function LandingPage() {
               {
                 n: "03",
                 t: "Получаешь сценарии + суфлёр",
-                d: "15 / 30 / 45 секунд. Открыл суфлёр — и снимаешь.",
+                d: "15 / 30 / 45 секунд. Открыл суфлёр — читаешь текст и снимаешь на камеру рядом.",
               },
             ].map((step) => (
               <li
@@ -142,15 +143,16 @@ export function LandingPage() {
           <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
             Что получишь
           </h2>
-          <p className="mt-3 max-w-[42ch] text-[1.05rem] leading-7 text-white/65">
-            Не «идеи на листочке» — пакет под камеру.
+          <p className="mt-3 max-w-[42ch] text-[1.05rem] leading-7 text-white/80">
+            Не абстрактные идеи, а готовый текст, который можно сразу читать в
+            камеру.
           </p>
           <ul className="mt-10 space-y-5 text-[1.05rem] leading-7 text-white/88">
             {[
               "Разбор профиля: аудитория, что поправить, темы на неделю",
               "Готовые сценарии с таймкодами и 3 вариантами хука",
-              "Суфлёр со скоростью — снимай без бумажки",
-              "Текст поста и CTA — копируй и публикуй",
+              "Суфлёр: текст едет по экрану — читаешь и снимаешь",
+              "Текст поста и призыв — копируй и публикуй",
             ].map((item) => (
               <li key={item} className="flex gap-3">
                 <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
@@ -158,6 +160,55 @@ export function LandingPage() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      {/* Teleprompter explained */}
+      <section className="border-t border-border/60 bg-background px-5 py-16 md:px-8 md:py-20">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
+            Как работает суфлёр
+          </h2>
+          <p className="mt-3 max-w-[44ch] text-[1.05rem] leading-7 text-muted-foreground">
+            ReelsFactory сам видео не пишет — только показывает текст. Камеру
+            открываешь отдельно.
+          </p>
+          <ol className="mt-10 space-y-8">
+            {[
+              {
+                n: "01",
+                t: "Открой суфлёр в приложении",
+                d: "Текст сценария медленно едет по экрану. Скорость можно поставить медленнее или быстрее.",
+              },
+              {
+                n: "02",
+                t: "Рядом включи камеру",
+                d: "Удобнее всего второй телефон или штатив: один экран — суфлёр перед тобой, второй — съёмка в Instagram / TikTok.",
+              },
+              {
+                n: "03",
+                t: "Читай и снимай одновременно",
+                d: "Смотришь в камеру, краем глаза читаешь строки. Не нужно держать бумажку или заучивать текст наизусть.",
+              },
+            ].map((step) => (
+              <li
+                key={step.n}
+                className="grid grid-cols-[auto_1fr] gap-x-4 border-b border-border/70 pb-8 last:border-0 last:pb-0"
+              >
+                <span className="font-display text-sm font-semibold tabular-nums text-primary">
+                  {step.n}
+                </span>
+                <div>
+                  <p className="font-display text-xl font-semibold tracking-tight">
+                    {step.t}
+                  </p>
+                  <p className="mt-1.5 text-[15px] leading-6 text-muted-foreground">
+                    {step.d}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
@@ -179,22 +230,81 @@ export function LandingPage() {
                 Разобрать мой профиль
               </Link>
             </Button>
-            <p className="text-sm text-muted-foreground sm:max-w-[22ch]">
-              Без карты. Старт в Telegram Mini App — меньше минуты.
+            <p className="text-sm leading-5 text-muted-foreground sm:max-w-[26ch]">
+              Платить не нужно. Регистрация через Telegram — около минуты.
             </p>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-border/60 bg-background px-5 py-8 md:px-8">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-display text-base font-semibold text-foreground">
+      <LandingFooter />
+    </div>
+  );
+}
+
+function LandingFooter() {
+  const year = new Date().getFullYear();
+  const legal = legalEntity();
+
+  return (
+    <footer className="border-t border-border/60 bg-[#0f1218] px-5 py-10 text-white md:px-8">
+      <div className="mx-auto grid max-w-3xl gap-8">
+        <div>
+          <p className="font-display text-lg font-semibold">
             Reels<span className="text-primary">Factory</span>
           </p>
-          <p>Сценарии под съёмку · РФ / СНГ</p>
+          <p className="mt-2 max-w-[40ch] text-sm leading-6 text-white/65">
+            Сервис генерации сценариев коротких видео для авторов и экспертов.
+          </p>
         </div>
-      </footer>
-    </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <p className="text-[12px] font-medium text-white/45">Документы</p>
+            <ul className="mt-3 space-y-2 text-sm text-white/80">
+              <li>
+                <Link href="/legal/offer" className="hover:text-white">
+                  Публичная оферта
+                </Link>
+              </li>
+              <li>
+                <Link href="/legal/terms" className="hover:text-white">
+                  Пользовательское соглашение
+                </Link>
+              </li>
+              <li>
+                <Link href="/legal/privacy" className="hover:text-white">
+                  Политика конфиденциальности
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-[12px] font-medium text-white/45">Реквизиты</p>
+            <ul className="mt-3 space-y-1.5 text-sm leading-6 text-white/75">
+              <li>{legal.name}</li>
+              <li>ИНН: {legal.inn}</li>
+              {legal.ogrnip ? <li>ОГРНИП: {legal.ogrnip}</li> : null}
+              <li>{legal.address}</li>
+              <li>
+                Email:{" "}
+                <a
+                  href={`mailto:${legal.email}`}
+                  className="underline-offset-2 hover:text-white hover:underline"
+                >
+                  {legal.email}
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <p className="text-[12px] leading-5 text-white/40">
+          © {year} {legal.brand}. Используя сервис, вы принимаете оферту и
+          политику конфиденциальности.
+        </p>
+      </div>
+    </footer>
   );
 }
 
