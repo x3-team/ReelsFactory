@@ -61,7 +61,7 @@ export function LandingPage() {
               <h1 className="font-display max-w-[15ch] text-[2.2rem] font-semibold leading-[1.12] tracking-tight text-white md:text-5xl md:leading-[1.08]">
                 Расти в Reels проще — без ступора «что снимать»
               </h1>
-              <p className="max-w-[36ch] text-[1.05rem] leading-7 text-white/72">
+              <p className="max-w-[36ch] text-[1.05rem] leading-7 text-[#E8EAED]">
                 Разберём твой профиль и выдадим готовые сценарии с суфлёром —
                 снимай сегодня и копи аудиторию быстрее.
               </p>
@@ -74,7 +74,7 @@ export function LandingPage() {
                 </Button>
                 <a
                   href={TG_HREF}
-                  className="text-center text-sm font-medium text-white/65 underline-offset-4 hover:text-white hover:underline sm:text-left"
+                  className="text-center text-sm font-medium text-white/80 underline-offset-4 hover:text-white hover:underline sm:text-left"
                 >
                   или открыть в Telegram
                 </a>
