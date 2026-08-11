@@ -7,3 +7,4 @@ allowBuilds:
   "@prisma/client": true
   prisma: true
   sharp: true
+  msgpackr-extract: true

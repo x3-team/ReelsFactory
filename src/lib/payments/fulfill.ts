@@ -6,7 +6,10 @@ import {
 } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
-import { REFERRAL_COMMISSION_RATE } from "@/lib/config";
+import {
+  REFERRAL_FIRST_COMMISSION_RATE,
+  REFERRAL_RENEWAL_COMMISSION_RATE,
+} from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 
 export async function fulfillSuccessfulPayment(payment: Payment) {
@@ -32,32 +35,32 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
     });
 
     if (user.referrerId && payment.plan !== SubscriptionPlan.FREE) {
-      const credit = new Decimal(payment.amount.toString()).mul(
-        REFERRAL_COMMISSION_RATE,
-      );
+      const priorPaid = await tx.payment.count({
+        where: {
+          userId: user.id,
+          status: PaymentStatus.SUCCEEDED,
+          id: { not: payment.id },
+        },
+      });
+      const isRenewal = priorPaid > 0;
+      const rate = isRenewal
+        ? REFERRAL_RENEWAL_COMMISSION_RATE
+        : REFERRAL_FIRST_COMMISSION_RATE;
+      const credit = new Decimal(payment.amount.toString()).mul(rate);
 
       await tx.user.update({
         where: { id: user.referrerId },
         data: { referralBalance: { increment: credit } },
       });
 
-      await tx.referral.upsert({
-        where: {
-          referrerId_referredId: {
-            referrerId: user.referrerId,
-            referredId: user.id,
-          },
-        },
-        create: {
+      await tx.referral.create({
+        data: {
           referrerId: user.referrerId,
           referredId: user.id,
           paymentId: payment.id,
           creditAmount: credit,
-          status: ReferralStatus.CREDITED,
-        },
-        update: {
-          paymentId: payment.id,
-          creditAmount: credit,
+          commissionRate: rate,
+          isRenewal,
           status: ReferralStatus.CREDITED,
         },
       });
