@@ -166,11 +166,11 @@ export function LandingPage() {
         <div className="mx-auto max-w-3xl">
           <p className="text-[13px] font-medium text-primary">Оффер</p>
           <h2 className="font-display mt-2 max-w-[18ch] text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.08]">
-            Бесплатно: разбор + 1 полный сценарий с суфлёром
+            Бесплатно: разбор профиля + 1 сценарий — и можно снимать сегодня
           </h2>
-          <p className="mt-4 max-w-[40ch] text-[1.05rem] leading-7 text-muted-foreground">
-            Сегодня же можно снять первый ролик. Остальные сценарии откроются,
-            когда будешь готов снимать пачками.
+          <p className="mt-4 max-w-[42ch] text-[1.05rem] leading-7 text-muted-foreground">
+            Первый ролик без «что сказать». Остальные сценарии откроются, когда
+            захочешь расти быстрее и снимать пачками.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="rf-cta-pulse h-12 px-6 text-base">

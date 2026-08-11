@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/landing-page";
 
 export const metadata: Metadata = {
-  title: "ReelsFactory — сценарии рилсов под твой профиль за 60 секунд",
+  title: "ReelsFactory — расти в Reels проще, без ступора «что снимать»",
   description:
-    "AI разбирает Instagram / TikTok / YouTube и выдаёт готовые сценарии с суфлёром. Бесплатно: разбор профиля + 1 полный сценарий.",
+    "Разберём твой профиль и выдадим готовые сценарии с суфлёром — чтобы расти в аудитории быстрее. Бесплатно: разбор + 1 сценарий под съёмку.",
 };
 
 export default function HomePage() {
