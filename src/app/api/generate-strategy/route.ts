@@ -6,7 +6,7 @@ import { generateStrategy } from "@/lib/ai/generate-strategy";
 const bodySchema = z.object({
   profile: z.object({
     handle: z.string(),
-    platform: z.enum(["instagram", "tiktok", "youtube"]),
+    platform: z.enum(["instagram", "tiktok"]),
     displayName: z.string().optional(),
     bio: z.string(),
     followers: z.number(),

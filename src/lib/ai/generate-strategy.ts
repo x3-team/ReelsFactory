@@ -7,7 +7,7 @@ import type { VideoEvidence } from "@/lib/ai/transcribe";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
-const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для Instagram Reels / TikTok / YouTube Shorts (рынок РФ/СНГ).
+const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для Instagram Reels / TikTok (рынок РФ/СНГ).
 Пиши ВСЕ строки JSON на русском. Верни ТОЛЬКО валидный JSON без markdown.
 
 Схема:

@@ -19,7 +19,42 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
     return { payment, alreadyFulfilled: true as const };
   }
 
-  const meta = (payment.metadata || {}) as { billingPeriod?: string };
+  const meta = (payment.metadata || {}) as {
+    billingPeriod?: string;
+    product?: string;
+    analysisId?: string;
+  };
+
+  // Разовый пакет сценариев — не меняем подписку, только открываем тизеры
+  if (meta.product === "SCRIPT_PACK") {
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedPayment = await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: PaymentStatus.SUCCEEDED },
+      });
+
+      const analysisId =
+        meta.analysisId ||
+        (
+          await tx.profileAnalysis.findFirst({
+            where: { userId: payment.userId, status: "COMPLETED" },
+            orderBy: { createdAt: "desc" },
+            select: { id: true },
+          })
+        )?.id;
+
+      if (analysisId) {
+        await tx.script.updateMany({
+          where: { analysisId, userId: payment.userId },
+          data: { isTeaser: false },
+        });
+      }
+
+      return updatedPayment;
+    });
+    return { payment: result, alreadyFulfilled: false as const };
+  }
+
   const period: BillingPeriod =
     meta.billingPeriod === "year" ? "year" : "month";
   const expiresAt = new Date();
@@ -37,6 +72,12 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
         subscriptionPlan: payment.plan,
         subscriptionExpiresAt: expiresAt,
       },
+    });
+
+    // Подписка открывает все сценарии последнего разбора
+    await tx.script.updateMany({
+      where: { userId: payment.userId, isTeaser: true },
+      data: { isTeaser: false },
     });
 
     if (user.referrerId && payment.plan !== SubscriptionPlan.FREE) {

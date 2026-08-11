@@ -28,6 +28,35 @@ export async function POST(request: Request) {
       orderBy: { createdAt: "desc" },
       include: { scripts: { orderBy: { createdAt: "asc" } } },
     });
+    const previousAnalysis = await prisma.profileAnalysis.findFirst({
+      where: {
+        userId: user.id,
+        status: "COMPLETED",
+        ...(latestAnalysis ? { id: { not: latestAnalysis.id } } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        niche: true,
+        targetAudience: true,
+        contentPillars: true,
+        profileAuditTips: true,
+        createdAt: true,
+      },
+    });
+    const analyses = await prisma.profileAnalysis.findMany({
+      where: { userId: user.id, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        socialHandle: true,
+        platform: true,
+        niche: true,
+        createdAt: true,
+        status: true,
+      },
+    });
     const clientAccounts = await prisma.clientAccount.findMany({
       where: { agencyUserId: user.id },
       orderBy: { createdAt: "asc" },
@@ -37,6 +66,8 @@ export async function POST(request: Request) {
       serialize({
         user,
         latestAnalysis,
+        previousAnalysis,
+        analyses,
         clientAccounts,
         referralLink: referralLink(user.telegramId.toString()),
         authVerified: auth.verified,

@@ -36,6 +36,14 @@ export const PLANS = {
 export type PlanId = keyof typeof PLANS;
 export type BillingPeriod = "month" | "year";
 
+/** Разовый пакет: открыть ещё 3 сценария без подписки */
+export const SCRIPT_PACK = {
+  id: "SCRIPT_PACK" as const,
+  name: "Ещё 3 сценария",
+  priceRub: 390,
+  description: "Разово открыть 3 сценария текущего разбора — без подписки",
+};
+
 /** Год = цена 10 месяцев (скидка ~17%, «2 месяца в подарок») */
 export const YEARLY_BILLED_MONTHS = 10;
 

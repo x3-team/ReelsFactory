@@ -55,6 +55,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       videos: profile.topVideos,
       plan: user.subscriptionPlan,
     });
+    const whisperCount = evidence.filter((e) => e.source === "whisper").length;
     const transcriptions = evidence.map((item) => {
       if (item.source === "whisper") {
         return `[whisper · ${item.views} views] ${item.transcript}`;
@@ -67,6 +68,24 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       data: {
         status: AnalysisStatus.GENERATING,
         transcriptions,
+        rawProfileData: {
+          ...(profile as unknown as object),
+          _meta: {
+            videoCount: profile.topVideos.length,
+            whisperCount,
+            lowVideoSignal: profile.topVideos.length < 3,
+          },
+          reminders: [
+            {
+              type: "shoot_script_2",
+              dueAt: new Date(
+                Date.now() + 2 * 24 * 60 * 60 * 1000,
+              ).toISOString(),
+              sent: false,
+              text: "Пора снять сценарий 2 из разбора ReelsFactory — он уже готов в миниаппе.",
+            },
+          ],
+        } as object,
       },
     });
 

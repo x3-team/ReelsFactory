@@ -10,7 +10,7 @@ import { isMockMode } from "@/lib/config";
 
 const bodySchema = z.object({
   handle: z.string().min(2),
-  platform: z.enum(["instagram", "tiktok", "youtube"]).optional(),
+  platform: z.enum(["instagram", "tiktok"]).optional(),
 });
 
 export async function POST(request: Request) {

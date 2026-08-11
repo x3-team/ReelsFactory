@@ -76,13 +76,7 @@ function mapPosts(posts: ApifyIgPost[]): ScrapedVideo[] {
     .slice(0, 10);
 }
 
-/**
- * Instagram profile + latest posts/reels via Apify.
- * Prefers official actor `apify/instagram-profile-scraper` (override with APIFY_INSTAGRAM_ACTOR).
- */
-export async function fetchInstagramViaApify(
-  handle: string,
-): Promise<ScrapedProfile> {
+async function runApifyOnce(handle: string, resultsLimit: number) {
   const token = apifyToken();
   if (!token) {
     throw new Error("APIFY_TOKEN не задан");
@@ -100,9 +94,7 @@ export async function fetchInstagramViaApify(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       usernames: [handle],
-      // Берём больше свежих публикаций сетки (фото+рилсы), потом фильтруем видео.
-      // 6 мало: если в хвосте одни фото — рилсов для анализа почти не останется.
-      resultsLimit: Number(process.env.APIFY_RESULTS_LIMIT || 24),
+      resultsLimit,
     }),
     signal: AbortSignal.timeout(
       Number(process.env.APIFY_FETCH_TIMEOUT_MS || 75_000),
@@ -127,8 +119,30 @@ export async function fetchInstagramViaApify(
       `Apify: ${profile.error || profile.errorDescription || "ошибка профиля"}`,
     );
   }
+  return profile;
+}
 
-  const topVideos = mapPosts(profile.latestPosts || []);
+/**
+ * Instagram profile + latest posts/reels via Apify.
+ * Prefers official actor `apify/instagram-profile-scraper` (override with APIFY_INSTAGRAM_ACTOR).
+ */
+export async function fetchInstagramViaApify(
+  handle: string,
+): Promise<ScrapedProfile> {
+  const primaryLimit = Number(process.env.APIFY_RESULTS_LIMIT || 24);
+  let profile = await runApifyOnce(handle, primaryLimit);
+  let topVideos = mapPosts(profile.latestPosts || []);
+
+  // Мало рилсов в окне — пробуем шире (до 48), чтобы не строить разбор «на пустом»
+  if (topVideos.length < 3 && primaryLimit < 48) {
+    try {
+      profile = await runApifyOnce(handle, 48);
+      topVideos = mapPosts(profile.latestPosts || []);
+    } catch (error) {
+      console.warn("Apify wider scrape failed, keeping first pass", error);
+    }
+  }
+
   if (topVideos.length === 0) {
     console.warn(
       `Apify @${handle}: в последних постах нет видео/reels — стратегия пойдёт в основном с bio`,

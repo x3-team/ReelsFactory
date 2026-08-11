@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 
+import { AppVersion } from "@/components/app/app-version";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AppVersion } from "@/components/app/app-version";
 import { cn } from "@/lib/utils";
 
 export type OnboardingValues = {
@@ -47,7 +47,6 @@ export function OnboardingForm({
   loading?: boolean;
   onSubmit: (values: OnboardingValues) => Promise<void> | void;
 }) {
-  const [step, setStep] = useState(0);
   const [socialHandle, setSocialHandle] = useState("");
   const [profileGoal, setProfileGoal] =
     useState<OnboardingValues["profileGoal"]>("GROW_AUDIENCE");
@@ -55,16 +54,17 @@ export function OnboardingForm({
     useState<OnboardingValues["toneOfVoice"]>("DIRECT");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [offerSummary, setOfferSummary] = useState("");
+  const [showExtras, setShowExtras] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function next() {
+  async function submit() {
     setError(null);
-    if (step === 0 && socialHandle.trim().length < 2) {
-      setError("Введи @ник Instagram/TikTok или ссылку на YouTube");
+    if (socialHandle.trim().length < 2) {
+      setError("Введи @ник Instagram или TikTok");
       return;
     }
-    if (step < 2) {
-      setStep((s) => s + 1);
+    if (/youtube|youtu\.be/i.test(socialHandle)) {
+      setError("YouTube пока не поддерживаем — укажи Instagram или TikTok");
       return;
     }
     await onSubmit({
@@ -78,54 +78,47 @@ export function OnboardingForm({
 
   return (
     <div className="rf-shell animate-rf-rise gap-6 p-4 pt-6">
-      <header className="space-y-4">
+      <header className="space-y-3">
         <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
           Reels<span className="text-primary">Factory</span>
         </p>
         <div>
           <p className="text-sm text-muted-foreground">Привет, {userName}</p>
           <h1 className="font-display mt-1 text-2xl font-semibold leading-tight tracking-tight">
-            {step === 0 && "Какой аккаунт разбираем?"}
-            {step === 1 && "Зачем снимаешь рилсы?"}
-            {step === 2 && "Что продаёшь? (по желанию)"}
+            Какой аккаунт разбираем?
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Шаг {step + 1} из 3 · обычно меньше минуты
+            Один шаг — и через ~минуту готовые сценарии под съёмку.
           </p>
-        </div>
-        <div className="flex gap-2">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className={cn(
-                "h-1.5 flex-1 rounded-full transition-colors",
-                i <= step ? "bg-primary" : "bg-secondary",
-              )}
-            />
-          ))}
         </div>
       </header>
 
-      {step === 0 && (
-        <section className="space-y-3">
-          <Label htmlFor="handle">@ник или ссылка</Label>
-          <Input
-            id="handle"
-            className="h-12 rounded-xl border-border/80 bg-card text-base"
-            placeholder="@username"
-            value={socialHandle}
-            onChange={(e) => setSocialHandle(e.target.value)}
-            autoFocus
-          />
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Разберём био и сильные рилсы, вытащим цепляющие фразы и соберём
-            сценарии под съёмку.
-          </p>
-        </section>
-      )}
+      <section className="space-y-3">
+        <Label htmlFor="handle">@ник Instagram или TikTok</Label>
+        <Input
+          id="handle"
+          className="h-12 rounded-xl border-border/80 bg-card text-base"
+          placeholder="@username"
+          value={socialHandle}
+          onChange={(e) => setSocialHandle(e.target.value)}
+          autoFocus
+        />
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          По умолчанию цель — рост аудитории, тон — прямой. Можно сразу
+          запускать.
+        </p>
+      </section>
 
-      {step === 1 && (
-        <section className="space-y-4">
+      <button
+        type="button"
+        className="text-left text-sm font-medium text-primary"
+        onClick={() => setShowExtras((v) => !v)}
+      >
+        {showExtras ? "Скрыть настройки" : "Настроить цель, тон и оффер"}
+      </button>
+
+      {showExtras && (
+        <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-4">
           <div className="space-y-2">
             <Label>Цель</Label>
             <div className="grid gap-2">
@@ -135,10 +128,10 @@ export function OnboardingForm({
                   type="button"
                   onClick={() => setProfileGoal(goal.id)}
                   className={cn(
-                    "rounded-2xl border p-4 text-left transition",
+                    "rounded-2xl border p-3 text-left transition",
                     profileGoal === goal.id
                       ? "border-primary bg-primary/5"
-                      : "border-border/80 bg-card/70",
+                      : "border-border/80 bg-background",
                   )}
                 >
                   <div className="font-semibold">{goal.title}</div>
@@ -162,7 +155,7 @@ export function OnboardingForm({
                     "rounded-xl border px-3 py-3 text-sm font-semibold transition",
                     toneOfVoice === tone.id
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border/80 bg-card/70",
+                      : "border-border/80 bg-background",
                   )}
                 >
                   {tone.label}
@@ -170,17 +163,13 @@ export function OnboardingForm({
               ))}
             </div>
           </div>
-        </section>
-      )}
 
-      {step === 2 && (
-        <section className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="offer">Что предлагаешь</Label>
             <Textarea
               id="offer"
-              className="min-h-[96px] rounded-xl bg-card"
-              placeholder="Курс, чеклист, консультация, доставка…"
+              className="min-h-[80px] rounded-xl bg-background"
+              placeholder="Курс, чеклист, консультация…"
               value={offerSummary}
               onChange={(e) => setOfferSummary(e.target.value)}
             />
@@ -189,48 +178,30 @@ export function OnboardingForm({
             <Label htmlFor="website">Сайт или ссылка</Label>
             <Input
               id="website"
-              className="h-12 rounded-xl bg-card"
+              className="h-11 rounded-xl bg-background"
               placeholder="https://"
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Можно пропустить — сценарии всё равно соберём.
-          </p>
         </section>
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="mt-auto flex gap-2 pt-2">
-        {step > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={() => setStep((s) => s - 1)}
-            disabled={loading}
-          >
-            Назад
-          </Button>
-        )}
+      <div className="mt-auto pt-2">
         <Button
           type="button"
-          className="flex-1"
+          className="w-full"
           size="lg"
-          onClick={() => void next()}
+          onClick={() => void submit()}
           disabled={loading}
         >
-          {step === 2
-            ? loading
-              ? "Запускаем…"
-              : "Разобрать профиль"
-            : "Дальше"}
+          {loading ? "Запускаем…" : "Разобрать профиль"}
           <ArrowRight className="size-4" />
         </Button>
       </div>
-      <p className="pt-2 text-center text-[11px]">
+      <p className="pb-1 text-center text-[11px]">
         <AppVersion className="text-muted-foreground/70" />
       </p>
     </div>

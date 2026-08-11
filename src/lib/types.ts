@@ -34,7 +34,7 @@ export type ScrapedVideo = {
 
 export type ScrapedProfile = {
   handle: string;
-  platform: "instagram" | "tiktok" | "youtube";
+  platform: "instagram" | "tiktok";
   displayName?: string;
   bio: string;
   followers: number;

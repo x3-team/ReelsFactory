@@ -46,7 +46,7 @@ export async function parseProfile(input: {
     }
   }
 
-  // TikTok/YouTube — пока mock, пока нет отдельного актора
+  // TikTok — пока mock, пока нет отдельного актора
   return mockScrapedProfile(handle, input.platform);
 }
 
