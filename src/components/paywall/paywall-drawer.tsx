@@ -68,7 +68,7 @@ export function PaywallDrawer({
           {(
             [
               { id: "month" as const, label: "Месяц" },
-              { id: "year" as const, label: "Год", hint: "−2 мес" },
+              { id: "year" as const, label: "Год", hint: "+2 мес" },
             ] as const
           ).map((item) => (
             <button
@@ -86,10 +86,10 @@ export function PaywallDrawer({
               {"hint" in item && item.hint ? (
                 <span
                   className={cn(
-                    "ml-1.5 text-[11px] font-semibold",
+                    "ml-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
                     billingPeriod === item.id
-                      ? "text-primary"
-                      : "text-muted-foreground",
+                      ? "bg-primary/10 text-primary"
+                      : "bg-primary/5 text-primary/80",
                   )}
                 >
                   {item.hint}
@@ -98,6 +98,15 @@ export function PaywallDrawer({
             </button>
           ))}
         </div>
+
+        {billingPeriod === "year" && (
+          <p className="text-center text-[13px] leading-5 text-muted-foreground">
+            Платите за 10 месяцев —{" "}
+            <span className="font-medium text-foreground">
+              2 месяца в подарок
+            </span>
+          </p>
+        )}
 
         <div className="space-y-3">
           {(["START", "PRO", "AGENCY"] as const).map((planId) => {
@@ -146,6 +155,11 @@ export function PaywallDrawer({
                         ? `≈ ${perMonth.toLocaleString("ru-RU")} ₽/мес`
                         : "/ мес"}
                     </div>
+                    {billingPeriod === "year" && (
+                      <div className="mt-1 text-[11px] font-medium text-primary">
+                        2 мес в подарок
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="mt-3 text-sm font-semibold text-primary">
