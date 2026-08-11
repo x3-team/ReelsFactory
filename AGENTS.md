@@ -2,6 +2,11 @@
 
 ## Cursor Cloud specific instructions
 
+### Communication
+
+- Always reply to the user in **Russian** (весь диалог с пользователем — на русском).
+- UI/copy of the product is also Russian; keep new user-facing strings in Russian unless explicitly asked otherwise.
+
 ### Product
 
 ReelsFactory Telegram Mini App. Spec: `prompts.md`. Phases 1–3 are implemented.
