@@ -64,7 +64,7 @@ export function LandingPage() {
               </h1>
               <p className="max-w-[36ch] text-[1.05rem] leading-7 text-[#E8EAED]">
                 Разберём твой профиль и выдадим готовые сценарии с суфлёром —
-                снимай сегодня и копи аудиторию быстрее.
+                снимай сегодня и расти быстрее.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button asChild size="lg" className="rf-cta-pulse h-12 px-6 text-base">
