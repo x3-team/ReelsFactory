@@ -118,7 +118,7 @@ export function ReelsFactoryApp() {
       if (refreshed.latestAnalysis?.status === "COMPLETED") {
         setAnalysis(refreshed.latestAnalysis);
         setScreen("results");
-        window.history.replaceState({}, "", "/");
+        window.history.replaceState({}, "", "/app");
         return;
       }
     }

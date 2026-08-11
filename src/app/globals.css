@@ -137,5 +137,22 @@
     .rf-cta-pulse {
       animation: none;
     }
+
+    .rf-tele-scroll {
+      animation: none !important;
+    }
+  }
+
+  .rf-tele-scroll {
+    animation: rf-tele-scroll 18s linear infinite;
+  }
+
+  @keyframes rf-tele-scroll {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-50%);
+    }
   }
 }

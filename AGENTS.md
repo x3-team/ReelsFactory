@@ -32,7 +32,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 | Service | Required | How to run |
 | --- | --- | --- |
 | PostgreSQL | Yes | `sudo pg_ctlcluster 16 main start`; `DATABASE_URL` in `.env` |
-| Next.js | Yes | `pnpm dev` → http://localhost:3000 |
+| Next.js | Yes | `pnpm dev` → лендинг `/`, мини-апп `/app` |
 | Redis | Optional | Set `REDIS_URL` for BullMQ; иначе memory queue |
 | AITunnel / scrape / YooKassa | Optional in dev | Без ключей — `MOCK_EXTERNAL_APIS` |
 
@@ -45,6 +45,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 ### Gotchas
 
 - UI и mock-стратегия на русском (`lang="ru"`).
+- Публичный лендинг: `/`. Telegram Mini App и продукт: `/app` (из TG на `/` редирект на `/app`).
 - Package manager **pnpm**; `allowBuilds` в `pnpm-workspace.yaml`.
 - Вне Telegram клиент хранит `localStorage` telegram id; `initData` валидируется на сервере при `TELEGRAM_BOT_TOKEN`.
 - Не коммитить `.env`.
