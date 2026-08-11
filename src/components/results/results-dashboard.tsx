@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Clapperboard, Lock } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Clapperboard,
+  Copy,
+  Lock,
+  Sparkles,
+  Target,
+} from "lucide-react";
 
 import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
 import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
@@ -41,7 +49,6 @@ export function ResultsDashboard({
   const [selectedId, setSelectedId] = useState(analysis.scripts[0]?.id);
   const [teleprompterOpen, setTeleprompterOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [auditOpen, setAuditOpen] = useState(false);
 
   const selected = useMemo(
     () => analysis.scripts.find((s) => s.id === selectedId) || analysis.scripts[0],
@@ -52,6 +59,14 @@ export function ResultsDashboard({
   const pillars = analysis.contentPillars || [];
   const isFree = user.subscriptionPlan === "FREE";
   const planLabel = PLANS[user.subscriptionPlan]?.name || user.subscriptionPlan;
+  // Первый полный (или единственный) — бесплатный доступ, даже в старых записях с isTeaser=true
+  const freeScriptId =
+    analysis.scripts.find((s) => !s.isTeaser)?.id || analysis.scripts[0]?.id;
+  const lockedCount = analysis.scripts.filter((s) => s.id !== freeScriptId).length;
+
+  function isLocked(script: AppScript) {
+    return isFree && script.id !== freeScriptId;
+  }
 
   return (
     <div className="rf-shell animate-rf-rise gap-5 p-4 pt-5">
@@ -83,6 +98,63 @@ export function ResultsDashboard({
         />
       )}
 
+      {/* Free value: audit upfront, not hidden */}
+      {(analysis.targetAudience || tips.length > 0 || pillars.length > 0) && (
+        <section className="rf-surface space-y-4 p-4">
+          <div className="flex items-center gap-2">
+            <Target className="size-4 text-primary" />
+            <h2 className="font-display text-base font-semibold">
+              Разбор профиля
+            </h2>
+          </div>
+          {analysis.targetAudience && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Кому снимать
+              </p>
+              <p className="mt-1 text-sm leading-relaxed">
+                {analysis.targetAudience}
+              </p>
+            </div>
+          )}
+          {tips.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Что поправить
+              </p>
+              <ul className="space-y-2">
+                {tips.slice(0, isFree ? 3 : tips.length).map((tip) => (
+                  <li
+                    key={tip}
+                    className="flex gap-2 rounded-xl bg-secondary/70 px-3 py-2 text-sm leading-relaxed"
+                  >
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {pillars.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Темы на неделю
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {pillars.map((pillar) => (
+                  <span
+                    key={pillar.title}
+                    className="rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-medium"
+                  >
+                    {pillar.title}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-2">
           <div>
@@ -90,129 +162,73 @@ export function ResultsDashboard({
               Сценарии
             </h2>
             <p className="text-xs text-muted-foreground">
-              Выбери ролик и открой суфлёр
+              {isFree
+                ? `1 полный бесплатно${lockedCount ? ` · ещё ${lockedCount} под замком` : ""}`
+                : "Выбери ролик и открой суфлёр"}
             </p>
           </div>
           {isFree && (
             <Button size="sm" variant="outline" onClick={() => setPaywallOpen(true)}>
-              <Lock className="size-3.5" /> Все
+              <Lock className="size-3.5" /> Открыть все
             </Button>
           )}
         </div>
 
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          {analysis.scripts.map((script, index) => (
-            <button
-              key={script.id}
-              type="button"
-              onClick={() => setSelectedId(script.id)}
-              className={cn(
-                "min-w-[11rem] rounded-2xl border px-3 py-3 text-left transition",
-                selected?.id === script.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border/80 bg-card/90",
-              )}
-            >
-              <div
+          {analysis.scripts.map((script, index) => {
+            const locked = isLocked(script);
+            const active = selected?.id === script.id;
+            return (
+              <button
+                key={script.id}
+                type="button"
+                onClick={() => {
+                  if (locked) {
+                    setPaywallOpen(true);
+                    return;
+                  }
+                  setSelectedId(script.id);
+                }}
                 className={cn(
-                  "mb-1 text-[11px] uppercase tracking-wide",
-                  selected?.id === script.id
-                    ? "text-primary-foreground/80"
-                    : "text-muted-foreground",
+                  "relative min-w-[11rem] rounded-2xl border px-3 py-3 text-left transition",
+                  active && !locked
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border/80 bg-card/90",
+                  locked && "opacity-90",
                 )}
               >
-                {index + 1}
-                {script.isTeaser ? " · тизер" : ""}
-              </div>
-              <div className="line-clamp-2 text-sm font-semibold leading-snug">
-                {script.title}
-              </div>
-            </button>
-          ))}
+                {locked && (
+                  <span className="absolute right-2 top-2 rounded-md bg-foreground/90 p-1 text-background">
+                    <Lock className="size-3" />
+                  </span>
+                )}
+                <div
+                  className={cn(
+                    "mb-1 text-[11px] uppercase tracking-wide",
+                    active && !locked
+                      ? "text-primary-foreground/80"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {index + 1}
+                  {locked ? " · PRO" : script.id === freeScriptId && isFree ? " · твой" : ""}
+                </div>
+                <div className="line-clamp-2 text-sm font-semibold leading-snug">
+                  {script.title}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        {selected && (
+        {selected && !isLocked(selected) && (
           <ScriptViewer
             script={selected}
-            lockedTeleprompter={isFree && selected.isTeaser}
-            onOpenTeleprompter={() => {
-              if (isFree && selected.isTeaser) {
-                setPaywallOpen(true);
-                return;
-              }
-              setTeleprompterOpen(true);
-            }}
+            isFreeGift={isFree && selected.id === freeScriptId}
+            onOpenTeleprompter={() => setTeleprompterOpen(true)}
             onUnlock={() => setPaywallOpen(true)}
+            lockedCount={lockedCount}
           />
-        )}
-      </section>
-
-      <section className="rf-surface overflow-hidden">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-          onClick={() => setAuditOpen((v) => !v)}
-        >
-          <div>
-            <p className="text-sm font-semibold">Аудит профиля</p>
-            <p className="text-xs text-muted-foreground">
-              Аудитория, советы и столпы контента
-            </p>
-          </div>
-          <ChevronDown
-            className={cn(
-              "size-4 shrink-0 text-muted-foreground transition",
-              auditOpen && "rotate-180",
-            )}
-          />
-        </button>
-        {auditOpen && (
-          <div className="space-y-4 border-t border-border/70 px-4 py-4">
-            {analysis.targetAudience && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Кому снимать
-                </p>
-                <p className="mt-1 text-sm leading-relaxed">
-                  {analysis.targetAudience}
-                </p>
-              </div>
-            )}
-            {tips.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Советы
-                </p>
-                <ul className="mt-2 space-y-2">
-                  {tips.map((tip) => (
-                    <li
-                      key={tip}
-                      className="rounded-xl bg-secondary/70 px-3 py-2 text-sm leading-relaxed"
-                    >
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {pillars.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Столпы
-                </p>
-                <div className="mt-2 space-y-2">
-                  {pillars.map((pillar) => (
-                    <div key={pillar.title} className="rounded-xl bg-secondary/70 px-3 py-2">
-                      <p className="text-sm font-semibold">{pillar.title}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        {pillar.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         )}
       </section>
 
@@ -228,7 +244,7 @@ export function ResultsDashboard({
         </div>
       </div>
 
-      {teleprompterOpen && selected && (
+      {teleprompterOpen && selected && !isLocked(selected) && (
         <TeleprompterMode
           title={selected.title}
           script={selected.teleprompterScript}
@@ -249,21 +265,59 @@ export function ResultsDashboard({
   );
 }
 
+function filmingTips(format: string, script: string): string[] {
+  const tips = [
+    "Первый кадр — крупно в камеру, без «привет»",
+    "Текст на экране дублирует хук из первых 3 секунд",
+  ];
+  if (/15/.test(format) || script.includes("15")) {
+    tips.push("Держи темп: одна мысль — один жест");
+  } else if (/45|30/.test(format)) {
+    tips.push("Покажи процесс в кадре, не только говори");
+  } else {
+    tips.push("Покажи результат/деталь сразу после хука");
+  }
+  tips.push("В финале пауза 1 сек перед призывом");
+  return tips;
+}
+
 function ScriptViewer({
   script,
-  lockedTeleprompter,
+  isFreeGift,
   onOpenTeleprompter,
   onUnlock,
+  lockedCount,
 }: {
   script: AppScript;
-  lockedTeleprompter: boolean;
+  isFreeGift?: boolean;
   onOpenTeleprompter: () => void;
   onUnlock: () => void;
+  lockedCount: number;
 }) {
   const hooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
+  const [copied, setCopied] = useState(false);
+  const tips = filmingTips(script.format, script.teleprompterScript);
+
+  async function copyCaption() {
+    const text = [script.caption, script.cta].filter(Boolean).join("\n\n");
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
 
   return (
     <div className="rf-surface space-y-4 p-4">
+      {isFreeGift && (
+        <div className="flex items-start gap-2 rounded-xl bg-primary/8 px-3 py-2.5 text-sm">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>
+            <span className="font-semibold">Твой бесплатный сценарий</span>
+            {" — "}
+            полный суфлёр, хуки и текст поста. Можно снимать уже сейчас.
+          </p>
+        </div>
+      )}
+
       <div>
         <h3 className="font-display text-xl font-semibold leading-snug tracking-tight">
           {script.title}
@@ -273,15 +327,42 @@ function ScriptViewer({
 
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Цепляющие фразы
+          Выбери хук (0–3 сек)
         </p>
         <ul className="space-y-2">
-          {hooks.map((hook) => (
+          {hooks.map((hook, i) => (
             <li
               key={hook}
-              className="rounded-xl bg-secondary/80 px-3 py-2.5 text-sm leading-snug"
+              className={cn(
+                "rounded-xl px-3 py-2.5 text-sm leading-snug",
+                i === 0
+                  ? "border border-primary/30 bg-primary/5 font-medium"
+                  : "bg-secondary/80",
+              )}
             >
+              {i === 0 && (
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  Рекомендуем
+                </span>
+              )}
               {hook}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Camera className="size-3.5" /> Как снимать
+        </p>
+        <ul className="space-y-2">
+          {tips.map((tip) => (
+            <li
+              key={tip}
+              className="flex gap-2 text-sm leading-relaxed text-foreground/90"
+            >
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+              {tip}
             </li>
           ))}
         </ul>
@@ -296,21 +377,39 @@ function ScriptViewer({
         </pre>
       </div>
 
-      <div className="space-y-1 text-sm">
+      <div className="space-y-2 rounded-xl bg-secondary/60 p-3 text-sm">
         <p>
           <span className="font-semibold">Призыв:</span> {script.cta}
         </p>
         <p className="text-muted-foreground">{script.caption}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-1"
+          onClick={() => void copyCaption()}
+        >
+          {copied ? (
+            <>
+              <Check className="size-3.5" /> Скопировано
+            </>
+          ) : (
+            <>
+              <Copy className="size-3.5" /> Копировать текст поста
+            </>
+          )}
+        </Button>
       </div>
 
       <div className="grid gap-2">
         <Button size="lg" onClick={onOpenTeleprompter}>
           <Clapperboard className="size-4" />
-          {lockedTeleprompter ? "Открыть суфлёр" : "Режим суфлёра"}
+          Режим суфлёра
         </Button>
-        {lockedTeleprompter && (
+        {isFreeGift && lockedCount > 0 && (
           <Button variant="outline" onClick={onUnlock}>
-            <Lock className="size-4" /> Смотреть все сценарии
+            <Lock className="size-4" />
+            Открыть ещё {lockedCount} сценария
           </Button>
         )}
       </div>

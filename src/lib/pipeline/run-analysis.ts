@@ -13,7 +13,8 @@ import type { Platform } from "@/lib/platform";
 import type { ScrapedProfile } from "@/lib/types";
 
 function scriptsLimit(user: User) {
-  if (!hasPaidAccess(user)) return 1;
+  // Free: сохраняем 3 сценария (1 полный + 2 залоченных превью для конверсии)
+  if (!hasPaidAccess(user)) return 3;
   return PLANS[user.subscriptionPlan]?.scriptsPerMonth ?? 12;
 }
 
@@ -102,7 +103,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         },
       });
 
-      for (const script of scriptsToSave) {
+      for (const [index, script] of scriptsToSave.entries()) {
         await tx.script.create({
           data: {
             userId: user.id,
@@ -113,7 +114,8 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
             teleprompterScript: script.teleprompter_script,
             caption: script.caption,
             cta: script.cta,
-            isTeaser: !paid,
+            // Free: первый сценарий полный, остальные — превью под замок
+            isTeaser: !paid && index > 0,
           },
         });
       }
