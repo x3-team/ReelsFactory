@@ -53,8 +53,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
-    // По умолчанию captions (быстро). Whisper — только при ENABLE_WHISPER=true, макс 1 ролик.
-    const videos = profile.topVideos.slice(0, 3);
+    // В LLM уходят captions топ-роликов. Whisper — только при ENABLE_WHISPER=true, макс 1 ролик.
+    // Берём до 5 сильных видео в контекст (сценариев всё равно 3).
+    const videos = profile.topVideos.slice(0, 5);
     const transcriptions = await Promise.all(
       videos.map(async (video, index) => {
         if (index === 0) {

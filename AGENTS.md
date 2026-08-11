@@ -20,8 +20,8 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 - AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — ключ `AITUNNEL_API_KEY`
   - Default LLM: **`gemini-3.5-flash-lite`** (Free/Start)
   - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`)
-  - Whisper: по умолчанию **выкл** (`ENABLE_WHISPER=false`); captions хватает для стратегии
-- Scraping Instagram: **`APIFY_TOKEN`** (`resultsLimit≈6`) → fallback `RAPIDAPI_KEY` → mock
+  - Whisper: по умолчанию **выкл** (`ENABLE_WHISPER=false`); captions хватает для стратегии. Вкл. реально улучшает тон/хуки из речи, но +время/₽
+- Scraping Instagram: **`APIFY_TOKEN`** (`resultsLimit` default **24** публикаций сетки → фильтр видео → топ по views) → fallback `RAPIDAPI_KEY` → mock
 - Очередь анализа: BullMQ при `REDIS_URL`, иначе in-process memory queue + polling `GET /api/analyze?id=`
 - Ключи только в `.env` / секретах Cursor — **не** в `.env.example`
 - Сценарии: длины **15 / 30 / 45** сек; жёсткий каркас хук→проблема→демо→CTA

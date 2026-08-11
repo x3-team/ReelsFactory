@@ -72,7 +72,8 @@ function mapPosts(posts: ApifyIgPost[]): ScrapedVideo[] {
       } satisfies ScrapedVideo;
     })
     .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
+    // Больше кандидатов → LLM видит шире паттерны, даже если сценариев всё равно 3
+    .slice(0, 10);
 }
 
 /**
@@ -99,8 +100,9 @@ export async function fetchInstagramViaApify(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       usernames: [handle],
-      // Меньше постов → быстрее actor; топ по views всё равно берём из latest
-      resultsLimit: Number(process.env.APIFY_RESULTS_LIMIT || 6),
+      // Берём больше свежих публикаций сетки (фото+рилсы), потом фильтруем видео.
+      // 6 мало: если в хвосте одни фото — рилсов для анализа почти не останется.
+      resultsLimit: Number(process.env.APIFY_RESULTS_LIMIT || 24),
     }),
     signal: AbortSignal.timeout(
       Number(process.env.APIFY_FETCH_TIMEOUT_MS || 75_000),
@@ -127,6 +129,15 @@ export async function fetchInstagramViaApify(
   }
 
   const topVideos = mapPosts(profile.latestPosts || []);
+  if (topVideos.length === 0) {
+    console.warn(
+      `Apify @${handle}: в последних постах нет видео/reels — стратегия пойдёт в основном с bio`,
+    );
+  } else if (topVideos.length < 3) {
+    console.warn(
+      `Apify @${handle}: мало reels (${topVideos.length}) в окне latestPosts — качество разбора может просесть`,
+    );
+  }
 
   return {
     handle: profile.username || handle,
