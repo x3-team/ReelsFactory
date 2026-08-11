@@ -55,7 +55,7 @@ export function PaywallDrawer({
         </DialogHeader>
 
         <div className="space-y-3">
-          {(["START", "PRO"] as const).map((planId) => {
+          {(["START", "PRO", "AGENCY"] as const).map((planId) => {
             const plan = PLANS[planId];
             const active = currentPlan === planId;
             return (
@@ -66,7 +66,7 @@ export function PaywallDrawer({
                 onClick={() => void onSelectPlan(planId)}
                 className={cn(
                   "w-full rounded-xl border p-4 text-left transition",
-                  planId === "PRO"
+                  planId === "PRO" || planId === "AGENCY"
                     ? "border-primary bg-primary/5"
                     : "border-border",
                   active && "opacity-70",
@@ -104,7 +104,7 @@ export function PaywallDrawer({
             Реферальная программа
           </div>
           <p className="text-sm text-muted-foreground">
-            Делитесь ссылкой и получайте 30% с каждой оплаченной подписки.
+            30% с первой оплаты друга и 10% с каждого продления.
           </p>
           <p className="text-sm">
             Баланс: <span className="font-semibold">{referralBalance} ₽</span>

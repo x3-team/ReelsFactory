@@ -1,30 +1,73 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { runAnalysisPipeline } from "@/lib/pipeline/run-analysis";
-import { serialize } from "@/lib/serialize";
+import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
+import { serialize } from "@/lib/serialize";
 
 const bodySchema = z.object({
   userId: z.string().min(1),
+  clientAccountId: z.string().optional(),
 });
 
 export async function POST(request: Request) {
   try {
-    const { userId } = bodySchema.parse(await request.json());
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const body = bodySchema.parse(await request.json());
+    const user = await prisma.user.findUnique({ where: { id: body.userId } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
 
-    const analysis = await runAnalysisPipeline(user);
-    return NextResponse.json(serialize({ analysis }));
+    let socialHandle = user.socialHandle;
+    let platform = user.platform;
+
+    if (body.clientAccountId) {
+      const client = await prisma.clientAccount.findFirst({
+        where: { id: body.clientAccountId, agencyUserId: user.id },
+      });
+      if (!client) {
+        return NextResponse.json(
+          { error: "Клиентский аккаунт не найден" },
+          { status: 404 },
+        );
+      }
+      socialHandle = client.socialHandle;
+      platform = client.platform;
+    }
+
+    if (!socialHandle || !platform) {
+      return NextResponse.json(
+        { error: "Сначала завершите онбординг (укажите @username)" },
+        { status: 400 },
+      );
+    }
+
+    const queued = await enqueueAnalysis({
+      userId: user.id,
+      socialHandle,
+      platform,
+      clientAccountId: body.clientAccountId,
+    });
+
+    const analysis = await prisma.profileAnalysis.findUniqueOrThrow({
+      where: { id: queued.analysisId },
+      include: { scripts: true },
+    });
+
+    return NextResponse.json(
+      serialize({
+        analysis,
+        queued: true,
+        jobId: queued.jobId,
+        queueMode: queued.mode,
+      }),
+    );
   } catch (error) {
     console.error("POST /api/analyze", error);
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Analysis pipeline failed",
+          error instanceof Error ? error.message : "Не удалось поставить анализ в очередь",
       },
       { status: 500 },
     );
@@ -34,7 +77,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const id = new URL(request.url).searchParams.get("id");
   if (!id) {
-    return NextResponse.json({ error: "id required" }, { status: 400 });
+    return NextResponse.json({ error: "id обязателен" }, { status: 400 });
   }
 
   const analysis = await prisma.profileAnalysis.findUnique({
@@ -43,7 +86,7 @@ export async function GET(request: Request) {
   });
 
   if (!analysis) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Не найдено" }, { status: 404 });
   }
 
   return NextResponse.json(serialize({ analysis }));

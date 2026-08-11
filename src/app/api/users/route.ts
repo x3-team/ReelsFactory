@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { serialize } from "@/lib/serialize";
-import { upsertTelegramUser } from "@/lib/users";
-import { prisma } from "@/lib/prisma";
 import { referralLink } from "@/lib/config";
+import { prisma } from "@/lib/prisma";
+import { serialize } from "@/lib/serialize";
+import { resolveTelegramAuth } from "@/lib/telegram/auth";
+import { upsertTelegramUser } from "@/lib/users";
 
 const bodySchema = z.object({
-  telegramId: z.union([z.string(), z.number()]),
+  initData: z.string().nullish(),
+  telegramId: z.union([z.string(), z.number()]).optional(),
   username: z.string().nullish(),
   firstName: z.string().nullish(),
   lastName: z.string().nullish(),
@@ -19,18 +21,25 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
-    const user = await upsertTelegramUser(body);
+    const auth = resolveTelegramAuth(body);
+    const user = await upsertTelegramUser(auth);
     const latestAnalysis = await prisma.profileAnalysis.findFirst({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       include: { scripts: { orderBy: { createdAt: "asc" } } },
+    });
+    const clientAccounts = await prisma.clientAccount.findMany({
+      where: { agencyUserId: user.id },
+      orderBy: { createdAt: "asc" },
     });
 
     return NextResponse.json(
       serialize({
         user,
         latestAnalysis,
+        clientAccounts,
         referralLink: referralLink(user.telegramId.toString()),
+        authVerified: auth.verified,
       }),
     );
   } catch (error) {
@@ -38,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to upsert user",
+          error instanceof Error ? error.message : "Не удалось сохранить пользователя",
       },
       { status: 400 },
     );

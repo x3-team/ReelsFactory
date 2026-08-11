@@ -1,20 +1,18 @@
-import OpenAI from "openai";
-
-import { isMockMode } from "@/lib/config";
+import { shouldUseMockAi, getAiTunnelClient, whisperModel } from "@/lib/ai/aitunnel";
 import { mockTranscription } from "@/lib/mocks/demo-data";
 
 export async function transcribeAudio(input: {
   audioUrl: string;
   hint?: string;
 }): Promise<{ text: string; mocked: boolean }> {
-  if (isMockMode() || !process.env.OPENAI_API_KEY) {
+  if (shouldUseMockAi()) {
     return { text: mockTranscription(input.hint), mocked: true };
   }
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = getAiTunnelClient();
   const audioRes = await fetch(input.audioUrl);
   if (!audioRes.ok) {
-    throw new Error(`Failed to download audio (${audioRes.status})`);
+    throw new Error(`Не удалось скачать аудио (${audioRes.status})`);
   }
 
   const blob = await audioRes.blob();
@@ -24,7 +22,7 @@ export async function transcribeAudio(input: {
 
   const result = await openai.audio.transcriptions.create({
     file,
-    model: "whisper-1",
+    model: whisperModel(),
   });
 
   return { text: result.text, mocked: false };

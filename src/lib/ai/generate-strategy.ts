@@ -1,6 +1,8 @@
-import OpenAI from "openai";
-
-import { isMockMode } from "@/lib/config";
+import {
+  getAiTunnelClient,
+  llmModel,
+  shouldUseMockAi,
+} from "@/lib/ai/aitunnel";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
@@ -31,7 +33,7 @@ export async function generateStrategy(input: {
   offerSummary?: string | null;
   websiteUrl?: string | null;
 }): Promise<{ strategy: StrategyPayload; mocked: boolean }> {
-  if (isMockMode() || (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY)) {
+  if (shouldUseMockAi()) {
     return {
       strategy: mockStrategy({
         handle: input.profile.handle,
@@ -65,20 +67,11 @@ export async function generateStrategy(input: {
     2,
   );
 
-  if (process.env.ANTHROPIC_API_KEY) {
-    const strategy = await generateWithAnthropic(userPrompt);
-    return { strategy, mocked: false };
-  }
-
-  const strategy = await generateWithOpenAI(userPrompt);
-  return { strategy, mocked: false };
-}
-
-async function generateWithOpenAI(userPrompt: string): Promise<StrategyPayload> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = getAiTunnelClient();
   const completion = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o",
+    model: llmModel(),
     response_format: { type: "json_object" },
+    max_tokens: 4096,
     messages: [
       { role: "system", content: STRATEGY_SYSTEM_PROMPT },
       { role: "user", content: userPrompt },
@@ -87,36 +80,8 @@ async function generateWithOpenAI(userPrompt: string): Promise<StrategyPayload> 
   });
 
   const content = completion.choices[0]?.message?.content;
-  if (!content) throw new Error("Empty LLM response");
-  return parseStrategyJson(content);
-}
-
-async function generateWithAnthropic(userPrompt: string): Promise<StrategyPayload> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-latest",
-      max_tokens: 4096,
-      system: STRATEGY_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Anthropic API failed (${res.status})`);
-  }
-
-  const json = (await res.json()) as {
-    content?: Array<{ type: string; text?: string }>;
-  };
-  const text = json.content?.find((c) => c.type === "text")?.text;
-  if (!text) throw new Error("Empty Anthropic response");
-  return parseStrategyJson(text);
+  if (!content) throw new Error("Пустой ответ LLM через AITunnel");
+  return { strategy: parseStrategyJson(content), mocked: false };
 }
 
 function parseStrategyJson(raw: string): StrategyPayload {
@@ -133,7 +98,7 @@ function parseStrategyJson(raw: string): StrategyPayload {
     !Array.isArray(parsed.profile_audit_tips) ||
     !Array.isArray(parsed.scripts)
   ) {
-    throw new Error("LLM JSON missing required fields");
+    throw new Error("LLM JSON не содержит обязательных полей");
   }
   return parsed;
 }

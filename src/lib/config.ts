@@ -4,6 +4,7 @@ export const PLANS = {
     name: "Бесплатно",
     priceRub: 0,
     scriptsPerMonth: 1,
+    maxClientAccounts: 0,
     description: "Аудит профиля + 1 тизер-сценарий",
   },
   START: {
@@ -11,26 +12,41 @@ export const PLANS = {
     name: "Старт",
     priceRub: 590,
     scriptsPerMonth: 12,
-    description: "12 сценариев / месяц · полный суфлёр",
+    maxClientAccounts: 0,
+    description: "12 сценариев / месяц · полный суфлёр · 1 столп",
   },
   PRO: {
     id: "PRO" as const,
     name: "Про",
     priceRub: 1990,
     scriptsPerMonth: 30,
-    description: "30 сценариев / месяц · анализ конкурентов",
+    maxClientAccounts: 0,
+    description: "30 сценариев / месяц · конкуренты · посты для Telegram",
+  },
+  AGENCY: {
+    id: "AGENCY" as const,
+    name: "Агентство",
+    priceRub: 4990,
+    scriptsPerMonth: 100,
+    maxClientAccounts: 5,
+    description: "До 5 клиентских аккаунтов · командный объём",
   },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
 
-export const REFERRAL_COMMISSION_RATE = 0.3;
+/** 30% с первой оплаты приглашённого */
+export const REFERRAL_FIRST_COMMISSION_RATE = 0.3;
+/** 10% с продлений */
+export const REFERRAL_RENEWAL_COMMISSION_RATE = 0.1;
+
+/** @deprecated use REFERRAL_FIRST_COMMISSION_RATE */
+export const REFERRAL_COMMISSION_RATE = REFERRAL_FIRST_COMMISSION_RATE;
 
 export function isMockMode() {
   if (process.env.MOCK_EXTERNAL_APIS === "true") return true;
   if (process.env.MOCK_EXTERNAL_APIS === "false") return false;
-  // Auto-mock when no AI/scraping keys are configured
-  return !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY;
+  return !process.env.AITUNNEL_API_KEY && !process.env.OPENAI_API_KEY;
 }
 
 export function botUsername() {
@@ -43,4 +59,10 @@ export function appUrl() {
 
 export function referralLink(telegramId: string | number | bigint) {
   return `https://t.me/${botUsername()}?start=ref_${telegramId}`;
+}
+
+export function telegramShareUrl(url: string, text?: string) {
+  const params = new URLSearchParams({ url });
+  if (text) params.set("text", text);
+  return `https://t.me/share/url?${params.toString()}`;
 }

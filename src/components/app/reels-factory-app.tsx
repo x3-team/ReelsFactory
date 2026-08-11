@@ -32,11 +32,19 @@ function getDevTelegramId() {
 }
 
 export function ReelsFactoryApp() {
-  const { ready, user: tgUser, startParam, isTelegram } = useTelegram();
+  const { ready, user: tgUser, startParam, isTelegram, rawInitData } = useTelegram();
   const [screen, setScreen] = useState<Screen>("boot");
   const [user, setUser] = useState<AppUser | null>(null);
   const [analysis, setAnalysis] = useState<AppAnalysis | null>(null);
   const [referralUrl, setReferralUrl] = useState("");
+  const [clientAccounts, setClientAccounts] = useState<
+    Array<{
+      id: string;
+      socialHandle: string;
+      platform: string;
+      label?: string | null;
+    }>
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
@@ -56,6 +64,7 @@ export function ReelsFactoryApp() {
 
     const telegramId = tgUser?.id ? String(tgUser.id) : getDevTelegramId();
     const payload = {
+      initData: rawInitData || null,
       telegramId,
       username: tgUser?.username ?? (isTelegram ? null : "local_dev"),
       firstName: tgUser?.first_name ?? (isTelegram ? null : "Локальный"),
@@ -73,6 +82,12 @@ export function ReelsFactoryApp() {
       user: AppUser;
       latestAnalysis: AppAnalysis | null;
       referralLink: string;
+      clientAccounts?: Array<{
+        id: string;
+        socialHandle: string;
+        platform: string;
+        label?: string | null;
+      }>;
     }>("/api/users", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -80,6 +95,7 @@ export function ReelsFactoryApp() {
 
     setUser(data.user);
     setReferralUrl(data.referralLink || referralLink(data.user.telegramId));
+    setClientAccounts(data.clientAccounts || []);
 
     const paidFlag =
       typeof window !== "undefined" &&
@@ -117,7 +133,9 @@ export function ReelsFactoryApp() {
     }
 
     setScreen("onboarding");
-  }, [tgUser, startParam, isTelegram]);
+    // runAnalysis is intentionally omitted to avoid re-bootstrap loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tgUser, startParam, isTelegram, rawInitData]);
 
   useEffect(() => {
     if (!ready) return;
@@ -127,25 +145,41 @@ export function ReelsFactoryApp() {
     });
   }, [ready, bootstrap]);
 
-  async function runAnalysis(userId: string) {
+  async function pollAnalysis(analysisId: string, startedAt: number) {
+    const terminal = new Set(["COMPLETED", "FAILED"]);
+    for (;;) {
+      const data = await api<{ analysis: AppAnalysis }>(
+        `/api/analyze?id=${encodeURIComponent(analysisId)}`,
+      );
+      if (terminal.has(data.analysis.status)) {
+        const elapsed = Date.now() - startedAt;
+        const minMs = 4500;
+        if (elapsed < minMs) {
+          await new Promise((resolve) => setTimeout(resolve, minMs - elapsed));
+        }
+        if (data.analysis.status === "FAILED") {
+          throw new Error(data.analysis.errorMessage || "Анализ не удался");
+        }
+        return data.analysis;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+  }
+
+  async function runAnalysis(userId: string, clientAccountId?: string) {
     setScreen("analyzing");
     setError(null);
     const startedAt = Date.now();
     try {
       const data = await api<{ analysis: AppAnalysis }>("/api/analyze", {
         method: "POST",
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, clientAccountId }),
       });
-      // Keep the progress UI visible long enough to show the animated steps
-      const elapsed = Date.now() - startedAt;
-      const minMs = 4500;
-      if (elapsed < minMs) {
-        await new Promise((resolve) => setTimeout(resolve, minMs - elapsed));
-      }
-      setAnalysis(data.analysis);
+      const analysisResult = await pollAnalysis(data.analysis.id, startedAt);
+      setAnalysis(analysisResult);
       setScreen("results");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
+      setError(err instanceof Error ? err.message : "Ошибка анализа");
       setScreen("error");
     }
   }
@@ -179,9 +213,9 @@ export function ReelsFactoryApp() {
         return;
       }
 
-      throw new Error("No confirmation URL returned");
+      throw new Error("Не получен URL оплаты");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Payment failed");
+      setError(err instanceof Error ? err.message : "Ошибка оплаты");
     } finally {
       setLoadingPlan(null);
     }
@@ -241,10 +275,14 @@ export function ReelsFactoryApp() {
           user={user}
           analysis={analysis}
           referralUrl={referralUrl}
+          clientAccounts={clientAccounts}
           onSelectPlan={handleSelectPlan}
           loadingPlan={loadingPlan}
           onReanalyze={() => {
             if (user) void runAnalysis(user.id);
+          }}
+          onAnalyzeClient={(clientAccountId) => {
+            if (user) void runAnalysis(user.id, clientAccountId);
           }}
         />
       </>

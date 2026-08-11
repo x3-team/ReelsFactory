@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   initDataState,
+  retrieveRawInitData,
   type User as TelegramUser,
   useSignal,
 } from "@telegram-apps/sdk-react";
@@ -21,6 +22,7 @@ type TelegramContextValue = {
   user: TelegramUser | undefined;
   startParam: string | undefined;
   isTelegram: boolean;
+  rawInitData: string | undefined;
 };
 
 const TelegramContext = createContext<TelegramContextValue>({
@@ -28,6 +30,7 @@ const TelegramContext = createContext<TelegramContextValue>({
   user: undefined,
   startParam: undefined,
   isTelegram: false,
+  rawInitData: undefined,
 });
 
 export function useTelegram() {
@@ -41,14 +44,19 @@ export function useTelegram() {
 export function TelegramProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [isTelegram, setIsTelegram] = useState(false);
+  const [rawInitData, setRawInitData] = useState<string | undefined>();
   const initData = useSignal(initDataState);
 
   useEffect(() => {
     initTelegramApp();
+    try {
+      setRawInitData(retrieveRawInitData() || undefined);
+    } catch {
+      setRawInitData(undefined);
+    }
     const inTelegram =
       typeof window !== "undefined" &&
       Boolean(
-        // Classic WebApp inject or launch params in hash/query
         (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram
           ?.WebApp ||
           window.location.hash.includes("tgWebAppData") ||
@@ -64,8 +72,9 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       user: initData?.user,
       startParam: initData?.start_param,
       isTelegram,
+      rawInitData,
     }),
-    [ready, initData, isTelegram],
+    [ready, initData, isTelegram, rawInitData],
   );
 
   return (

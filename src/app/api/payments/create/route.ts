@@ -9,7 +9,7 @@ import { serialize } from "@/lib/serialize";
 
 const bodySchema = z.object({
   userId: z.string().min(1),
-  plan: z.enum(["START", "PRO"]),
+  plan: z.enum(["START", "PRO", "AGENCY"]),
 });
 
 export async function POST(request: Request) {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const body = bodySchema.parse(await request.json());
     const user = await prisma.user.findUnique({ where: { id: body.userId } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
 
     const { payment, mocked } = await createYooKassaPayment({
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to create payment",
+          error instanceof Error ? error.message : "Не удалось создать платёж",
       },
       { status: 400 },
     );
