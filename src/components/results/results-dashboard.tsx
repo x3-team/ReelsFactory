@@ -155,69 +155,78 @@ export function ResultsDashboard({
       )}
 
       <section className="space-y-3">
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <h2 className="font-display text-lg font-semibold tracking-tight">
-              Сценарии
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {isFree
-                ? `1 полный бесплатно${lockedCount ? ` · ещё ${lockedCount} под замком` : ""}`
-                : "Выбери ролик и открой суфлёр"}
-            </p>
-          </div>
-          {isFree && (
-            <Button size="sm" variant="outline" onClick={() => setPaywallOpen(true)}>
-              <Lock className="size-3.5" /> Открыть все
-            </Button>
-          )}
+        <div>
+          <h2 className="font-display text-lg font-semibold tracking-tight">
+            Сценарии
+          </h2>
+          <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
+            {isFree
+              ? `1 полный бесплатно${lockedCount ? ` · ещё ${lockedCount} под замком` : ""}`
+              : "Выбери ролик и открой суфлёр"}
+          </p>
         </div>
 
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          {analysis.scripts.map((script, index) => {
-            const locked = isLocked(script);
-            const active = selected?.id === script.id;
-            return (
-              <button
-                key={script.id}
-                type="button"
-                onClick={() => {
-                  if (locked) {
-                    setPaywallOpen(true);
-                    return;
-                  }
-                  setSelectedId(script.id);
-                }}
-                className={cn(
-                  "relative min-w-[11rem] rounded-2xl border px-3 py-3 text-left transition",
-                  active && !locked
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border/80 bg-card/90",
-                  locked && "opacity-90",
-                )}
-              >
-                {locked && (
-                  <span className="absolute right-2 top-2 rounded-md bg-foreground/90 p-1 text-background">
-                    <Lock className="size-3" />
-                  </span>
-                )}
-                <div
+        {isFree && lockedCount > 0 && (
+          <Button
+            className="rf-cta-pulse w-full"
+            onClick={() => setPaywallOpen(true)}
+          >
+            <Lock className="size-4" />
+            Открыть все · ещё {lockedCount}
+          </Button>
+        )}
+
+        <div className="rf-surface overflow-hidden p-2">
+          <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {analysis.scripts.map((script, index) => {
+              const locked = isLocked(script);
+              const active = selected?.id === script.id;
+              return (
+                <button
+                  key={script.id}
+                  type="button"
+                  onClick={() => {
+                    if (locked) {
+                      setPaywallOpen(true);
+                      return;
+                    }
+                    setSelectedId(script.id);
+                  }}
                   className={cn(
-                    "mb-1 text-[12px] font-medium",
+                    "relative h-[5.75rem] w-[10.25rem] shrink-0 rounded-xl border px-3 py-2.5 text-left transition",
                     active && !locked
-                      ? "text-primary-foreground/85"
-                      : "text-muted-foreground",
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-transparent bg-secondary/80 text-foreground",
+                    locked && "opacity-95",
                   )}
                 >
-                  {index + 1}
-                  {locked ? " · PRO" : script.id === freeScriptId && isFree ? " · твой" : ""}
-                </div>
-                <div className="line-clamp-2 text-[14px] font-semibold leading-6">
-                  {script.title}
-                </div>
-              </button>
-            );
-          })}
+                  {locked && (
+                    <span className="absolute right-2 top-2 rounded-md bg-foreground/90 p-1 text-background">
+                      <Lock className="size-3" />
+                    </span>
+                  )}
+                  <div
+                    className={cn(
+                      "mb-1 text-[12px] font-medium",
+                      active && !locked
+                        ? "text-primary-foreground/85"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {index + 1}
+                    {locked
+                      ? " · PRO"
+                      : script.id === freeScriptId && isFree
+                        ? " · твой"
+                        : ""}
+                  </div>
+                  <div className="line-clamp-2 text-[13px] font-semibold leading-5">
+                    {script.title}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {selected && !isLocked(selected) && (
@@ -402,7 +411,12 @@ function ScriptViewer({
           Режим суфлёра
         </Button>
         {isFreeGift && lockedCount > 0 && (
-          <Button variant="outline" onClick={onUnlock}>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="rf-cta-pulse border border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
+            onClick={onUnlock}
+          >
             <Lock className="size-4" />
             Открыть ещё {lockedCount} сценария
           </Button>
