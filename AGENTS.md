@@ -9,7 +9,18 @@
 
 ### Product
 
-ReelsFactory Telegram Mini App. Spec: `prompts.md`. Phases 1–3 are implemented.
+ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
+- Build phases: `prompts.md`
+- Business requirements (pricing, referral %, Agency plan, queues): `CONTEXT.md`
+
+Phases 1–3 MVP are implemented on Next.js API routes (no NestJS/BullMQ yet).
+
+### Business rules (from CONTEXT.md)
+
+- Plans: Free / Start 590₽ / Pro 1990₽ / **Agency 4990₽** (до 5 аккаунтов)
+- Referral: **30%** с первой оплаты, **10%** с продлений; share-кнопка под карточками сценариев
+- Unit cost ориентир: ~10–12₽ за полный цикл генерации
+- Очереди: BullMQ + Redis (пока анализ синхронный в `/api/analyze`)
 
 ### Services
 
