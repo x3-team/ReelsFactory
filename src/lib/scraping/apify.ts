@@ -92,18 +92,18 @@ export async function fetchInstagramViaApify(
     `https://api.apify.com/v2/acts/${path}/run-sync-get-dataset-items`,
   );
   url.searchParams.set("token", token);
-  url.searchParams.set("timeout", process.env.APIFY_TIMEOUT_SECS || "120");
+  url.searchParams.set("timeout", process.env.APIFY_TIMEOUT_SECS || "70");
 
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       usernames: [handle],
-      resultsLimit: 12,
+      // Меньше постов → быстрее actor; топ по views всё равно берём из latest
+      resultsLimit: Number(process.env.APIFY_RESULTS_LIMIT || 6),
     }),
-    // Apify sync can take ~20–60s
     signal: AbortSignal.timeout(
-      Number(process.env.APIFY_FETCH_TIMEOUT_MS || 130_000),
+      Number(process.env.APIFY_FETCH_TIMEOUT_MS || 75_000),
     ),
   });
 

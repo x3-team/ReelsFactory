@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Gift, Crown } from "lucide-react";
+import { Check, Copy, Gift } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,15 +42,15 @@ export function PaywallDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="max-h-[88dvh] overflow-y-auto">
+        <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-border" />
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Crown className="size-5" />
+          <DialogTitle className="font-display text-xl">
             Открыть все сценарии
           </DialogTitle>
           <DialogDescription>
-            В бесплатной версии — аудит и 1 тизер. Подписка даёт полный доступ к
-            суфлёру.
+            Бесплатно — аудит и 1 тизер. Подписка даёт полный суфлёр и больше
+            сценариев.
           </DialogDescription>
         </DialogHeader>
 
@@ -58,6 +58,7 @@ export function PaywallDrawer({
           {(["START", "PRO", "AGENCY"] as const).map((planId) => {
             const plan = PLANS[planId];
             const active = currentPlan === planId;
+            const recommended = planId === "START";
             return (
               <button
                 key={planId}
@@ -65,31 +66,38 @@ export function PaywallDrawer({
                 disabled={!!loadingPlan || active}
                 onClick={() => void onSelectPlan(planId)}
                 className={cn(
-                  "w-full rounded-xl border p-4 text-left transition",
-                  planId === "PRO" || planId === "AGENCY"
+                  "w-full rounded-2xl border p-4 text-left transition",
+                  recommended
                     ? "border-primary bg-primary/5"
-                    : "border-border",
+                    : "border-border/80 bg-card",
                   active && "opacity-70",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="font-semibold">{plan.name}</div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{plan.name}</span>
+                      {recommended && (
+                        <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+                          Хит
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
                       {plan.description}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-semibold">{plan.priceRub} ₽</div>
-                    <div className="text-xs text-muted-foreground">/ месяц</div>
+                    <div className="text-xs text-muted-foreground">/ мес</div>
                   </div>
                 </div>
-                <div className="mt-3 text-sm font-medium">
+                <div className="mt-3 text-sm font-semibold text-primary">
                   {active
                     ? "Текущий план"
                     : loadingPlan === planId
                       ? "Создаём оплату…"
-                      : "Выбрать план"}
+                      : "Выбрать"}
                 </div>
               </button>
             );
@@ -98,10 +106,10 @@ export function PaywallDrawer({
 
         <Separator />
 
-        <div className="space-y-3 rounded-xl border p-4">
-          <div className="flex items-center gap-2 font-medium">
-            <Gift className="size-4" />
-            Реферальная программа
+        <div className="space-y-3 rounded-2xl border border-border/80 bg-secondary/40 p-4">
+          <div className="flex items-center gap-2 font-semibold">
+            <Gift className="size-4 text-primary" />
+            Рефералка
           </div>
           <p className="text-sm text-muted-foreground">
             30% с первой оплаты друга и 10% с каждого продления.
@@ -121,11 +129,10 @@ export function PaywallDrawer({
               </>
             ) : (
               <>
-                <Copy className="size-4" /> Скопировать реферальную ссылку
+                <Copy className="size-4" /> Скопировать ссылку
               </>
             )}
           </Button>
-          <p className="break-all text-xs text-muted-foreground">{referralUrl}</p>
         </div>
       </DialogContent>
     </Dialog>

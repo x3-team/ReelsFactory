@@ -21,10 +21,11 @@ export function ReferralShareBar({ referralUrl }: { referralUrl: string }) {
   );
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-xl border bg-secondary/40 p-3">
-      <p className="w-full text-xs text-muted-foreground">
+    <div className="rf-surface space-y-3 p-3">
+      <p className="text-xs text-muted-foreground">
         Приведи друга: 30% с первой оплаты, 10% с продлений
       </p>
+      <div className="flex flex-wrap gap-2">
       <Button type="button" size="sm" variant="outline" onClick={() => void copy()}>
         {copied ? (
           <>
@@ -38,9 +39,10 @@ export function ReferralShareBar({ referralUrl }: { referralUrl: string }) {
       </Button>
       <Button type="button" size="sm" asChild>
         <a href={shareHref} target="_blank" rel="noreferrer">
-          <Share2 className="size-3.5" /> Поделиться в Telegram
+          <Share2 className="size-3.5" /> В Telegram
         </a>
       </Button>
+      </div>
     </div>
   );
 }

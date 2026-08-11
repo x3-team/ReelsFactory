@@ -3,49 +3,53 @@
 @tailwind utilities;
 
 @layer base {
+  /* Film Signal — cool mist + ink + record coral (не purple / не cream-terracotta) */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
+    --background: 210 20% 97%;
+    --foreground: 230 25% 8%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 230 25% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 222 47% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 222 47% 20%;
-    --radius: 0.75rem;
+    --popover-foreground: 230 25% 8%;
+    --primary: 347 86% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 18% 93%;
+    --secondary-foreground: 230 20% 16%;
+    --muted: 210 16% 94%;
+    --muted-foreground: 220 10% 42%;
+    --accent: 210 18% 93%;
+    --accent-foreground: 230 20% 16%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 16% 88%;
+    --input: 214 16% 88%;
+    --ring: 347 86% 48%;
+    --radius: 1rem;
+    --rf-ink: 230 25% 8%;
+    --rf-mist: 210 24% 94%;
+    --rf-signal: 347 86% 48%;
   }
 
   .dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 222 47% 20%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 83%;
+    --background: 230 20% 7%;
+    --foreground: 210 20% 97%;
+    --card: 230 16% 11%;
+    --card-foreground: 210 20% 97%;
+    --popover: 230 16% 11%;
+    --popover-foreground: 210 20% 97%;
+    --primary: 347 86% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 230 14% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 230 14% 16%;
+    --muted-foreground: 215 12% 65%;
+    --accent: 230 14% 16%;
+    --accent-foreground: 210 20% 96%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 230 12% 20%;
+    --input: 230 12% 20%;
+    --ring: 347 86% 55%;
   }
 
   * {
@@ -54,9 +58,36 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* Prefer Telegram theme vars when Mini App CSS vars are bound */
-    background: var(--tg-theme-bg-color, hsl(var(--background)));
+    background:
+      radial-gradient(
+        120% 80% at 10% -10%,
+        hsl(347 86% 48% / 0.08),
+        transparent 45%
+      ),
+      radial-gradient(
+        90% 60% at 100% 0%,
+        hsl(210 40% 70% / 0.18),
+        transparent 40%
+      ),
+      var(--tg-theme-bg-color, hsl(var(--background)));
     color: var(--tg-theme-text-color, hsl(var(--foreground)));
     min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  .font-display {
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .rf-shell {
+    @apply mx-auto flex min-h-dvh w-full max-w-md flex-col;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .rf-surface {
+    @apply rounded-2xl border border-border/80 bg-card/90;
   }
 }

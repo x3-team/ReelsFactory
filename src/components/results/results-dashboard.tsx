@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Clapperboard,
-  Lock,
-  Sparkles,
-  Target,
-  Users,
-} from "lucide-react";
+import { ChevronDown, Clapperboard, Lock } from "lucide-react";
 
 import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
 import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
@@ -15,13 +9,6 @@ import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { TeleprompterMode } from "@/components/results/teleprompter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { AppAnalysis, AppScript, AppUser } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
 import { PLANS } from "@/lib/config";
@@ -54,6 +41,7 @@ export function ResultsDashboard({
   const [selectedId, setSelectedId] = useState(analysis.scripts[0]?.id);
   const [teleprompterOpen, setTeleprompterOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const selected = useMemo(
     () => analysis.scripts.find((s) => s.id === selectedId) || analysis.scripts[0],
@@ -66,17 +54,25 @@ export function ResultsDashboard({
   const planLabel = PLANS[user.subscriptionPlan]?.name || user.subscriptionPlan;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 p-4 pb-10">
-      <header className="flex items-start justify-between gap-3 pt-2">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+    <div className="rf-shell animate-rf-rise gap-5 p-4 pt-5">
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-lg font-semibold tracking-tight">
+            Reels<span className="text-primary">Factory</span>
+          </p>
+          <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
             @{analysis.socialHandle} · {analysis.platform}
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Контент‑стратегия
+          <h1 className="font-display mt-1 text-2xl font-semibold tracking-tight">
+            Снимай это
           </h1>
+          {analysis.niche && (
+            <p className="mt-1 text-sm text-muted-foreground">{analysis.niche}</p>
+          )}
         </div>
-        <Badge variant="secondary">{planLabel}</Badge>
+        <Badge variant="secondary" className="shrink-0 rounded-lg">
+          {planLabel}
+        </Badge>
       </header>
 
       {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
@@ -87,87 +83,50 @@ export function ResultsDashboard({
         />
       )}
 
-      <div className="grid gap-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="size-4" /> Ниша
-            </CardTitle>
-            <CardDescription>{analysis.niche}</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="size-4" /> Целевая аудитория
-            </CardTitle>
-            <CardDescription>{analysis.targetAudience}</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Советы по аудиту
-        </h2>
-        <div className="space-y-2">
-          {tips.map((tip) => (
-            <Card key={tip}>
-              <CardContent className="flex gap-3 p-4 text-sm">
-                <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-                <p>{tip}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Контент‑столпы
-        </h2>
-        <div className="grid gap-2">
-          {pillars.map((pillar) => (
-            <Card key={pillar.title}>
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-base">{pillar.title}</CardTitle>
-                <CardDescription>{pillar.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      </section>
-
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Сценарии
-          </h2>
+        <div className="flex items-end justify-between gap-2">
+          <div>
+            <h2 className="font-display text-lg font-semibold tracking-tight">
+              Сценарии
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Выбери ролик и открой суфлёр
+            </p>
+          </div>
           {isFree && (
             <Button size="sm" variant="outline" onClick={() => setPaywallOpen(true)}>
-              <Lock className="size-3.5" /> Открыть все
+              <Lock className="size-3.5" /> Все
             </Button>
           )}
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {analysis.scripts.map((script, index) => (
             <button
               key={script.id}
               type="button"
               onClick={() => setSelectedId(script.id)}
               className={cn(
-                "min-w-[10rem] rounded-xl border px-3 py-3 text-left text-sm",
+                "min-w-[11rem] rounded-2xl border px-3 py-3 text-left transition",
                 selected?.id === script.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border",
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border/80 bg-card/90",
               )}
             >
-              <div className="mb-1 text-xs text-muted-foreground">
-                Сценарий {index + 1}
+              <div
+                className={cn(
+                  "mb-1 text-[11px] uppercase tracking-wide",
+                  selected?.id === script.id
+                    ? "text-primary-foreground/80"
+                    : "text-muted-foreground",
+                )}
+              >
+                {index + 1}
                 {script.isTeaser ? " · тизер" : ""}
               </div>
-              <div className="line-clamp-2 font-medium">{script.title}</div>
+              <div className="line-clamp-2 text-sm font-semibold leading-snug">
+                {script.title}
+              </div>
             </button>
           ))}
         </div>
@@ -175,7 +134,6 @@ export function ResultsDashboard({
         {selected && (
           <ScriptViewer
             script={selected}
-            referralUrl={referralUrl}
             lockedTeleprompter={isFree && selected.isTeaser}
             onOpenTeleprompter={() => {
               if (isFree && selected.isTeaser) {
@@ -189,13 +147,85 @@ export function ResultsDashboard({
         )}
       </section>
 
-      <div className="grid gap-2">
-        <Button variant="outline" onClick={() => setPaywallOpen(true)}>
-          Тарифы и реферальная ссылка
-        </Button>
-        <Button variant="ghost" onClick={onReanalyze}>
-          Запустить новый анализ
-        </Button>
+      <section className="rf-surface overflow-hidden">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+          onClick={() => setAuditOpen((v) => !v)}
+        >
+          <div>
+            <p className="text-sm font-semibold">Аудит профиля</p>
+            <p className="text-xs text-muted-foreground">
+              Аудитория, советы и столпы контента
+            </p>
+          </div>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition",
+              auditOpen && "rotate-180",
+            )}
+          />
+        </button>
+        {auditOpen && (
+          <div className="space-y-4 border-t border-border/70 px-4 py-4">
+            {analysis.targetAudience && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Кому снимать
+                </p>
+                <p className="mt-1 text-sm leading-relaxed">
+                  {analysis.targetAudience}
+                </p>
+              </div>
+            )}
+            {tips.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Советы
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {tips.map((tip) => (
+                    <li
+                      key={tip}
+                      className="rounded-xl bg-secondary/70 px-3 py-2 text-sm leading-relaxed"
+                    >
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {pillars.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Столпы
+                </p>
+                <div className="mt-2 space-y-2">
+                  {pillars.map((pillar) => (
+                    <div key={pillar.title} className="rounded-xl bg-secondary/70 px-3 py-2">
+                      <p className="text-sm font-semibold">{pillar.title}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {pillar.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      <div className="space-y-3">
+        <ReferralShareBar referralUrl={referralUrl} />
+        <div className="grid gap-2">
+          <Button variant="outline" onClick={() => setPaywallOpen(true)}>
+            Тарифы
+          </Button>
+          <Button variant="ghost" onClick={onReanalyze}>
+            Новый анализ
+          </Button>
+        </div>
       </div>
 
       {teleprompterOpen && selected && (
@@ -221,13 +251,11 @@ export function ResultsDashboard({
 
 function ScriptViewer({
   script,
-  referralUrl,
   lockedTeleprompter,
   onOpenTeleprompter,
   onUnlock,
 }: {
   script: AppScript;
-  referralUrl: string;
   lockedTeleprompter: boolean;
   onOpenTeleprompter: () => void;
   onUnlock: () => void;
@@ -235,57 +263,57 @@ function ScriptViewer({
   const hooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{script.title}</CardTitle>
-        <CardDescription>{script.format}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Варианты хуков
-          </p>
-          <ul className="space-y-2">
-            {hooks.map((hook) => (
-              <li
-                key={hook}
-                className="rounded-lg bg-secondary/70 px-3 py-2 text-sm"
-              >
-                {hook}
-              </li>
-            ))}
-          </ul>
-        </div>
+    <div className="rf-surface space-y-4 p-4">
+      <div>
+        <h3 className="font-display text-xl font-semibold leading-snug tracking-tight">
+          {script.title}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">{script.format}</p>
+      </div>
 
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Текст для суфлёра
-          </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed">
-            {script.teleprompterScript}
-          </pre>
-        </div>
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Цепляющие фразы
+        </p>
+        <ul className="space-y-2">
+          {hooks.map((hook) => (
+            <li
+              key={hook}
+              className="rounded-xl bg-secondary/80 px-3 py-2.5 text-sm leading-snug"
+            >
+              {hook}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-        <div className="space-y-1 text-sm">
-          <p>
-            <span className="font-medium">CTA:</span> {script.cta}
-          </p>
-          <p className="text-muted-foreground">{script.caption}</p>
-        </div>
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Текст для суфлёра
+        </p>
+        <pre className="whitespace-pre-wrap rounded-xl bg-foreground/[0.03] p-3 text-sm leading-relaxed">
+          {script.teleprompterScript}
+        </pre>
+      </div>
 
-        <div className="grid gap-2">
-          <Button onClick={onOpenTeleprompter}>
-            <Clapperboard className="size-4" />
-            {lockedTeleprompter ? "Открыть режим суфлёра" : "Режим суфлёра"}
+      <div className="space-y-1 text-sm">
+        <p>
+          <span className="font-semibold">Призыв:</span> {script.cta}
+        </p>
+        <p className="text-muted-foreground">{script.caption}</p>
+      </div>
+
+      <div className="grid gap-2">
+        <Button size="lg" onClick={onOpenTeleprompter}>
+          <Clapperboard className="size-4" />
+          {lockedTeleprompter ? "Открыть суфлёр" : "Режим суфлёра"}
+        </Button>
+        {lockedTeleprompter && (
+          <Button variant="outline" onClick={onUnlock}>
+            <Lock className="size-4" /> Смотреть все сценарии
           </Button>
-          {lockedTeleprompter && (
-            <Button variant="outline" onClick={onUnlock}>
-              <Lock className="size-4" /> Смотреть все сценарии
-            </Button>
-          )}
-          <ReferralShareBar referralUrl={referralUrl} />
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }

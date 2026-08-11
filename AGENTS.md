@@ -18,13 +18,14 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 - Plans: Free / Start 590₽ / Pro 1990₽ / **Agency 4990₽** (до 5 клиентских аккаунтов)
 - Referral: **30%** первая оплата, **10%** продления; share под карточками сценариев
 - AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — ключ `AITUNNEL_API_KEY`
-  - Default LLM: **`deepseek-v4-flash`** (Free/Start) — лучший баланс цена/качество для JSON-сценариев (~18/36 ₽ за 1M)
-  - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`, ~20/1200 ₽ за 1M)
-  - Whisper: `whisper-1` (основной AI-COGS)
-- Scraping Instagram: **`APIFY_TOKEN`** (актор `apify/instagram-profile-scraper`) → fallback `RAPIDAPI_KEY` → mock
+  - Default LLM: **`gemini-3.5-flash-lite`** (Free/Start)
+  - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`)
+  - Whisper: по умолчанию **выкл** (`ENABLE_WHISPER=false`); captions хватает для стратегии
+- Scraping Instagram: **`APIFY_TOKEN`** (`resultsLimit≈6`) → fallback `RAPIDAPI_KEY` → mock
 - Очередь анализа: BullMQ при `REDIS_URL`, иначе in-process memory queue + polling `GET /api/analyze?id=`
 - Ключи только в `.env` / секретах Cursor — **не** в `.env.example`
-- Сценарии: длины **15 / 30 / 45** сек, жёсткий каркас хук→проблема→демо→CTA; цену не копировать в каждый ролик
+- Сценарии: длины **15 / 30 / 45** сек; жёсткий каркас хук→проблема→демо→CTA
+- Ожидаемое время анализа без Whisper: **~40–60 сек** (Apify + LLM)
 
 ### Services
 
@@ -50,27 +51,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 
 ### Unit economics (AITunnel, зафиксировано 11.08.2026)
 
-Реальный прогон анализа `@desertmsk` (проект ReelsFactory в AITunnel):
+Реальный прогон с Whisper ×5 + gpt-4o-mini ≈ **1.67₽** (Whisper ~91%).
 
-| Вызов | Стоимость |
-| --- | --- |
-| `whisper-1` × 5 | 0.26 + 0.30 + 0.44 + 0.22 + 0.30 = **1.52₽** |
-| `gpt-4o-mini` × 1 (стратегия/сценарии) | **0.15₽** |
-| **Итого AI на 1 анализ** | **≈ 1.67₽** |
-
-Доля: Whisper ≈ **91%** стоимости AI, LLM ≈ **9%**.
-
-Ожидание после лимита топ‑3 рилсов на Whisper: ≈ **1.0–1.2₽** AI / анализ (без учёта Apify).
-
-Сверка с тарифами (только AITunnel, без Apify/инфры):
-
-| План | Цена | Сценарии/мес | Анализов* | AI COGS* | Доля от цены |
-| --- | --- | --- | --- | --- | --- |
-| FREE | 0₽ | 1 тизер | 1 | ~1.7₽ | loss-leader |
-| START | 590₽ | 12 | ~4 | ~7₽ | ~1% |
-| PRO | 1990₽ | 30 | ~10 | ~17₽ | ~1% |
-| AGENCY | 4990₽ | 100 | ~33 | ~55₽ | ~1% |
-
-\*1 анализ сейчас даёт до 3 сценариев; COGS при ~1.67₽/анализ.
-
-**Вывод:** AI-экономика сходится с запасом. Главный AI-расход — Whisper; LLM на mini почти копеечный. В полную себестоимость ещё закладывать **Apify** (отдельно от этого скрина).
+Текущий default **без Whisper**: LLM ~0.3–1.2₽ + Apify отдельно.  
+`ENABLE_WHISPER=true` — максимум 1 ролик.

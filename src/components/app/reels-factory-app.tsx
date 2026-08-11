@@ -11,6 +11,7 @@ import {
 import { ResultsDashboard } from "@/components/results/results-dashboard";
 import { TelegramBackButton } from "@/components/telegram/back-button";
 import { useTelegram } from "@/components/telegram/telegram-provider";
+import { Button } from "@/components/ui/button";
 import {
   api,
   type AppAnalysis,
@@ -238,25 +239,31 @@ export function ReelsFactoryApp() {
 
   if (screen === "boot" || !ready) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="rf-shell items-center justify-center gap-3 p-4">
+        <p className="font-display text-xl font-semibold tracking-tight">
+          Reels<span className="text-primary">Factory</span>
+        </p>
+        <Loader2 className="size-7 animate-spin text-primary" />
       </div>
     );
   }
 
   if (screen === "error") {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4 text-center">
+      <div className="rf-shell justify-center gap-4 p-4 text-center">
         <TelegramBackButton show={false} />
-        <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
+        <p className="font-display text-lg font-semibold">
+          Reels<span className="text-primary">Factory</span>
+        </p>
+        <h1 className="font-display text-xl font-semibold">Что-то пошло не так</h1>
         <p className="text-sm text-muted-foreground">{error}</p>
-        <button
+        <Button
           type="button"
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          className="mx-auto"
           onClick={() => void bootstrap()}
         >
           Повторить
-        </button>
+        </Button>
       </div>
     );
   }

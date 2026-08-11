@@ -1,7 +1,10 @@
 import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
-import { transcribeAudio } from "@/lib/ai/transcribe";
+import {
+  captionAsTranscript,
+  transcribeAudio,
+} from "@/lib/ai/transcribe";
 import { PLANS } from "@/lib/config";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
@@ -48,15 +51,20 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
-    // 3 ролика достаточно для стратегии; 5 × Whisper сильно раздувают ожидание
-    const transcriptions: string[] = [];
-    for (const video of profile.topVideos.slice(0, 3)) {
-      const { text } = await transcribeAudio({
-        audioUrl: video.audioUrl || video.url,
-        hint: video.caption,
-      });
-      transcriptions.push(text);
-    }
+    // По умолчанию captions (быстро). Whisper — только при ENABLE_WHISPER=true, макс 1 ролик.
+    const videos = profile.topVideos.slice(0, 3);
+    const transcriptions = await Promise.all(
+      videos.map(async (video, index) => {
+        if (index === 0) {
+          const { text } = await transcribeAudio({
+            audioUrl: video.audioUrl || video.url,
+            hint: video.caption,
+          });
+          return text;
+        }
+        return captionAsTranscript(video.caption);
+      }),
+    );
 
     await prisma.profileAnalysis.update({
       where: { id: analysisId },

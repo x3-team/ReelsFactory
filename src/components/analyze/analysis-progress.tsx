@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 
 import { Progress } from "@/components/ui/progress";
@@ -14,23 +14,23 @@ const STEPS = [
   {
     key: "SCRAPING",
     label: "Сканируем профиль",
-    detail: "Забираем био и топ‑рилсы из Instagram",
-    expectedSec: 35,
-    range: [5, 40] as const,
+    detail: "Био и топ‑рилсы из Instagram",
+    expectedSec: 40,
+    range: [8, 62] as const,
   },
   {
     key: "TRANSCRIBING",
-    label: "Разбираем рилсы",
-    detail: "Слушаем аудио и вытаскиваем хуки",
-    expectedSec: 45,
-    range: [40, 75] as const,
+    label: "Собираем хуки",
+    detail: "Цепляющие фразы из роликов",
+    expectedSec: 5,
+    range: [62, 74] as const,
   },
   {
     key: "GENERATING",
     label: "Пишем сценарии",
-    detail: "Собираем столпы, хуки и суфлёр",
-    expectedSec: 25,
-    range: [75, 97] as const,
+    detail: "Столпы, суфлёр и CTA",
+    expectedSec: 20,
+    range: [74, 97] as const,
   },
 ] as const;
 
@@ -71,8 +71,8 @@ function percentForStatus(
 
   const step = STEPS[idx];
   const [from, to] = step.range;
-  // Асимптота к верхней границе этапа — не «прыгает» на 100% раньше времени
-  const t = 1 - Math.exp(-stageElapsedSec / Math.max(8, step.expectedSec * 0.55));
+  // Линейный рост по ожидаемому времени этапа — не «залипает» у потолка
+  const t = Math.min(0.92, stageElapsedSec / Math.max(6, step.expectedSec));
   return Math.round(from + (to - from) * t);
 }
 
@@ -88,14 +88,12 @@ export function AnalysisProgress({
   const index = stepIndex(status);
   const stageStartedAt = useRef(Date.now());
   const lastStatus = useRef(status);
-  const [stageElapsed, setStageElapsed] = useState(0);
   const [displayPercent, setDisplayPercent] = useState(3);
 
   useEffect(() => {
     if (status !== lastStatus.current) {
       lastStatus.current = status;
       stageStartedAt.current = Date.now();
-      setStageElapsed(0);
     }
   }, [status]);
 
@@ -106,7 +104,6 @@ export function AnalysisProgress({
     }
     const id = window.setInterval(() => {
       const stageSec = (Date.now() - stageStartedAt.current) / 1000;
-      setStageElapsed(stageSec);
       const target = percentForStatus(status, stageSec);
       setDisplayPercent((prev) => {
         // Плавное догоняние без рывков назад
@@ -124,63 +121,39 @@ export function AnalysisProgress({
       : Math.min(97, Math.round(displayPercent));
 
   const activeStep = STEPS[Math.max(0, Math.min(index, STEPS.length - 1))];
-  const etaSec = useMemo(() => {
-    if (failedMessage || status === "COMPLETED") return 0;
-    const remainingStages = STEPS.slice(Math.max(0, index));
-    let left = 0;
-    remainingStages.forEach((step, i) => {
-      if (i === 0) {
-        left += Math.max(5, step.expectedSec - stageElapsed);
-      } else {
-        left += step.expectedSec;
-      }
-    });
-    return Math.round(left);
-  }, [failedMessage, status, index, stageElapsed]);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 p-4">
-      <div className="relative mx-auto flex size-28 items-center justify-center">
-        <div className="absolute inset-0 animate-ping rounded-full bg-primary/10" />
-        <div className="absolute inset-2 rounded-full bg-primary/10" />
+    <div className="rf-shell animate-rf-rise justify-center gap-6 p-4">
+      <p className="text-center font-display text-lg font-semibold tracking-tight">
+        Reels<span className="text-primary">Factory</span>
+      </p>
+      <div className="relative mx-auto flex size-32 items-center justify-center">
+        <div className="absolute inset-0 animate-rf-pulse-soft rounded-full bg-primary/15" />
+        <div className="absolute inset-3 rounded-full border border-primary/20 bg-card/80" />
         <div className="relative flex flex-col items-center justify-center">
-          <span className="text-3xl font-semibold tabular-nums tracking-tight">
+          <span className="font-display text-4xl font-semibold tabular-nums tracking-tight">
             {percent}%
           </span>
           <Loader2 className="mt-1 size-4 animate-spin text-primary" />
         </div>
       </div>
 
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Анализируем профиль
+      <div className="space-y-1 text-center">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          Разбираем профиль
         </h1>
         <p className="text-sm text-muted-foreground">
           {failedMessage
             ? "Не удалось завершить анализ"
             : status === "COMPLETED"
               ? "Готово"
-              : `${activeStep.label} · обычно ещё ~${etaSec} сек`}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Живой анализ Instagram занимает 1–2 минуты. Прошло {elapsedSec} сек.
+              : `${activeStep.label} · ${elapsedSec} сек`}
         </p>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Этап {Math.max(1, Math.min(index + 1, STEPS.length))} из{" "}
-            {STEPS.length}
-          </span>
-          <span className="tabular-nums font-medium text-foreground">
-            {percent}%
-          </span>
-        </div>
-        <Progress value={percent} />
-      </div>
+      <Progress value={percent} className="h-2.5" />
 
-      <ul className="space-y-3">
+      <ul className="space-y-2">
         {STEPS.map((step, i) => {
           const state = failedMessage
             ? i === Math.max(0, index)
@@ -198,9 +171,10 @@ export function AnalysisProgress({
             <li
               key={step.key}
               className={cn(
-                "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
                 state === "active" && "border-primary bg-primary/5",
-                state === "done" && "opacity-80",
+                state === "done" && "border-border/70 bg-card/70 opacity-80",
+                state === "pending" && "border-border/60 bg-card/50",
                 state === "failed" && "border-destructive text-destructive",
               )}
             >
@@ -210,7 +184,8 @@ export function AnalysisProgress({
                   state === "active" && "bg-primary text-primary-foreground",
                   state === "done" && "bg-primary text-primary-foreground",
                   state === "pending" && "bg-muted text-muted-foreground",
-                  state === "failed" && "bg-destructive text-destructive-foreground",
+                  state === "failed" &&
+                    "bg-destructive text-destructive-foreground",
                 )}
               >
                 {state === "done" ? (
@@ -222,25 +197,15 @@ export function AnalysisProgress({
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-medium">
+                <span className="block font-semibold">
                   {state === "failed" ? failedMessage : step.label}
                 </span>
                 {state !== "failed" && (
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {step.detail}
-                    {state === "active"
-                      ? ` · ~${step.expectedSec} сек`
-                      : state === "done"
-                        ? " · готово"
-                        : ""}
                   </span>
                 )}
               </span>
-              {state === "active" && (
-                <span className="shrink-0 tabular-nums text-xs font-medium text-primary">
-                  {percent}%
-                </span>
-              )}
             </li>
           );
         })}
