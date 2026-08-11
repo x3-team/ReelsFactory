@@ -303,14 +303,46 @@ function ScriptViewer({
   lockedCount: number;
 }) {
   const hooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
-  const [copied, setCopied] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const tips = filmingTips(script.format, script.teleprompterScript);
 
-  async function copyCaption() {
-    const text = [script.caption, script.cta].filter(Boolean).join("\n\n");
+  async function copyText(key: string, text: string) {
     await navigator.clipboard.writeText(text);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    setCopiedKey(key);
+    window.setTimeout(() => setCopiedKey(null), 1500);
+  }
+
+  function CopyBtn({
+    copyKey,
+    label,
+    text,
+    className,
+  }: {
+    copyKey: string;
+    label: string;
+    text: string;
+    className?: string;
+  }) {
+    const done = copiedKey === copyKey;
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className={className}
+        onClick={() => void copyText(copyKey, text)}
+      >
+        {done ? (
+          <>
+            <Check className="size-3.5" /> Скопировано
+          </>
+        ) : (
+          <>
+            <Copy className="size-3.5" /> {label}
+          </>
+        )}
+      </Button>
+    );
   }
 
   return (
@@ -334,24 +366,45 @@ function ScriptViewer({
       </div>
 
       <div>
-        <p className="rf-label mb-2">Выбери хук (0–3 сек)</p>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="rf-label">Выбери хук (0–3 сек)</p>
+          {hooks[0] ? (
+            <CopyBtn
+              copyKey="hook-best"
+              label="Хук"
+              text={hooks[0]}
+              className="h-8 px-2.5 text-xs"
+            />
+          ) : null}
+        </div>
         <ul className="space-y-2">
           {hooks.map((hook, i) => (
-            <li
-              key={hook}
-              className={cn(
-                "rounded-xl px-3 py-2.5 text-[14px] leading-6",
-                i === 0
-                  ? "border border-primary/30 bg-primary/5 font-medium"
-                  : "border border-border/60 bg-card",
-              )}
-            >
-              {i === 0 && (
-                <span className="mb-1 block text-[12px] font-medium text-primary">
-                  Рекомендуем
-                </span>
-              )}
-              {hook}
+            <li key={hook}>
+              <button
+                type="button"
+                onClick={() => void copyText(`hook-${i}`, hook)}
+                className={cn(
+                  "w-full rounded-xl px-3 py-2.5 text-left text-[14px] leading-6 transition",
+                  i === 0
+                    ? "border border-primary/30 bg-primary/5 font-medium"
+                    : "border border-border/60 bg-card",
+                )}
+              >
+                {i === 0 && (
+                  <span className="mb-1 flex items-center justify-between gap-2 text-[12px] font-medium text-primary">
+                    Рекомендуем
+                    <span className="font-normal text-muted-foreground">
+                      {copiedKey === `hook-${i}` ? "Скопировано" : "Нажми — скопировать"}
+                    </span>
+                  </span>
+                )}
+                {i > 0 && (
+                  <span className="mb-1 block text-[11px] text-muted-foreground">
+                    {copiedKey === `hook-${i}` ? "Скопировано" : "Нажми — скопировать"}
+                  </span>
+                )}
+                {hook}
+              </button>
             </li>
           ))}
         </ul>
@@ -375,7 +428,15 @@ function ScriptViewer({
       </div>
 
       <div>
-        <p className="rf-label mb-2">Текст для суфлёра</p>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="rf-label">Текст сценария</p>
+          <CopyBtn
+            copyKey="script"
+            label="Сценарий"
+            text={script.teleprompterScript}
+            className="h-8 px-2.5 text-xs"
+          />
+        </div>
         <pre className="whitespace-pre-wrap rounded-xl border border-border/60 bg-card p-3 text-[14px] leading-7 text-foreground">
           {script.teleprompterScript}
         </pre>
@@ -386,23 +447,32 @@ function ScriptViewer({
           <span className="font-semibold">Призыв:</span> {script.cta}
         </p>
         <p className="text-muted-foreground">{script.caption}</p>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="mt-1"
-          onClick={() => void copyCaption()}
-        >
-          {copied ? (
-            <>
-              <Check className="size-3.5" /> Скопировано
-            </>
-          ) : (
-            <>
-              <Copy className="size-3.5" /> Копировать текст поста
-            </>
-          )}
-        </Button>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <CopyBtn
+            copyKey="caption"
+            label="Текст поста"
+            text={[script.caption, script.cta].filter(Boolean).join("\n\n")}
+          />
+          <CopyBtn
+            copyKey="all"
+            label="Всё целиком"
+            text={[
+              script.title,
+              "",
+              "Хуки:",
+              ...hooks.map((h, i) => `${i + 1}. ${h}`),
+              "",
+              "Сценарий:",
+              script.teleprompterScript,
+              "",
+              "Пост:",
+              script.caption,
+              script.cta,
+            ]
+              .filter((line) => line !== undefined)
+              .join("\n")}
+          />
+        </div>
       </div>
 
       <div className="grid gap-2">
