@@ -32,7 +32,7 @@ export function llmModel() {
   return (
     process.env.AITUNNEL_LLM_MODEL ||
     process.env.OPENAI_MODEL ||
-    "gpt-4o"
+    "gpt-4o-mini"
   );
 }
 
