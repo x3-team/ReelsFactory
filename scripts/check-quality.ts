@@ -1,4 +1,4 @@
-import { sliceChars, sliceWords } from "@/lib/ai/safe-json";
+import { sanitizeForJson, sliceChars, sliceWords, stripLoneSurrogates } from "@/lib/ai/safe-json";
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
@@ -78,6 +78,10 @@ assert(insights.factCard.withoutClaims.some((c) => /масл/.test(c)) || insigh
 assert(!/йогурт/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub yogurt");
 assert(!/бисквит/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub biscuit");
 assert(!/5 минут/.test(scrubInvented("торт за 5 минут", insights.factCard)), "scrub clickbait");
+
+const lone = "пышное \uD83D и нежное";
+assert(!/[\uD800-\uDFFF]/.test(stripLoneSurrogates(lone)), "strip lone surrogate");
+JSON.stringify(sanitizeForJson({ title: lone, nested: { t: lone } }));
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,

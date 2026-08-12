@@ -9,6 +9,7 @@ import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { refundQuota } from "@/lib/quota-lock";
 import { assertRateLimit, httpErrorStatus } from "@/lib/rate-limit";
+import { sanitizeForJson } from "@/lib/ai/safe-json";
 import { serialize } from "@/lib/serialize";
 import { assertCanRemake, QuotaError } from "@/lib/usage";
 
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
     );
 
     const savedScript = await prisma.script.create({
-      data: {
+      data: sanitizeForJson({
         userId: user.id,
         analysisId: analysis.id,
         title: remake.remake.title,
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
         funnel: remake.funnel as object,
         propsChecklist: remake.remake.props_checklist ?? undefined,
         sourceType: "remake",
-      },
+      }),
     });
     if (!mocked) {
       await recordCostEvent("llm", user.id, "remake");

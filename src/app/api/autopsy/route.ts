@@ -9,6 +9,7 @@ import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { refundQuota } from "@/lib/quota-lock";
 import { assertRateLimit, httpErrorStatus } from "@/lib/rate-limit";
+import { sanitizeForJson } from "@/lib/ai/safe-json";
 import { serialize } from "@/lib/serialize";
 import { assertCanAutopsy, QuotaError } from "@/lib/usage";
 
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     );
 
     const savedScript = await prisma.script.create({
-      data: {
+      data: sanitizeForJson({
         userId: user.id,
         analysisId: analysis.id,
         title: autopsy.reshoot_script.title,
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
         durationSec: autopsy.reshoot_script.duration_sec ?? 20,
         commentKeyword,
         sourceType: "autopsy",
-      },
+      }),
     });
     if (!mocked) {
       await recordCostEvent("llm", user.id, "autopsy");

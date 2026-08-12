@@ -51,32 +51,26 @@ function scriptCreateData(
   paid: boolean,
   sourceType = "core",
 ) {
-  return {
+  return sanitizeForJson({
     userId,
     analysisId,
     title: script.title,
     format: script.format,
-    hookOptions: sanitizeForJson(script.hook_options),
+    hookOptions: script.hook_options,
     teleprompterScript: script.teleprompter_script,
     caption: script.caption,
     cta: script.cta,
     isTeaser: !paid,
     durationSec: script.duration_sec ?? null,
     commentKeyword: script.comment_keyword ?? script.funnel?.comment_keyword ?? null,
-    platformPacks: script.platform_packs
-      ? sanitizeForJson(script.platform_packs as object)
-      : undefined,
-    funnel: script.funnel ? sanitizeForJson(script.funnel as object) : undefined,
-    propsChecklist: script.props_checklist
-      ? sanitizeForJson(script.props_checklist)
-      : undefined,
+    platformPacks: script.platform_packs ?? undefined,
+    funnel: script.funnel ?? undefined,
+    propsChecklist: script.props_checklist ?? undefined,
     shootOrder: script.shoot_order ?? null,
     sourceType,
     sourceAngle: script.source_angle || null,
-    shotList: script.shot_list?.length
-      ? sanitizeForJson(script.shot_list)
-      : undefined,
-  };
+    shotList: script.shot_list?.length ? script.shot_list : undefined,
+  });
 }
 
 export async function runAnalysisForExisting(user: User, analysisId: string) {
@@ -136,7 +130,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       where: { id: analysisId },
       data: {
         status: AnalysisStatus.GENERATING,
-        transcriptions,
+        transcriptions: sanitizeForJson(transcriptions),
       },
     });
 
@@ -214,26 +208,18 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       await tx.script.deleteMany({ where: { analysisId } });
       await tx.profileAnalysis.update({
         where: { id: analysisId },
-        data: {
+        data: sanitizeForJson({
           status: AnalysisStatus.COMPLETED,
           niche: strategy.niche,
           targetAudience: strategy.target_audience,
-          contentPillars: sanitizeForJson(pillars),
-          profileAuditTips: sanitizeForJson(strategy.profile_audit_tips),
-          shootDayPlan: strategy.shoot_day
-            ? sanitizeForJson(strategy.shoot_day as object)
-            : undefined,
-          pillarsCalendar: strategy.pillars_calendar
-            ? sanitizeForJson(strategy.pillars_calendar as object)
-            : undefined,
-          funnelKit: strategy.funnel_kit
-            ? sanitizeForJson(strategy.funnel_kit as object)
-            : undefined,
-          autopsyTemplate: strategy.autopsy_template
-            ? sanitizeForJson(strategy.autopsy_template as object)
-            : undefined,
+          contentPillars: pillars,
+          profileAuditTips: strategy.profile_audit_tips,
+          shootDayPlan: strategy.shoot_day ?? undefined,
+          pillarsCalendar: strategy.pillars_calendar ?? undefined,
+          funnelKit: strategy.funnel_kit ?? undefined,
+          autopsyTemplate: strategy.autopsy_template ?? undefined,
           errorMessage: null,
-        },
+        }),
       });
 
       for (const script of uniqueScripts) {
@@ -257,8 +243,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       where: { id: analysisId },
       data: {
         status: AnalysisStatus.FAILED,
-        errorMessage:
+        errorMessage: sanitizeForJson(
           error instanceof Error ? error.message : "Ошибка пайплайна анализа",
+        ),
       },
     });
     throw error;

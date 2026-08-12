@@ -5,6 +5,7 @@ import {
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
 
 const DEFAULT_IG_PROFILE_ACTOR = "apify/instagram-profile-scraper";
+const DEFAULT_IG_POSTS_ACTOR = "apify/instagram-scraper";
 
 type ApifyIgPost = {
   id?: string;
@@ -54,22 +55,33 @@ function ttActorId() {
   return process.env.APIFY_TIKTOK_ACTOR || DEFAULT_TT_PROFILE_ACTOR;
 }
 
+function igPostsActorId() {
+  return process.env.APIFY_INSTAGRAM_POSTS_ACTOR || DEFAULT_IG_POSTS_ACTOR;
+}
+
 /** apify/instagram-profile-scraper → apify~instagram-profile-scraper */
 function actorPath(id: string) {
   return id.replace("/", "~");
 }
 
-async function runApifyActor<T>(actor: string, input: unknown): Promise<T[]> {
+async function runApifyActor<T>(
+  actor: string,
+  input: unknown,
+  timeoutSecs?: number,
+): Promise<T[]> {
   const token = apifyToken();
   if (!token) {
     throw new Error("APIFY_TOKEN не задан");
   }
 
+  const timeoutNum = Number(timeoutSecs || process.env.APIFY_TIMEOUT_SECS || 120);
   const url = new URL(
     `https://api.apify.com/v2/acts/${actorPath(actor)}/run-sync-get-dataset-items`,
   );
-  url.searchParams.set("timeout", process.env.APIFY_TIMEOUT_SECS || "120");
+  url.searchParams.set("timeout", String(timeoutNum));
 
+  const fetchMs =
+    Number(process.env.APIFY_FETCH_TIMEOUT_MS || 0) || timeoutNum * 1000 + 10_000;
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: {
@@ -77,9 +89,7 @@ async function runApifyActor<T>(actor: string, input: unknown): Promise<T[]> {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(input),
-    signal: AbortSignal.timeout(
-      Number(process.env.APIFY_FETCH_TIMEOUT_MS || 130_000),
-    ),
+    signal: AbortSignal.timeout(fetchMs),
   });
 
   if (!res.ok) {
@@ -98,7 +108,15 @@ async function runApifyActor<T>(actor: string, input: unknown): Promise<T[]> {
 
 function isVideoPost(post: ApifyIgPost) {
   if (post.videoUrl) return true;
-  if (post.type === "Video") return true;
+  const type = (post.type || "").toLowerCase();
+  if (
+    type === "video" ||
+    type === "graphvideo" ||
+    type === "reel" ||
+    type === "clips"
+  ) {
+    return true;
+  }
   if (post.productType === "clips" || post.productType === "reels") return true;
   return false;
 }
@@ -146,12 +164,54 @@ function collectCaptions(posts: ApifyIgPost[]) {
     .slice(0, SCRAPE_POSTS_LIMIT);
 }
 
+async function fetchMoreIgPosts(
+  handle: string,
+  userId?: string,
+): Promise<ApifyIgPost[]> {
+  if (process.env.APIFY_SKIP_POSTS_ACTOR === "true") return [];
+  const { canRunApify, recordCostEvent } = await import("@/lib/cost-meter");
+  if (!(await canRunApify())) return [];
+
+  const directUrls = [`https://www.instagram.com/${handle}/`];
+  const preferred = process.env.APIFY_IG_POSTS_TYPE || "reels";
+  const types = [...new Set([preferred, "posts"])];
+  const timeoutSecs = Number(process.env.APIFY_POSTS_TIMEOUT_SECS || 90);
+
+  for (const resultsType of types) {
+    try {
+      const items = await runApifyActor<ApifyIgPost>(
+        igPostsActorId(),
+        {
+          directUrls,
+          resultsType,
+          resultsLimit: SCRAPE_POSTS_LIMIT,
+        },
+        timeoutSecs,
+      );
+      await recordCostEvent("apify", userId, `ig-posts:${resultsType}`);
+      const usable = items.filter(
+        (item) => item.shortCode || item.id || item.videoUrl || item.caption,
+      );
+      if (usable.length) return usable;
+      return [];
+    } catch (error) {
+      console.warn(
+        `Apify ${igPostsActorId()} ${resultsType} failed:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+  return [];
+}
+
 /**
  * Instagram profile + latest posts/reels via Apify.
- * Prefers official actor `apify/instagram-profile-scraper` (override with APIFY_INSTAGRAM_ACTOR).
+ * Profile actor first; if it returns too few videos, a second actor
+ * (`apify/instagram-scraper`, override APIFY_INSTAGRAM_POSTS_ACTOR) pulls more reels.
  */
 export async function fetchInstagramViaApify(
   handle: string,
+  userId?: string,
 ): Promise<ScrapedProfile> {
   let items: Array<ApifyIgProfile & ApifyIgPost> = [];
   try {
@@ -180,7 +240,12 @@ export async function fetchInstagramViaApify(
   }
 
   const latest = collectIgPosts(items);
-  const topVideos = mapPosts(latest);
+  let extra: ApifyIgPost[] = [];
+  if (mapPosts(latest).length < CAPTION_VIDEOS_LIMIT) {
+    extra = await fetchMoreIgPosts(handle, userId);
+  }
+  const merged = extra.length ? collectIgPosts([...items, ...extra]) : latest;
+  const topVideos = mapPosts(merged);
 
   return {
     handle: profile.username || handle,
@@ -191,7 +256,7 @@ export async function fetchInstagramViaApify(
     following: profile.followsCount,
     postsCount: profile.postsCount,
     topVideos,
-    recentCaptions: collectCaptions(latest),
+    recentCaptions: collectCaptions(merged),
   };
 }
 

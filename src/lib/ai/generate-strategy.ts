@@ -9,6 +9,7 @@ import { sanitizeStrategy } from "@/lib/ai/sanitize-scripts";
 import { contentModeFromTranscripts } from "@/lib/ai/speech-signal";
 import { getNichePreset } from "@/lib/niche-presets";
 import { mockStrategy } from "@/lib/mocks/demo-data";
+import { sliceChars } from "@/lib/ai/safe-json";
 import type { ProfileInsights } from "@/lib/content/profile-insights";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
@@ -146,6 +147,7 @@ export async function generateStrategy(input: {
         topVideos: input.profile.topVideos.slice(0, 12).map((v) => ({
           views: v.views,
           durationSec: v.durationSec,
+          caption: sliceChars(v.caption || "", 180),
         })),
       },
       transcriptions: usableTranscripts,
@@ -157,9 +159,10 @@ export async function generateStrategy(input: {
             has_website_cta: input.insights.hasWebsiteCta,
             has_telegram_cta: input.insights.hasTelegramCta,
             voice_samples: input.insights.voiceSamples,
-            caption_angles: input.insights.captionAngles.map((a) => ({
+            caption_angles: input.insights.captionAngles.slice(0, 10).map((a) => ({
               views: a.views,
               hook: a.hookLine,
+              caption: sliceChars(a.caption || "", 180),
             })),
             suggested_keyword: input.insights.suggestedKeyword,
             bio_excerpt: input.insights.bioExcerpt,

@@ -51,7 +51,7 @@ export async function parseProfile(input: {
   if (input.platform === "instagram") {
     if (hasApifyCredentials() && (await canRunApify())) {
       try {
-        profile = await fetchInstagramViaApify(handle);
+        profile = await fetchInstagramViaApify(handle, input.userId);
         await recordCostEvent("apify", input.userId, handle);
       } catch (error) {
         console.error("Apify Instagram scrape failed, trying RapidAPI", error);
