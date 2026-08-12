@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Clapperboard, Mic } from "lucide-react";
+import { ArrowRight, Mic } from "lucide-react";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,14 @@ const TONES = [
   { id: "STORYTELLING" as const, label: "Сторителлинг" },
 ];
 
+const PRIMARY_NICHES = NICHE_PRESETS.filter((p) =>
+  ["beauty", "realty", "clinic", "coach", "shop", "food"].includes(p.id),
+);
+const EXTRA_NICHES = NICHE_PRESETS.filter((p) =>
+  ["edtech", "smm"].includes(p.id),
+);
+const CUSTOM_NICHE = NICHE_PRESETS.find((p) => p.id === "custom")!;
+
 export function OnboardingForm({
   userName,
   loading,
@@ -52,11 +61,13 @@ export function OnboardingForm({
   const [step, setStep] = useState(0);
   const [socialHandle, setSocialHandle] = useState("");
   const [nichePreset, setNichePreset] = useState<NichePresetId>("custom");
+  const [showExtraNiches, setShowExtraNiches] = useState(false);
   const [profileGoal, setProfileGoal] =
     useState<OnboardingValues["profileGoal"]>("GROW_AUDIENCE");
   const [toneOfVoice, setToneOfVoice] =
     useState<OnboardingValues["toneOfVoice"]>("DIRECT");
   const [websiteUrl, setWebsiteUrl] = useState("");
+  const [showWebsite, setShowWebsite] = useState(false);
   const [offerSummary, setOfferSummary] = useState("");
   const [voiceDraft, setVoiceDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -90,11 +101,9 @@ export function OnboardingForm({
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 p-4 pb-8">
       <header className="pt-2">
-        <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Clapperboard className="size-5" />
-        </div>
-        <p className="text-sm text-muted-foreground">Привет, {userName}</p>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <BrandMark />
+        <p className="mt-4 text-sm text-muted-foreground">Привет, {userName}</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
           Настроим контент‑машину
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -131,32 +140,51 @@ export function OnboardingForm({
 
       {step === 1 && (
         <section className="space-y-3">
-          <Label>Ниша (пресет для СНГ)</Label>
+          <Label>Ниша</Label>
           <div className="grid grid-cols-2 gap-2">
-            {NICHE_PRESETS.map((preset) => (
-              <button
+            {PRIMARY_NICHES.map((preset) => (
+              <NicheTile
                 key={preset.id}
-                type="button"
+                label={preset.label}
+                pain={preset.pain}
+                selected={nichePreset === preset.id}
                 onClick={() => {
                   setNichePreset(preset.id);
-                  if (!offerSummary && preset.id !== "custom") {
-                    setOfferSummary(preset.defaultOffer);
-                  }
+                  if (!offerSummary) setOfferSummary(preset.defaultOffer);
                 }}
-                className={cn(
-                  "rounded-xl border px-3 py-3 text-left text-sm",
-                  nichePreset === preset.id
-                    ? "border-primary bg-primary/5"
-                    : "border-border",
-                )}
-              >
-                <div className="font-medium">{preset.label}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {preset.pain}
-                </div>
-              </button>
+              />
             ))}
           </div>
+          {showExtraNiches && (
+            <div className="grid grid-cols-2 gap-2">
+              {EXTRA_NICHES.map((preset) => (
+                <NicheTile
+                  key={preset.id}
+                  label={preset.label}
+                  pain={preset.pain}
+                  selected={nichePreset === preset.id}
+                  onClick={() => {
+                    setNichePreset(preset.id);
+                    if (!offerSummary) setOfferSummary(preset.defaultOffer);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            className="text-xs font-medium text-primary"
+            onClick={() => setShowExtraNiches((v) => !v)}
+          >
+            {showExtraNiches ? "Скрыть дополнительные" : "Ещё ниши"}
+          </button>
+          <NicheTile
+            label={CUSTOM_NICHE.label}
+            pain={CUSTOM_NICHE.pain}
+            selected={nichePreset === "custom"}
+            wide
+            onClick={() => setNichePreset("custom")}
+          />
         </section>
       )}
 
@@ -170,9 +198,9 @@ export function OnboardingForm({
                 type="button"
                 onClick={() => setProfileGoal(goal.id)}
                 className={cn(
-                  "rounded-xl border p-4 text-left transition",
+                  "rounded-2xl border p-4 text-left transition",
                   profileGoal === goal.id
-                    ? "border-primary bg-primary/5"
+                    ? "border-primary bg-primary/10"
                     : "border-border",
                 )}
               >
@@ -192,7 +220,7 @@ export function OnboardingForm({
                 type="button"
                 onClick={() => setToneOfVoice(tone.id)}
                 className={cn(
-                  "rounded-xl border px-3 py-3 text-sm font-medium",
+                  "min-h-11 rounded-2xl border px-3 py-3 text-sm font-medium",
                   toneOfVoice === tone.id
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border",
@@ -206,7 +234,19 @@ export function OnboardingForm({
       )}
 
       {step === 3 && (
-        <section className="space-y-3">
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="voice" className="flex items-center gap-2">
+              <Mic className="size-3.5" /> Идея своими словами
+            </Label>
+            <Textarea
+              id="voice"
+              placeholder="Набросайте, о чём снимаете — или вставьте расшифровку голосового из Telegram. Сожмём в бриф."
+              value={voiceDraft}
+              onChange={(e) => setVoiceDraft(e.target.value)}
+              rows={5}
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="offer">Оффер / лидмагнит</Label>
             <Textarea
@@ -214,32 +254,28 @@ export function OnboardingForm({
               placeholder="Бесплатный чеклист, консультация, курс…"
               value={offerSummary}
               onChange={(e) => setOfferSummary(e.target.value)}
+              rows={3}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="voice" className="flex items-center gap-2">
-              <Mic className="size-3.5" /> Идея голосом / черновик
-            </Label>
-            <Textarea
-              id="voice"
-              placeholder="Вставьте расшифровку голосового из Telegram или набросайте идею своими словами…"
-              value={voiceDraft}
-              onChange={(e) => setVoiceDraft(e.target.value)}
-              rows={4}
-            />
-            <p className="text-xs text-muted-foreground">
-              В Mini App удобно надиктовать в чат боту и вставить текст сюда — мы сожмём в бриф.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="website">Сайт (необязательно)</Label>
-            <Input
-              id="website"
-              placeholder="https://"
-              value={websiteUrl}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
-            />
-          </div>
+          {showWebsite ? (
+            <div className="space-y-2">
+              <Label htmlFor="website">Сайт</Label>
+              <Input
+                id="website"
+                placeholder="https://"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="text-xs font-medium text-muted-foreground"
+              onClick={() => setShowWebsite(true)}
+            >
+              + добавить сайт
+            </button>
+          )}
         </section>
       )}
 
@@ -272,5 +308,34 @@ export function OnboardingForm({
         </Button>
       </div>
     </div>
+  );
+}
+
+function NicheTile({
+  label,
+  pain,
+  selected,
+  wide,
+  onClick,
+}: {
+  label: string;
+  pain: string;
+  selected: boolean;
+  wide?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "min-h-[4.5rem] rounded-2xl border px-3 py-3 text-left",
+        wide && "col-span-2 w-full",
+        selected ? "border-primary bg-primary/10" : "border-border",
+      )}
+    >
+      <div className="text-sm font-medium">{label}</div>
+      <div className="mt-1 text-xs leading-snug text-muted-foreground">{pain}</div>
+    </button>
   );
 }

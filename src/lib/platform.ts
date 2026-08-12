@@ -1,5 +1,18 @@
 export type Platform = "instagram" | "tiktok" | "youtube";
 
+export function formatPlatform(platform?: string | null) {
+  switch ((platform || "").toLowerCase()) {
+    case "instagram":
+      return "Instagram";
+    case "tiktok":
+      return "TikTok";
+    case "youtube":
+      return "YouTube";
+    default:
+      return platform || "Instagram";
+  }
+}
+
 export function detectPlatform(input: string): Platform {
   const value = input.trim().toLowerCase();
   if (value.includes("tiktok.com") || value.startsWith("@") && value.includes("tiktok")) {

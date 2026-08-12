@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 import { AnalysisProgress } from "@/components/analyze/analysis-progress";
+import { BrandMark } from "@/components/brand/brand-mark";
 import {
   OnboardingForm,
   type OnboardingValues,
@@ -11,6 +11,7 @@ import {
 import { ResultsDashboard } from "@/components/results/results-dashboard";
 import { TelegramBackButton } from "@/components/telegram/back-button";
 import { useTelegram } from "@/components/telegram/telegram-provider";
+import { Button } from "@/components/ui/button";
 import {
   api,
   setClientInitData,
@@ -52,6 +53,7 @@ export function ReelsFactoryApp() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [analysisElapsedSec, setAnalysisElapsedSec] = useState(0);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
 
   const displayName = useMemo(() => {
     if (user?.firstName) {
@@ -244,12 +246,20 @@ export function ReelsFactoryApp() {
   async function handleOnboarding(values: OnboardingValues) {
     if (!user) return;
     setError(null);
-    const data = await api<{ user: AppUser }>("/api/users/onboard", {
-      method: "POST",
-      body: JSON.stringify({ userId: user.id, ...values }),
-    });
-    setUser(data.user);
-    await runAnalysis(data.user.id);
+    setOnboardingBusy(true);
+    try {
+      const data = await api<{ user: AppUser }>("/api/users/onboard", {
+        method: "POST",
+        body: JSON.stringify({ userId: user.id, ...values }),
+      });
+      setUser(data.user);
+      await runAnalysis(data.user.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка онбординга");
+      setScreen("error");
+    } finally {
+      setOnboardingBusy(false);
+    }
   }
 
   async function handleSelectPlan(plan: Exclude<PlanId, "FREE">) {
@@ -280,21 +290,27 @@ export function ReelsFactoryApp() {
 
   if (screen === "boot" || !ready) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-5 p-6">
+        <BrandMark size="lg" />
+        <div className="w-full max-w-[16rem] space-y-2">
+          <div className="h-3 w-2/3 animate-pulse rounded-full bg-secondary" />
+          <div className="h-3 w-full animate-pulse rounded-full bg-secondary" />
+          <div className="h-3 w-5/6 animate-pulse rounded-full bg-secondary" />
+        </div>
+        <p className="font-display text-sm text-muted-foreground">ReelsFactory</p>
       </div>
     );
   }
 
   if (screen === "error") {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4 text-center">
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 p-4 text-center">
         <TelegramBackButton show={false} />
-        <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
+        <BrandMark />
+        <h1 className="font-display text-xl font-semibold">Не собралось</h1>
         <p className="text-sm text-muted-foreground">{error}</p>
-        <button
-          type="button"
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+        <Button
+          className="w-full max-w-xs"
           onClick={() => {
             if (user?.onboardedAt) {
               void runAnalysis(user.id);
@@ -304,7 +320,7 @@ export function ReelsFactoryApp() {
           }}
         >
           {user?.onboardedAt ? "Запустить анализ" : "Повторить"}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -315,6 +331,7 @@ export function ReelsFactoryApp() {
         <TelegramBackButton show={false} />
         <OnboardingForm
           userName={displayName}
+          loading={onboardingBusy}
           onSubmit={handleOnboarding}
         />
       </>
@@ -329,6 +346,7 @@ export function ReelsFactoryApp() {
           status={analysisStatus}
           elapsedSec={analysisElapsedSec}
           failedMessage={null}
+          platform={user?.platform}
         />
       </>
     );
@@ -375,5 +393,13 @@ export function ReelsFactoryApp() {
     );
   }
 
-  return null;
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+      <BrandMark />
+      <p className="text-sm text-muted-foreground">Собираем экран…</p>
+      <Button variant="outline" onClick={() => void bootstrap()}>
+        Обновить
+      </Button>
+    </div>
+  );
 }

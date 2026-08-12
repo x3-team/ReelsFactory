@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Unbounded } from "next/font/google";
 import localFont from "next/font/local";
 
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
@@ -17,10 +18,16 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+const unbounded = Unbounded({
+  subsets: ["cyrillic", "latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "ReelsFactory",
   description:
-    "AI Telegram Mini App: анализ профилей и генерация сценариев для Reels с суфлёром.",
+    "Сценарии для Reels, VK Клипов и Telegram: анализ профиля и суфлёр.",
 };
 
 export const viewport: Viewport = {
@@ -28,10 +35,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#111111" },
-  ],
+  viewportFit: "cover",
+  themeColor: "#14110f",
 };
 
 export default function RootLayout({
@@ -40,9 +45,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${unbounded.variable} font-sans antialiased`}
       >
         <TelegramProvider>{children}</TelegramProvider>
       </body>

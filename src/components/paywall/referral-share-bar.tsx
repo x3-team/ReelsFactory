@@ -28,7 +28,7 @@ export function ReferralShareBar({
   );
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-xl border bg-secondary/40 p-3">
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/80 p-3">
       <p className="w-full text-xs text-muted-foreground">
         Приведи друга: 30% с первой оплаты, 10% с продлений
       </p>
@@ -45,7 +45,7 @@ export function ReferralShareBar({
       </Button>
       <Button type="button" size="sm" asChild>
         <a href={shareHref} target="_blank" rel="noreferrer">
-          <Share2 className="size-3.5" /> Поделиться в Telegram
+          <Share2 className="size-3.5" /> Поделиться
         </a>
       </Button>
     </div>

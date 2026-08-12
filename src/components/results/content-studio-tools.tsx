@@ -117,13 +117,16 @@ export function ContentStudioTools({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Студия · Pro / Agency
-      </h2>
-      <p className="text-xs text-muted-foreground">
-        Осталось ремейков: {canUse ? remakesLeft : 0} · разборов:{" "}
-        {canUse ? autopsiesLeft : 0}
-      </p>
+      <h2 className="font-display text-base font-semibold">Студия</h2>
+      {canUse ? (
+        <p className="text-xs text-muted-foreground">
+          Осталось ремейков: {remakesLeft} · разборов: {autopsiesLeft}
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Ремейк вирусного ролика и разбор «не залетело» — на тарифах Про и Агентство.
+        </p>
+      )}
 
       <Card>
         <CardHeader className="pb-2">
@@ -193,7 +196,7 @@ export function ContentStudioTools({
               : "Открыть в Про"}
           </Button>
           {autopsyScore != null && (
-            <div className="rounded-lg border p-3 text-sm">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
               <p className="font-medium">Оценка: {autopsyScore}/100</p>
               <ul className="mt-2 list-inside list-disc text-muted-foreground">
                 {(autopsyFindings || []).map((f) => (

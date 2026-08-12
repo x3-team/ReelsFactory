@@ -7,14 +7,12 @@ import {
   Copy,
   Lock,
   MessageCircle,
-  Sparkles,
-  Target,
-  Users,
   Video,
 } from "lucide-react";
 
 import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
-import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
+import { PaywallDrawer, type PaywallReason } from "@/components/paywall/paywall-drawer";
+import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { ScriptShareCard } from "@/components/paywall/script-share-card";
 import { ContentStudioTools } from "@/components/results/content-studio-tools";
 import { TeleprompterMode } from "@/components/results/teleprompter";
@@ -41,15 +39,24 @@ import {
 } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
 import { PLANS } from "@/lib/config";
+import { formatPlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 type PlatformTab = "reels" | "vk_clips" | "shorts" | "telegram_post";
+type MainTab = "scripts" | "shoot" | "strategy" | "studio";
 
 const PLATFORM_TABS: Array<{ id: PlatformTab; label: string }> = [
   { id: "reels", label: "Reels" },
   { id: "vk_clips", label: "VK Клипы" },
   { id: "shorts", label: "Shorts" },
   { id: "telegram_post", label: "Telegram" },
+];
+
+const MAIN_TABS: Array<{ id: MainTab; label: string }> = [
+  { id: "scripts", label: "Сценарии" },
+  { id: "shoot", label: "Съёмка" },
+  { id: "strategy", label: "Стратегия" },
+  { id: "studio", label: "Студия" },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -93,7 +100,10 @@ export function ResultsDashboard({
   const [selectedId, setSelectedId] = useState(analysis.scripts[0]?.id);
   const [teleprompterOpen, setTeleprompterOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallReason, setPaywallReason] = useState<PaywallReason>("generic");
   const [platformTab, setPlatformTab] = useState<PlatformTab>("reels");
+  const [mainTab, setMainTab] = useState<MainTab>("scripts");
+  const [reanalyzeArmed, setReanalyzeArmed] = useState(false);
 
   const selected = useMemo(
     () => analysis.scripts.find((s) => s.id === selectedId) || analysis.scripts[0],
@@ -110,21 +120,38 @@ export function ResultsDashboard({
     user.subscriptionPlan === "PRO" || user.subscriptionPlan === "AGENCY";
   const planLabel = PLANS[user.subscriptionPlan]?.name || user.subscriptionPlan;
 
+  function openPaywall(reason: PaywallReason) {
+    setPaywallReason(reason);
+    setPaywallOpen(true);
+  }
+
+  function handleReanalyze() {
+    if (!reanalyzeArmed) {
+      setReanalyzeArmed(true);
+      return;
+    }
+    setReanalyzeArmed(false);
+    onReanalyze();
+  }
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 p-4 pb-10">
-      <header className="flex items-start justify-between gap-3 pt-2">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            @{analysis.socialHandle} · {analysis.platform}
+      <header className="flex items-start justify-between gap-3 pt-1">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">
+            @{analysis.socialHandle} · {formatPlatform(analysis.platform)}
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Контент‑фабрика
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            Сценарии готовы
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Снял раз — выложи в Reels, VK и Telegram
           </p>
+          {usage && <div className="mt-2"><UsageQuotaCard usage={usage} /></div>}
         </div>
-        <Badge variant="secondary">{planLabel}</Badge>
+        <Badge className="shrink-0 bg-primary/15 text-primary hover:bg-primary/20">
+          {planLabel}
+        </Badge>
       </header>
 
       {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
@@ -135,164 +162,197 @@ export function ResultsDashboard({
         />
       )}
 
-      {usage && <UsageQuotaCard usage={usage} />}
-
-      <div className="grid gap-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="size-4" /> Ниша
-            </CardTitle>
-            <CardDescription>{analysis.niche}</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="size-4" /> Целевая аудитория
-            </CardTitle>
-            <CardDescription>{analysis.targetAudience}</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {funnelKit && (
-        <FunnelCard
-          funnel={funnelKit}
-          locked={isFree}
-          onUnlock={() => setPaywallOpen(true)}
-        />
-      )}
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Советы по аудиту
-        </h2>
-        <div className="space-y-2">
-          {tips.map((tip) => (
-            <Card key={tip}>
-              <CardContent className="flex gap-3 p-4 text-sm">
-                <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-                <p>{tip}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Контент‑столпы
-        </h2>
-        <div className="grid gap-2">
-          {pillars.map((pillar) => (
-            <Card key={pillar.title}>
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-base">{pillar.title}</CardTitle>
-                <CardDescription>{pillar.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {shootDay && (
-        <ShootDayCard
-          plan={shootDay}
-          locked={isFree}
-          onUnlock={() => setPaywallOpen(true)}
-        />
-      )}
-
-      {calendar.length > 0 && (
-        <CalendarCard
-          days={calendar}
-          locked={isFree}
-          onUnlock={() => setPaywallOpen(true)}
-        />
-      )}
-
-      <ContentStudioTools
-        userId={user.id}
-        analysisId={analysis.id}
-        canUse={canStudio}
-        remakesLeft={usage?.remaining.remakes ?? 0}
-        autopsiesLeft={usage?.remaining.autopsies ?? 0}
-        onLocked={() => setPaywallOpen(true)}
-        onScriptCreated={(script) => {
-          onScriptsUpdated?.([...(analysis.scripts || []), script]);
-          setSelectedId(script.id);
-        }}
-      />
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Сценарии
-          </h2>
-          {isFree && (
-            <Button size="sm" variant="outline" onClick={() => setPaywallOpen(true)}>
-              <Lock className="size-3.5" /> Открыть все
-            </Button>
-          )}
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {analysis.scripts.map((script, index) => (
+      <div className="sticky top-0 z-20 -mx-4 border-b border-border/80 bg-background/90 px-4 py-2 backdrop-blur">
+        <div className="flex gap-1 overflow-x-auto">
+          {MAIN_TABS.map((tab) => (
             <button
-              key={script.id}
+              key={tab.id}
               type="button"
-              onClick={() => setSelectedId(script.id)}
+              onClick={() => setMainTab(tab.id)}
               className={cn(
-                "min-w-[10rem] rounded-xl border px-3 py-3 text-left text-sm",
-                selected?.id === script.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border",
+                "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium",
+                mainTab === tab.id
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground",
               )}
             >
-              <div className="mb-1 text-xs text-muted-foreground">
-                {script.sourceType === "remake"
-                  ? "Ремейк"
-                  : script.sourceType === "autopsy"
-                    ? "Пересъём"
-                    : `Сценарий ${index + 1}`}
-                {script.durationSec ? ` · ${script.durationSec}с` : ""}
-                {script.isTeaser ? " · тизер" : ""}
-              </div>
-              <div className="line-clamp-2 font-medium">{script.title}</div>
+              {tab.label}
             </button>
           ))}
         </div>
+      </div>
 
-        {selected && (
-          <ScriptViewer
-            script={selected}
-            userId={user.id}
-            referralUrl={referralUrl}
-            handle={analysis.socialHandle}
-            platformTab={platformTab}
-            onPlatformTab={setPlatformTab}
-            lockedTeleprompter={isFree && selected.isTeaser}
-            packsLocked={isFree}
-            onOpenTeleprompter={() => {
-              if (isFree && selected.isTeaser) {
-                setPaywallOpen(true);
-                return;
-              }
-              setTeleprompterOpen(true);
-            }}
-            onUnlock={() => setPaywallOpen(true)}
-          />
-        )}
-      </section>
+      {mainTab === "scripts" && (
+        <section className="space-y-3">
+          {analysis.scripts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Сценариев пока нет — запустите анализ ещё раз.
+            </p>
+          ) : (
+            <>
+              <div className="relative">
+                <div className="flex gap-2 overflow-x-auto pb-1 pr-8">
+                  {analysis.scripts.map((script, index) => (
+                    <button
+                      key={script.id}
+                      type="button"
+                      onClick={() => setSelectedId(script.id)}
+                      className={cn(
+                        "min-w-[10rem] rounded-2xl border px-3 py-3 text-left text-sm",
+                        selected?.id === script.id
+                          ? "border-primary bg-primary/10"
+                          : "border-border",
+                      )}
+                    >
+                      <div className="mb-1 text-xs text-muted-foreground">
+                        {script.sourceType === "remake"
+                          ? "Ремейк"
+                          : script.sourceType === "autopsy"
+                            ? "Пересъём"
+                            : `Сценарий ${index + 1}`}
+                        {script.durationSec ? ` · ${script.durationSec}с` : ""}
+                        {script.isTeaser ? " · тизер" : ""}
+                      </div>
+                      <div className="line-clamp-2 font-medium">{script.title}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background" />
+              </div>
 
-      <div className="grid gap-2">
-        <Button variant="outline" onClick={() => setPaywallOpen(true)}>
-          Тарифы и реферальная ссылка
+              {selected && (
+                <ScriptViewer
+                  script={selected}
+                  userId={user.id}
+                  referralUrl={referralUrl}
+                  handle={analysis.socialHandle}
+                  platformTab={platformTab}
+                  onPlatformTab={setPlatformTab}
+                  lockedTeleprompter={isFree && selected.isTeaser}
+                  packsLocked={isFree}
+                  onOpenTeleprompter={() => {
+                    if (isFree && selected.isTeaser) {
+                      openPaywall("scripts");
+                      return;
+                    }
+                    setTeleprompterOpen(true);
+                  }}
+                  onUnlock={() => openPaywall("scripts")}
+                />
+              )}
+            </>
+          )}
+        </section>
+      )}
+
+      {mainTab === "shoot" && (
+        <div className="space-y-3">
+          {funnelKit && (
+            <FunnelCard
+              funnel={funnelKit}
+              locked={isFree}
+              onUnlock={() => openPaywall("funnel")}
+            />
+          )}
+          {shootDay && (
+            <ShootDayCard
+              plan={shootDay}
+              locked={isFree}
+              onUnlock={() => openPaywall("shoot")}
+            />
+          )}
+          {calendar.length > 0 && (
+            <CalendarCard
+              days={calendar}
+              locked={isFree}
+              onUnlock={() => openPaywall("calendar")}
+            />
+          )}
+        </div>
+      )}
+
+      {mainTab === "strategy" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border/80 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Ниша
+            </p>
+            <p className="mt-1 font-medium">{analysis.niche}</p>
+            <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Аудитория
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {analysis.targetAudience}
+            </p>
+          </div>
+
+          {tips.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-sm font-medium">Советы по аудиту</h2>
+              <ul className="space-y-2 text-sm">
+                {tips.map((tip) => (
+                  <li
+                    key={tip}
+                    className="rounded-xl border border-border/80 px-3 py-2 leading-relaxed"
+                  >
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {pillars.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-sm font-medium">Контент‑столпы</h2>
+              <div className="grid gap-2">
+                {pillars.map((pillar) => (
+                  <div
+                    key={pillar.title}
+                    className="rounded-xl border border-border/80 px-3 py-3"
+                  >
+                    <p className="font-medium">{pillar.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {pillar.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <Button
+            variant={reanalyzeArmed ? "destructive" : "outline"}
+            onClick={handleReanalyze}
+          >
+            {reanalyzeArmed
+              ? "Точно? Спишется 1 анализ"
+              : "Запустить новый анализ"}
+          </Button>
+        </div>
+      )}
+
+      {mainTab === "studio" && (
+        <ContentStudioTools
+          userId={user.id}
+          analysisId={analysis.id}
+          canUse={canStudio}
+          remakesLeft={usage?.remaining.remakes ?? 0}
+          autopsiesLeft={usage?.remaining.autopsies ?? 0}
+          onLocked={() => openPaywall("studio")}
+          onScriptCreated={(script) => {
+            onScriptsUpdated?.([...(analysis.scripts || []), script]);
+            setSelectedId(script.id);
+            setMainTab("scripts");
+          }}
+        />
+      )}
+
+      <div className="grid gap-2 pt-2">
+        <Button variant="outline" onClick={() => openPaywall("generic")}>
+          Тарифы
         </Button>
-        <Button variant="ghost" onClick={onReanalyze}>
-          Запустить новый анализ
-        </Button>
+        <ReferralShareBar referralUrl={referralUrl} />
       </div>
 
       {teleprompterOpen && selected && (
@@ -311,6 +371,7 @@ export function ResultsDashboard({
         currentPlan={user.subscriptionPlan}
         onSelectPlan={onSelectPlan}
         loadingPlan={loadingPlan}
+        reason={paywallReason}
       />
     </div>
   );
@@ -336,22 +397,22 @@ function FunnelCard({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <MessageCircle className="size-4" /> Воронка коммент → Telegram
+          <MessageCircle className="size-4 text-primary" /> Воронка коммент → Telegram
         </CardTitle>
         <CardDescription>
-          Зритель пишет слово в комментарии — бот отдаёт лидмагнит
+          Зритель пишет слово боту — приходит лидмагнит
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {locked ? (
           <Button variant="outline" className="w-full" onClick={onUnlock}>
-            <Lock className="size-4" /> Открыть воронку на Старт+
+            <Lock className="size-4" /> Открыть воронку
           </Button>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-2 rounded-lg bg-secondary/70 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-secondary/70 px-3 py-2">
               <span>
-                Ключевое слово: <strong>{funnel.comment_keyword}</strong>
+                Слово: <strong>{funnel.comment_keyword}</strong>
               </span>
               <Button size="sm" variant="ghost" onClick={() => void copyKeyword()}>
                 <Copy className="size-3.5" />
@@ -362,7 +423,6 @@ function FunnelCard({
               <span className="font-medium">Лидмагнит:</span> {funnel.lead_magnet}
             </p>
             <p className="text-muted-foreground">{funnel.bot_reply}</p>
-            <p className="text-xs text-muted-foreground">{funnel.telegram_cta}</p>
             <p className="text-xs text-muted-foreground">
               Зритель пишет это слово боту в Telegram — приходит ответ с лидмагнитом.
             </p>
@@ -386,7 +446,7 @@ function ShootDayCard({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Video className="size-4" /> {plan.title || "Съёмочный день"}
+          <Video className="size-4 text-primary" /> {plan.title || "Съёмочный день"}
         </CardTitle>
         <CardDescription>
           ~{plan.duration_min} мин · один образ · батч без хаоса
@@ -418,7 +478,7 @@ function ShootDayCard({
               {(plan.order || []).map((item) => (
                 <div
                   key={`${item.shoot_order}-${item.script_title}`}
-                  className="rounded-lg border px-3 py-2"
+                  className="rounded-xl border px-3 py-2"
                 >
                   <div className="font-medium">
                     {item.shoot_order}. {item.script_title} · {item.duration_sec}с
@@ -431,7 +491,7 @@ function ShootDayCard({
               <div className="space-y-2">
                 <p className="font-medium">Досъём · идеи</p>
                 {plan.extra_ideas.map((idea) => (
-                  <div key={idea.title} className="rounded-lg bg-secondary/60 px-3 py-2">
+                  <div key={idea.title} className="rounded-xl bg-secondary/60 px-3 py-2">
                     <div className="font-medium">{idea.title}</div>
                     <div className="text-xs text-muted-foreground">
                       {idea.hook} · {idea.pillar} · {idea.duration_sec}с
@@ -460,10 +520,10 @@ function CalendarCard({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="size-4" /> Календарь столпов · 7 дней
+          <CalendarDays className="size-4 text-primary" /> Календарь · 7 дней
         </CardTitle>
         <CardDescription>
-          Чередование доверия, эксперта, оффера и соцдока
+          Доверие, эксперт, оффер и соцдок по кругу
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -475,7 +535,7 @@ function CalendarCard({
           days.map((day) => (
             <div
               key={day.day}
-              className="flex items-start justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+              className="flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-sm"
             >
               <div>
                 <div className="font-medium">
@@ -526,7 +586,7 @@ function ScriptViewer({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">{script.title}</CardTitle>
+        <CardTitle className="font-display text-lg">{script.title}</CardTitle>
         <CardDescription>
           {script.format}
           {script.commentKeyword ? ` · слово «${script.commentKeyword}»` : ""}
@@ -534,8 +594,8 @@ function ScriptViewer({
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Варианты хуков
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Хуки
           </p>
           <ul className="space-y-2">
             {hooks.map((hook, index) => (
@@ -553,7 +613,7 @@ function ScriptViewer({
 
         {props.length > 0 && (
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Что подготовить
             </p>
             <ul className="list-inside list-disc text-sm text-muted-foreground">
@@ -565,16 +625,16 @@ function ScriptViewer({
         )}
 
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Текст для суфлёра
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Суфлёр
           </p>
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed">
+          <pre className="whitespace-pre-wrap rounded-xl bg-secondary/50 p-3 text-sm leading-relaxed">
             {script.teleprompterScript}
           </pre>
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Пакет площадок
           </p>
           <div className="flex gap-1 overflow-x-auto">
@@ -596,7 +656,7 @@ function ScriptViewer({
           </div>
           {packsLocked || !packs ? (
             <Button variant="outline" className="w-full" onClick={onUnlock}>
-              <Lock className="size-4" /> Открыть кросс‑пакет Reels / VK / TG
+              <Lock className="size-4" /> Открыть кросс‑пакет
             </Button>
           ) : (
             <PlatformPackView packs={packs} tab={platformTab} />
@@ -613,7 +673,7 @@ function ScriptViewer({
         <div className="grid gap-2">
           <Button onClick={onOpenTeleprompter}>
             <Clapperboard className="size-4" />
-            {lockedTeleprompter ? "Открыть режим суфлёра" : "Режим суфлёра"}
+            {lockedTeleprompter ? "Открыть суфлёр" : "Режим суфлёра"}
           </Button>
           {lockedTeleprompter && (
             <Button variant="outline" onClick={onUnlock}>
@@ -667,28 +727,36 @@ function HookFeedbackRow({
   }
 
   return (
-    <li className="rounded-lg bg-secondary/70 px-3 py-2 text-sm">
+    <li className="rounded-xl bg-secondary/60 px-3 py-2 text-sm">
       <p>{hook}</p>
       {!locked && (
-        <div className="mt-2 flex gap-2">
-          <Button
+        <div className="mt-1.5 flex gap-1">
+          <button
             type="button"
-            size="sm"
-            variant={outcome === "flew" ? "default" : "outline"}
             disabled={saving}
             onClick={() => void send("flew")}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+              outcome === "flew"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground",
+            )}
           >
             Залетело
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            size="sm"
-            variant={outcome === "flopped" ? "default" : "outline"}
             disabled={saving}
             onClick={() => void send("flopped")}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+              outcome === "flopped"
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground",
+            )}
           >
             Не залетело
-          </Button>
+          </button>
         </div>
       )}
     </li>
@@ -704,7 +772,7 @@ function PlatformPackView({
 }) {
   if (tab === "reels") {
     return (
-      <div className="space-y-2 rounded-lg border p-3 text-sm">
+      <div className="space-y-2 rounded-xl border p-3 text-sm">
         <p className="whitespace-pre-wrap">{packs.reels.caption}</p>
         <p className="font-medium">{packs.reels.cta}</p>
         {packs.reels.hashtags?.length ? (
@@ -717,7 +785,7 @@ function PlatformPackView({
   }
   if (tab === "vk_clips") {
     return (
-      <div className="space-y-2 rounded-lg border p-3 text-sm">
+      <div className="space-y-2 rounded-xl border p-3 text-sm">
         <p className="whitespace-pre-wrap">{packs.vk_clips.caption}</p>
         <p className="font-medium">{packs.vk_clips.cta}</p>
       </div>
@@ -725,7 +793,7 @@ function PlatformPackView({
   }
   if (tab === "shorts") {
     return (
-      <div className="space-y-2 rounded-lg border p-3 text-sm">
+      <div className="space-y-2 rounded-xl border p-3 text-sm">
         <p className="font-medium">{packs.shorts.title}</p>
         <p className="whitespace-pre-wrap text-muted-foreground">
           {packs.shorts.description}
@@ -735,7 +803,7 @@ function PlatformPackView({
     );
   }
   return (
-    <div className="space-y-2 rounded-lg border p-3 text-sm">
+    <div className="space-y-2 rounded-xl border p-3 text-sm">
       <p className="whitespace-pre-wrap">{packs.telegram_post.text}</p>
       <p className="font-medium">{packs.telegram_post.cta}</p>
     </div>
