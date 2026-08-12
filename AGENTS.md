@@ -10,8 +10,17 @@
 ### Product
 
 ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
+- **Current state, code map, gaps, next steps: `docs/PROJECT_STATE.md` — read this first**
 - Build phases: `prompts.md`
 - Business requirements: `CONTEXT.md`
+
+### Routes
+
+- `/` — public marketing landing (no Telegram SDK)
+- `/app` — Telegram Mini App (`TelegramProvider` in `src/app/app/layout.tsx`)
+- `/legal/{offer,terms,privacy}` — legal pages from `NEXT_PUBLIC_LEGAL_*`
+
+Inside Telegram, `/` redirects to `/app`. BotFather Mini App URL should point at `/app`.
 
 ### Business rules
 
@@ -28,12 +37,19 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 
 ### Services
 
+The dev environment is described by `.cursor/environment.json` in this repo, so every
+agent and machine gets the same setup:
+
+- `install` → `scripts/dev-env-install.sh` (apt packages, pnpm deps, `.env`, `prisma db push`)
+- `start` → `scripts/dev-env-start.sh` (Postgres cluster, `reelsfactory` DB, Redis)
+- `terminals` → `next-dev` running `pnpm dev`
+
 | Service | Required | How to run |
 | --- | --- | --- |
-| PostgreSQL | Yes | `sudo pg_ctlcluster 16 main start`; `DATABASE_URL` in `.env` |
+| PostgreSQL | Yes | `bash scripts/dev-env-start.sh`; `DATABASE_URL` in `.env` |
 | Next.js | Yes | `pnpm dev` → http://localhost:3000 |
-| Redis | Prod | Set `REDIS_URL` for BullMQ; `docker compose up -d redis`. Dev: memory queue |
-| AITunnel / scrape / YooKassa | Optional in dev | Без ключей — `MOCK_EXTERNAL_APIS` |
+| Redis | Prod | `scripts/dev-env-start.sh` starts it locally; prod needs `REDIS_URL` |
+| AITunnel / scrape / YooKassa | Optional in dev | Без ключей `isMockMode()` сам включает моки |
 
 ### Commands
 
