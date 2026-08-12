@@ -2,8 +2,18 @@ import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
-import { allocateCommentKeyword } from "@/lib/comment-keyword";
+import { isUsableTranscript } from "@/lib/ai/speech-signal";
+import {
+  dropGenericTelegramTips,
+  sanitizeStrategy,
+} from "@/lib/ai/sanitize-scripts";
+import { allocateSharedKeyword } from "@/lib/comment-keyword";
 import { PLANS } from "@/lib/config";
+import { buildProfileInsights } from "@/lib/content/profile-insights";
+import {
+  WHISPER_GARBAGE_STREAK_STOP,
+  WHISPER_MAX_VIDEOS,
+} from "@/lib/content/scrape-limits";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { scheduleShootReminder } from "@/lib/reminders";
@@ -57,6 +67,8 @@ function scriptCreateData(
     propsChecklist: script.props_checklist ?? undefined,
     shootOrder: script.shoot_order ?? null,
     sourceType,
+    sourceAngle: script.source_angle || null,
+    shotList: script.shot_list?.length ? script.shot_list : undefined,
   };
 }
 
@@ -89,15 +101,28 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
+    const insights = buildProfileInsights(profile);
+
     const transcriptions: string[] = [];
-    for (const video of profile.topVideos.slice(0, 3)) {
+    let garbageStreak = 0;
+    for (const video of profile.topVideos.slice(0, WHISPER_MAX_VIDEOS)) {
+      if (garbageStreak >= WHISPER_GARBAGE_STREAK_STOP) break;
+      if (!video.audioUrl) {
+        garbageStreak += 1;
+        continue;
+      }
       const { text } = await transcribeAudio({
-        audioUrl: video.audioUrl || video.url,
+        audioUrl: video.audioUrl,
         hint: video.caption,
         cacheKey: `${user.platform}:${video.id}`,
         userId: user.id,
       });
-      transcriptions.push(text);
+      if (isUsableTranscript(text)) {
+        transcriptions.push(text);
+        garbageStreak = 0;
+      } else {
+        garbageStreak += 1;
+      }
     }
 
     await prisma.profileAnalysis.update({
@@ -132,7 +157,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       if (hooks[row.hookIndex]) winningHooks.push(hooks[row.hookIndex]);
     }
 
-    const { strategy } = await generateStrategy({
+    const { strategy: rawStrategy } = await generateStrategy({
       profile,
       transcriptions,
       goal: user.profileGoal,
@@ -145,7 +170,18 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       previousTitles: previous.map((s) => s.title),
       winningHooks,
       userId: user.id,
+      insights,
     });
+
+    const keyword = await allocateSharedKeyword(
+      rawStrategy.funnel_kit?.comment_keyword || insights.suggestedKeyword,
+      user.id,
+    );
+    const strategy = sanitizeStrategy(rawStrategy, keyword);
+    strategy.profile_audit_tips = dropGenericTelegramTips(
+      strategy.profile_audit_tips || [],
+      insights,
+    );
 
     const paid = hasPaidAccess(user);
     const scriptsToSave = await scriptsToPersist(user, strategy.scripts);
@@ -153,22 +189,13 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       ? strategy.scripts.slice(0, 1)
       : scriptsToSave;
     const pillars = strategy.content_pillars.slice(0, pillarsLimit(user));
-    const takenKeywords = new Set<string>();
-    const uniqueScripts: GeneratedScript[] = [];
-    for (const script of finalScripts) {
-      const keyword = await allocateCommentKeyword(
-        script.comment_keyword ?? script.funnel?.comment_keyword,
-        user.id,
-        takenKeywords,
-      );
-      uniqueScripts.push({
-        ...script,
-        comment_keyword: keyword,
-        funnel: script.funnel
-          ? { ...script.funnel, comment_keyword: keyword }
-          : script.funnel,
-      });
-    }
+    const uniqueScripts: GeneratedScript[] = finalScripts.map((script) => ({
+      ...script,
+      comment_keyword: keyword,
+      funnel: script.funnel
+        ? { ...script.funnel, comment_keyword: keyword }
+        : script.funnel,
+    }));
 
     await prisma.$transaction(async (tx) => {
       await tx.script.deleteMany({ where: { analysisId } });

@@ -54,6 +54,10 @@ export type GeneratedScript = {
   comment_keyword?: string;
   platform_packs?: PlatformPack;
   funnel?: FunnelKit;
+  /** Product / caption this script is based on */
+  source_angle?: string;
+  /** Shot list for process / no-speech accounts */
+  shot_list?: string[];
 };
 
 export type ShootDayPlan = {
@@ -122,6 +126,8 @@ export type ScrapedProfile = {
   following?: number;
   postsCount?: number;
   topVideos: ScrapedVideo[];
+  /** Captions from latest posts (photos + videos), for offer mining */
+  recentCaptions?: string[];
 };
 
 export type ViralRemakePayload = {

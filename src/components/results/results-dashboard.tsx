@@ -675,6 +675,7 @@ function ScriptViewer({
   const hooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
   const packs = script.platformPacks as AppPlatformPack | null | undefined;
   const props = Array.isArray(script.propsChecklist) ? script.propsChecklist : [];
+  const shots = Array.isArray(script.shotList) ? script.shotList : [];
 
   async function refreshHooks() {
     setHooksError(null);
@@ -705,6 +706,11 @@ function ScriptViewer({
           {script.format}
           {script.commentKeyword ? ` · слово «${script.commentKeyword}»` : ""}
         </CardDescription>
+        {script.sourceAngle ? (
+          <p className="text-xs text-muted-foreground">
+            Угол из профиля: {script.sourceAngle}
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -753,6 +759,19 @@ function ScriptViewer({
                 <li key={p}>{p}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {shots.length > 0 && (
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Раскадровка
+            </p>
+            <ol className="list-inside list-decimal text-sm text-muted-foreground">
+              {shots.map((shot) => (
+                <li key={shot}>{shot}</li>
+              ))}
+            </ol>
           </div>
         )}
 

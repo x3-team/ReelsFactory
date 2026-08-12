@@ -24,6 +24,7 @@ const bodySchema = z.object({
         durationSec: z.number().optional(),
       }),
     ),
+    recentCaptions: z.array(z.string()).optional(),
   }),
   transcriptions: z.array(z.string()),
   goal: z.string(),

@@ -1,3 +1,7 @@
+import {
+  CAPTION_VIDEOS_LIMIT,
+  SCRAPE_POSTS_LIMIT,
+} from "@/lib/content/scrape-limits";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
 
 const DEFAULT_IG_PROFILE_ACTOR = "apify/instagram-profile-scraper";
@@ -115,7 +119,14 @@ function mapPosts(posts: ApifyIgPost[]): ScrapedVideo[] {
       } satisfies ScrapedVideo;
     })
     .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
+    .slice(0, CAPTION_VIDEOS_LIMIT);
+}
+
+function collectCaptions(posts: ApifyIgPost[]) {
+  return posts
+    .map((post) => (post.caption || "").trim())
+    .filter((caption) => caption.length >= 12)
+    .slice(0, SCRAPE_POSTS_LIMIT);
 }
 
 /**
@@ -127,7 +138,7 @@ export async function fetchInstagramViaApify(
 ): Promise<ScrapedProfile> {
   const items = await runApifyActor<ApifyIgProfile>(igActorId(), {
     usernames: [handle],
-    resultsLimit: 12,
+    resultsLimit: SCRAPE_POSTS_LIMIT,
   });
   if (items.length === 0) {
     throw new Error(`Apify: пустой ответ для @${handle}`);
@@ -140,7 +151,8 @@ export async function fetchInstagramViaApify(
     );
   }
 
-  const topVideos = mapPosts(profile.latestPosts || []);
+  const latest = profile.latestPosts || [];
+  const topVideos = mapPosts(latest);
 
   return {
     handle: profile.username || handle,
@@ -151,6 +163,7 @@ export async function fetchInstagramViaApify(
     following: profile.followsCount,
     postsCount: profile.postsCount,
     topVideos,
+    recentCaptions: collectCaptions(latest),
   };
 }
 
@@ -185,7 +198,7 @@ type ApifyTtItem = {
 export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfile> {
   const items = await runApifyActor<ApifyTtItem>(ttActorId(), {
     profiles: [handle],
-    resultsPerPage: 12,
+    resultsPerPage: SCRAPE_POSTS_LIMIT,
     shouldDownloadVideos: false,
     shouldDownloadCovers: false,
     shouldDownloadSubtitles: false,
@@ -212,7 +225,7 @@ export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfil
       } satisfies ScrapedVideo;
     })
     .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
+    .slice(0, CAPTION_VIDEOS_LIMIT);
 
   const name =
     (author && "name" in author ? author.name : undefined) ||
@@ -239,5 +252,9 @@ export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfil
     following,
     postsCount,
     topVideos,
+    recentCaptions: items
+      .map((item) => (item.text || "").trim())
+      .filter((text) => text.length >= 12)
+      .slice(0, SCRAPE_POSTS_LIMIT),
   };
 }

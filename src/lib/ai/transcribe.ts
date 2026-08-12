@@ -25,6 +25,10 @@ export async function transcribeAudio(input: {
     return { text, mocked: true };
   }
 
+  if (!input.audioUrl) {
+    return { text: "", mocked: true };
+  }
+
   try {
     const openai = getAiTunnelClient();
     const audioRes = await fetch(input.audioUrl, {
@@ -54,8 +58,8 @@ export async function transcribeAudio(input: {
       "Whisper/AITunnel unavailable, using caption fallback:",
       error instanceof Error ? error.message : error,
     );
-    const text = mockTranscription(input.hint);
-    return { text, mocked: true };
+    // Empty — never inject demo "хуки/удержание" speech into a real niche.
+    return { text: "", mocked: true };
   }
 }
 

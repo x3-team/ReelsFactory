@@ -156,9 +156,18 @@ key_label() { has_key "$1" && echo да || echo нет; }
     "",
     "- формат: \(.format) · \(.durationSec)с\(if .isTeaser then " · тизер" else "" end)",
     "- слово-CTA: \(.commentKeyword // "—")",
+    (if .sourceAngle then "- угол: \(.sourceAngle)" else empty end),
     "",
     "**Хуки**",
     ((.hookOptions // []) | to_entries[] | "\(.key + 1). \(.value)"),
+    "",
+    (if ((.shotList // []) | length) > 0 then
+      "**Раскадровка**"
+     else empty end),
+    (if ((.shotList // []) | length) > 0 then
+      ((.shotList // []) | to_entries[] | "\(.key + 1). \(.value)")
+     else empty end),
+    (if ((.shotList // []) | length) > 0 then "" else empty end),
     "",
     "**Суфлёр**",
     "",
@@ -193,6 +202,34 @@ key_label() { has_key "$1" && echo да || echo нет; }
         else "- \(.)" end)
     end'
 } > "$OUT"
+
+DB="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/reelsfactory}"
+{
+  echo
+  echo "## Качество сигнала"
+  echo
+  psql "$DB" -Atc "
+    SELECT
+      '- роликов в скрейпе: ' || coalesce(jsonb_array_length(\"rawProfileData\"->'topVideos'), 0) || E'\n' ||
+      '- подписей в пуле: ' || coalesce(jsonb_array_length(\"rawProfileData\"->'recentCaptions'), 0) || E'\n' ||
+      '- живых транскриптов: ' || coalesce(jsonb_array_length(\"transcriptions\"::jsonb), 0)
+    FROM \"ProfileAnalysis\" WHERE id = '$ANALYSIS_ID';
+  "
+  echo
+  echo "### Транскрипты (как ушли в модель)"
+  echo
+  psql "$DB" -Atc "
+    SELECT coalesce(\"transcriptions\"::text, '[]')
+    FROM \"ProfileAnalysis\" WHERE id = '$ANALYSIS_ID';
+  "
+  echo
+  echo "### Слова-CTA"
+  echo
+  psql "$DB" -Atc "
+    SELECT '- ' || coalesce(\"commentKeyword\", '—') || ' · ' || title
+    FROM \"Script\" WHERE \"analysisId\" = '$ANALYSIS_ID' ORDER BY \"createdAt\";
+  "
+} >> "$OUT"
 
 echo
 echo "Отчёт: $OUT"

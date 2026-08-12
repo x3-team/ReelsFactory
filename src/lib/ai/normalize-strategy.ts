@@ -110,18 +110,10 @@ function ensureTeleprompter(raw: string, duration: number, keyword: string) {
 function normalizeScript(
   script: GeneratedScript,
   index: number,
-  usedKeywords: Set<string>,
+  sharedKeyword: string,
 ): GeneratedScript {
   const duration = DURATIONS[index] || script.duration_sec || 30;
-  const fallbackKeyword = ["ХУК", "СКРИПТ", "ГАЙД"][index] || `КЛЮЧ${index + 1}`;
-  let keyword = normalizeKeyword(
-    script.comment_keyword || script.funnel?.comment_keyword,
-    fallbackKeyword,
-  );
-  if (usedKeywords.has(keyword)) {
-    keyword = `${fallbackKeyword}${index + 1}`;
-  }
-  usedKeywords.add(keyword);
+  const keyword = sharedKeyword;
 
   const hooks = asStringArray(script.hook_options, 3, [
     "Остановитесь, если ролик умирает на 3-й секунде",
@@ -135,6 +127,7 @@ function normalizeScript(
   const title = asString(script.title, `Сценарий ${duration} сек`);
   const funnel = normalizeFunnel(script.funnel, keyword, "бесплатный гайд");
   const packs = normalizePlatformPacks(script.platform_packs, keyword, title);
+  const shotList = asStringArray(script.shot_list, 0, []).slice(0, 8);
 
   return {
     ...script,
@@ -154,22 +147,31 @@ function normalizeScript(
     props_checklist: asStringArray(script.props_checklist, 0, ["штатив"]),
     platform_packs: packs,
     funnel,
+    source_angle: asString(script.source_angle),
+    shot_list: shotList,
   };
 }
 
 /**
- * Post-process LLM strategy: fix lengths, unique keywords, packs, teleprompter skeleton.
+ * Post-process LLM strategy: fix lengths, shared keyword, packs, teleprompter skeleton.
  * Improves reliability without a second expensive LLM call.
  */
 export function normalizeStrategy(
   raw: StrategyPayload,
   previousTitles: string[] = [],
+  options: { sharedKeyword?: string } = {},
 ): StrategyPayload {
-  const usedKeywords = new Set<string>();
+  const sharedKeyword = normalizeKeyword(
+    options.sharedKeyword ||
+      raw.funnel_kit?.comment_keyword ||
+      raw.scripts?.[0]?.comment_keyword,
+    "ГАЙД",
+  ).replace(/\d+$/, "") || "ГАЙД";
+
   const scripts = (raw.scripts || [])
     .slice(0, 3)
     .map((s, i) => {
-      const normalized = normalizeScript(s, i, usedKeywords);
+      const normalized = normalizeScript(s, i, sharedKeyword);
       if (isDuplicateTitle(normalized.title, previousTitles)) {
         normalized.title = `${normalized.title} · новый угол`;
       }
@@ -189,14 +191,14 @@ export function normalizeStrategy(
           cta: "",
         },
         i,
-        usedKeywords,
+        sharedKeyword,
       ),
     );
   }
 
   const funnelKit = normalizeFunnel(
     raw.funnel_kit,
-    scripts[0]?.comment_keyword || "ХУК",
+    sharedKeyword,
     "бесплатный гайд",
   );
 

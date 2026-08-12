@@ -74,6 +74,8 @@ export type AppScript = {
   propsChecklist?: string[] | null;
   shootOrder?: number | null;
   sourceType?: string | null;
+  sourceAngle?: string | null;
+  shotList?: string[] | null;
 };
 
 export type AppShootDay = {

@@ -1,5 +1,10 @@
 import { isMockMode } from "@/lib/config";
 import { canRunApify, recordCostEvent } from "@/lib/cost-meter";
+import {
+  CAPTION_VIDEOS_LIMIT,
+  PROFILE_CACHE_VERSION,
+  SCRAPE_POSTS_LIMIT,
+} from "@/lib/content/scrape-limits";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
 import { prisma } from "@/lib/prisma";
 import { normalizeHandle, type Platform } from "@/lib/platform";
@@ -28,7 +33,7 @@ export async function parseProfile(input: {
   userId?: string;
 }): Promise<ScrapedProfile> {
   const handle = normalizeHandle(input.handle, input.platform);
-  const cacheKey = `${input.platform}:${handle.toLowerCase()}`;
+  const cacheKey = `${input.platform}:${handle.toLowerCase()}:${PROFILE_CACHE_VERSION}`;
 
   const cached = await prisma.scrapeCache.findUnique({
     where: { cacheKey },
@@ -127,6 +132,7 @@ async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile
   );
 
   let topVideos: ScrapedVideo[] = [];
+  let recentCaptions: string[] = [];
   if (mediaRes.ok) {
     const mediaJson = (await mediaRes.json()) as {
       data?: {
@@ -142,7 +148,8 @@ async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile
         }>;
       };
     };
-    topVideos = (mediaJson.data?.items || [])
+    const items = mediaJson.data?.items || [];
+    topVideos = items
       .map((item, index) => {
         const caption =
           typeof item.caption === "string"
@@ -159,7 +166,17 @@ async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile
         } satisfies ScrapedVideo;
       })
       .sort((a, b) => b.views - a.views)
-      .slice(0, 5);
+      .slice(0, CAPTION_VIDEOS_LIMIT);
+    recentCaptions = items
+      .map((item) => {
+        const caption =
+          typeof item.caption === "string"
+            ? item.caption
+            : item.caption?.text || "";
+        return caption.trim();
+      })
+      .filter((caption) => caption.length >= 12)
+      .slice(0, SCRAPE_POSTS_LIMIT);
   }
 
   return {
@@ -171,5 +188,6 @@ async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile
     following: json.data?.following_count,
     postsCount: json.data?.media_count,
     topVideos,
+    recentCaptions,
   };
 }

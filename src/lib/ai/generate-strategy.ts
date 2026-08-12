@@ -5,8 +5,11 @@ import {
 } from "@/lib/ai/aitunnel";
 import { recordCostEvent } from "@/lib/cost-meter";
 import { normalizeStrategy } from "@/lib/ai/normalize-strategy";
+import { sanitizeStrategy } from "@/lib/ai/sanitize-scripts";
+import { contentModeFromTranscripts } from "@/lib/ai/speech-signal";
 import { getNichePreset } from "@/lib/niche-presets";
 import { mockStrategy } from "@/lib/mocks/demo-data";
+import type { ProfileInsights } from "@/lib/content/profile-insights";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
 const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для рынка РФ/СНГ (Instagram Reels, VK Клипы, YouTube Shorts, Telegram).
@@ -57,6 +60,8 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
     "teleprompter_script": string,
     "caption": string,
     "cta": string,
+    "source_angle": string,
+    "shot_list": string[],
     "platform_packs": {
       "reels": {"caption": string, "cta": string, "hashtags": string[]},
       "vk_clips": {"caption": string, "cta": string},
@@ -85,7 +90,13 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 10) shoot_day: один образ/фон, props, order для 3 сценариев + 4 extra_ideas для досъёма.
 11) Юридически спокойный тон: без гарантий дохода и серых схем.
 12) Рынок RU/СНГ: VK Клипы — мягче «реклама», Telegram — ценность в тексте, Reels — жёстче хук.
-14) Не повторяй названия из avoid_titles. winning_hooks — паттерны, которые уже залетели у автора: усиливай этот угол, не копируй дословно.`;
+13) Каждый сценарий обязан взять source_angle из caption_angles/products — конкретный продукт или приём автора, не общую тему ниши.
+14) shot_list: 4–6 кадров «что в кадре». Если content_mode = process_no_speech, суфлёр = закадр или текст на экране, НЕ «смотри в камеру».
+15) Одно comment_keyword на funnel_kit и ВСЕ сценарии. Без суффиксов 2/3.
+16) Цену не произносить в суфлёре. В подписи — максимум в 1 ролике.
+17) Аудит профиля: каждый совет цитирует био или подпись. Не предлагай Telegram, если has_website_cta. Не предлагай «добавь CTA», если подписи уже продают.
+18) Голос копируй с voice_samples (я/мы, плотность эмодзи, тепло vs эксперт).
+19) Не повторяй названия из avoid_titles. winning_hooks — паттерны, которые уже залетели у автора: усиливай этот угол, не копируй дословно.`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
@@ -100,22 +111,34 @@ export async function generateStrategy(input: {
   previousTitles?: string[];
   winningHooks?: string[];
   userId?: string;
+  insights?: ProfileInsights;
 }): Promise<{ strategy: StrategyPayload; mocked: boolean; model: string }> {
   const model = llmModelForStrategy(input.plan);
   const niche = getNichePreset(input.nichePreset);
+  const usableTranscripts = (input.transcriptions || []).filter((t) =>
+    t && t.trim().length > 0,
+  );
+  const contentMode = contentModeFromTranscripts(usableTranscripts);
+  const sharedKeyword =
+    input.insights?.suggestedKeyword ||
+    "ГАЙД";
 
   if (shouldUseMockAi()) {
     return {
-      strategy: normalizeStrategy(
-        mockStrategy({
-          handle: input.profile.handle,
-          goal: input.goal,
-          tone: input.tone,
-          offerSummary: input.offerSummary,
-          nichePreset: niche?.label || input.nichePreset,
-          voiceDraft: input.voiceDraft,
-        }),
-        input.previousTitles,
+      strategy: sanitizeStrategy(
+        normalizeStrategy(
+          mockStrategy({
+            handle: input.profile.handle,
+            goal: input.goal,
+            tone: input.tone,
+            offerSummary: input.offerSummary,
+            nichePreset: niche?.label || input.nichePreset,
+            voiceDraft: input.voiceDraft,
+          }),
+          input.previousTitles,
+          { sharedKeyword },
+        ),
+        sharedKeyword,
       ),
       mocked: true,
       model: "mock",
@@ -130,13 +153,29 @@ export async function generateStrategy(input: {
         displayName: input.profile.displayName,
         bio: input.profile.bio,
         followers: input.profile.followers,
-        topVideos: input.profile.topVideos.map((v) => ({
+        topVideos: input.profile.topVideos.slice(0, 12).map((v) => ({
           caption: v.caption,
           views: v.views,
           durationSec: v.durationSec,
         })),
       },
-      transcriptions: input.transcriptions,
+      transcriptions: usableTranscripts,
+      content_mode: contentMode,
+      insights: input.insights
+        ? {
+            products: input.insights.products,
+            prices: input.insights.prices,
+            has_website_cta: input.insights.hasWebsiteCta,
+            has_telegram_cta: input.insights.hasTelegramCta,
+            voice_samples: input.insights.voiceSamples,
+            caption_angles: input.insights.captionAngles.map((a) => ({
+              views: a.views,
+              hook: a.hookLine,
+            })),
+            suggested_keyword: input.insights.suggestedKeyword,
+            bio_excerpt: input.insights.bioExcerpt,
+          }
+        : null,
       goal: input.goal,
       tone: input.tone,
       offerSummary: input.offerSummary,
@@ -152,10 +191,14 @@ export async function generateStrategy(input: {
         count: 3,
         durations_sec: [15, 30, 45],
         max_scripts_with_price_mention: 1,
+        no_price_in_teleprompter: true,
+        shared_comment_keyword: sharedKeyword,
         avoid_greetings: true,
         require_platform_packs: true,
         require_shoot_day: true,
         require_pillars_calendar: true,
+        require_source_angle: true,
+        require_shot_list: true,
         market: "RU_CIS",
       },
     },
@@ -185,9 +228,11 @@ export async function generateStrategy(input: {
   }
   await recordCostEvent("llm", input.userId, "strategy");
   return {
-    strategy: normalizeStrategy(
-      parseStrategyJson(content),
-      input.previousTitles,
+    strategy: sanitizeStrategy(
+      normalizeStrategy(parseStrategyJson(content), input.previousTitles, {
+        sharedKeyword,
+      }),
+      sharedKeyword,
     ),
     mocked: false,
     model: completion.model || model,

@@ -212,6 +212,10 @@ model Script {
   shootOrder       Int?
   /// core | shoot_day | remake | autopsy
   sourceType       String  @default("core")
+  /// Product / caption this script is based on
+  sourceAngle      String?
+  /// string[] — shot list for process videos
+  shotList         Json?
 
   hookFeedback HookFeedback[]
 
