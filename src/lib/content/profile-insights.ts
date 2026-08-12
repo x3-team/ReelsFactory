@@ -93,6 +93,18 @@ export function isReactionHook(text: string) {
   return REACTION_ONLY.test(t) || Array.from(t).length < 18;
 }
 
+export function isWeakAngle(text: string) {
+  const t = (text || "").trim();
+  if (isReactionHook(t)) return true;
+  if (/^[-–—•]\s*/.test(t)) return true;
+  if (
+    /технологическ|обучение можно|купить на сайте|ссылк\w* в шапк/i.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function hookLine(caption: string) {
   const sentences = caption
     .split(/\n+|(?<=[.!?…💔🔥💚💕😅])\s+/)

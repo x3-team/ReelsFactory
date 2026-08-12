@@ -1,5 +1,10 @@
 import { sliceWords } from "@/lib/ai/safe-json";
-import type { FactCard, ProfileInsights } from "@/lib/content/profile-insights";
+import {
+  buildFactCard,
+  isWeakAngle,
+  type FactCard,
+  type ProfileInsights,
+} from "@/lib/content/profile-insights";
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 
 const INVENTED_PHRASES = [
@@ -17,6 +22,9 @@ const INVENTED = [
   { re: /кокос\w*/gi, key: "кокос" },
   { re: /желатин\w*/gi, key: "желатин" },
   { re: /пектин\w*/gi, key: "пектин" },
+  { re: /яблочн\w*(?:\s+пюре)?/gi, key: "яблочн" },
+  { re: /альбумин\w*/gi, key: "альбумин" },
+  { re: /темперинг|темперирован\w*/gi, key: "темперир" },
 ];
 
 const TEMPERATURE = /\d+\s*°\s*[cс]|\d+\s*градус\w*/gi;
@@ -41,6 +49,12 @@ export function scrubInvented(text: string, facts: FactCard): string {
   }
   next = next.replace(/за\s+(\d+)\s+минут\w*/gi, (full, n: string) => {
     return new RegExp(`${n}\\s*минут`, "i").test(facts.blob) ? full : "";
+  });
+  next = next.replace(/(\d+)\s+минут\w*/gi, (full, n: string) => {
+    return new RegExp(`${n}\\s*минут`, "i").test(facts.blob) ? full : "";
+  });
+  next = next.replace(/за\s+(\d+)\s+секунд\w*/gi, (full, n: string) => {
+    return new RegExp(`${n}\\s*секунд`, "i").test(facts.blob) ? full : "";
   });
   return next
     .replace(/\s+([.,!?])/g, "$1")
@@ -82,6 +96,23 @@ function overlapScore(scriptText: string, angleText: string) {
   const words = significantWords(angleText);
   if (!words.length) return 0;
   return words.filter((w) => scriptText.includes(w)).length;
+}
+
+function factsForScript(
+  script: GeneratedScript,
+  insights: ProfileInsights,
+): FactCard {
+  const blob = scriptBlob(script);
+  const ranked = (insights.captionAngles || [])
+    .map((angle) => ({
+      angle,
+      score: overlapScore(blob, `${angle.hookLine} ${angle.caption}`),
+    }))
+    .sort((a, b) => b.score - a.score);
+  const best = ranked[0];
+  const caption = best && best.score >= 2 ? best.angle.caption : "";
+  if (caption && caption.length >= 24) return buildFactCard("", [caption]);
+  return insights.factCard;
 }
 
 function scrubScript(script: GeneratedScript, facts: FactCard): GeneratedScript {
@@ -128,11 +159,13 @@ function cleanExtras(strategy: StrategyPayload): StrategyPayload {
     ...strategy,
     shoot_day: {
       ...shoot,
-      extra_ideas: shoot.extra_ideas.map((idea) => ({
-        ...idea,
-        title: sliceWords(idea.title || "", 56),
-        hook: sliceWords(idea.hook || idea.title || "", 72),
-      })),
+      extra_ideas: shoot.extra_ideas
+        .filter((idea) => !isWeakAngle(`${idea.title} ${idea.hook}`))
+        .map((idea) => ({
+          ...idea,
+          title: sliceWords(idea.title || "", 56),
+          hook: sliceWords(idea.hook || idea.title || "", 72),
+        })),
     },
   };
 }
@@ -145,10 +178,9 @@ export function constrainFacts(
   strategy: StrategyPayload,
   insights: ProfileInsights,
 ): StrategyPayload {
-  const facts = insights.factCard;
-  const scripts = alignAngles(
-    (strategy.scripts || []).map((s) => scrubScript(s, facts)),
-    insights,
+  const aligned = alignAngles(strategy.scripts || [], insights);
+  const scripts = aligned.map((script) =>
+    scrubScript(script, factsForScript(script, insights)),
   );
   return cleanExtras({ ...strategy, scripts });
 }

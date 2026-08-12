@@ -3,7 +3,7 @@ import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
 import { alignAngles, scrubInvented } from "@/lib/ai/constrain-facts";
-import { buildProfileInsights, hookLine } from "@/lib/content/profile-insights";
+import { buildFactCard, buildProfileInsights, hookLine } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 
 function assert(cond: unknown, msg: string) {
@@ -111,6 +111,11 @@ assert(insights.factCard.withoutClaims.some((c) => /масл/.test(c)) || insigh
 assert(!/йогурт/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub yogurt");
 assert(!/бисквит/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub biscuit");
 assert(!/15 минут/.test(scrubInvented("торт за 15 минут. варим 3 минуты", insights.factCard)), "scrub unmatched clickbait");
+const mintFacts = buildFactCard("", [
+  "Мятный зефир в горьком бельгийском шоколаде. ТК стоит 1300 рублей.",
+]);
+assert(!/яблочн/.test(scrubInvented("меренга с яблочным пюре и альбумином", mintFacts)), "per-caption apple");
+assert(!/10 минут/.test(scrubInvented("готовится 10 минут", mintFacts)), "per-caption minutes");
 assert(
   !/^\s*из /.test(scrubInvented("бисквит из птичьего молока", insights.factCard)) &&
     /птичьего молока/.test(scrubInvented("бисквит из птичьего молока", insights.factCard)),

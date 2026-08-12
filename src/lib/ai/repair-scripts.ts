@@ -1,6 +1,6 @@
 import { sliceChars, sliceWords } from "@/lib/ai/safe-json";
 import {
-  isReactionHook,
+  isWeakAngle,
   type ProfileInsights,
 } from "@/lib/content/profile-insights";
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
@@ -174,7 +174,7 @@ function polishCatalog(
   });
 
   const extras = leftover
-    .filter((angle) => !isReactionHook(angle.hookLine))
+    .filter((angle) => !isWeakAngle(angle.hookLine))
     .slice(0, 4)
     .map((angle, i) => ({
     title: sliceWords(angle.hookLine, 56),
