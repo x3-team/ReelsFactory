@@ -3,7 +3,7 @@ import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
 import { alignAngles, scrubInvented } from "@/lib/ai/constrain-facts";
-import { buildProfileInsights } from "@/lib/content/profile-insights";
+import { buildProfileInsights, hookLine } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 
 function assert(cond: unknown, msg: string) {
@@ -91,6 +91,20 @@ assert(
 );
 assert(insights.prices.some((p) => /1300/.test(p)), "price mined");
 assert(insights.captionAngles.length >= 2, "angles");
+assert(
+  /клубник/i.test(
+    hookLine(
+      "Готова есть его летом каждый день💔. Зефир из 100% свежей клубники кусочками🔥.",
+    ),
+  ),
+  "hook skips emotion",
+);
+assert(
+  !/медитац/i.test(
+    hookLine("Медитация💕.\n\nПодробная технологическая карта с рецептами зефира стоит 1300 рублей."),
+  ),
+  "hook skips meditation",
+);
 assert(sliceWords("Маршмеллоу пружинки с двойным вкусом, без белка, а получается пышное и нежное", 56).endsWith("белка") || !/ н$/.test(sliceWords("Маршмеллоу пружинки с двойным вкусом, без белка, а получается пышное и нежное", 56)), "no mid-word cut");
 
 assert(insights.factCard.withoutClaims.some((c) => /масл/.test(c)) || insights.factCard.allowed.includes("птичье молоко") || insights.factCard.allowed.length >= 1, "fact card");

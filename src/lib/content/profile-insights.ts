@@ -80,15 +80,43 @@ function stripDecor(text: string) {
     .trim();
 }
 
-function hookLine(caption: string) {
-  const first = caption
-    .split(/\n+/)
-    .map((l) => stripDecor(l))
-    .find((l) => l.length >= 12);
-  const line = first || stripDecor(caption);
+const REACTION_ONLY =
+  /^(обожаю|медитация|и такое бывает|этот хруст|смешно получилось|готова есть|эти звуки|любимые батончики|осталось немного|как думаете)/i;
+
+const PRODUCT_HINT =
+  /зефир|мармелад|бенто|маршмеллоу|трюфел|шоколад|птичь|фисташк|малин|мятн|клубник|карамел|мороженое|сироп|торт|конфет|мадлен|плитк/i;
+
+export function isReactionHook(text: string) {
+  const t = stripDecor(text || "").trim();
+  if (!t) return true;
+  if (PRODUCT_HINT.test(t)) return false;
+  return REACTION_ONLY.test(t) || Array.from(t).length < 18;
+}
+
+export function hookLine(caption: string) {
+  const sentences = caption
+    .split(/\n+|(?<=[.!?…💔🔥💚💕😅])\s+/)
+    .map((l) => stripDecor(l).replace(/[«»]/g, "").trim())
+    .filter((l) => l.length >= 12);
+
+  const scored = sentences.map((s) => {
+    let score = 0;
+    if (PRODUCT_HINT.test(s)) score += 4;
+    if (/[«"][^»"]{3,40}[»"]/.test(s) || /[А-ЯЁ][а-яё]+-[а-яё]+/.test(s)) {
+      score += 2;
+    }
+    if (REACTION_ONLY.test(s)) score -= 5;
+    if (/^(подробн|технологическ|тк с |обучение можно|купить)/i.test(s)) {
+      score -= 3;
+    }
+    return { s, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored.find((x) => x.score > 0) || scored[0];
+  const line = best?.s || stripDecor(caption).replace(/[«»]/g, "").trim();
   const stop = line.search(/[.!?…]|💔|🔥|💚/);
   const sentence = stop >= 12 ? line.slice(0, stop + 1) : line;
-  return sliceWords(sentence.replace(/[«»]/g, "").trim(), 72);
+  return sliceWords(sentence.trim(), 72);
 }
 
 function extractHashtagProducts(captions: string[]) {

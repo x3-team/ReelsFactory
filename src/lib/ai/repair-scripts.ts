@@ -1,5 +1,8 @@
 import { sliceChars, sliceWords } from "@/lib/ai/safe-json";
-import type { ProfileInsights } from "@/lib/content/profile-insights";
+import {
+  isReactionHook,
+  type ProfileInsights,
+} from "@/lib/content/profile-insights";
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 
 const SKELETON_TITLE = /^сценарий\s*\d+/i;
@@ -170,7 +173,10 @@ function polishCatalog(
     return { ...script, source_angle: next.hookLine };
   });
 
-  const extras = leftover.slice(0, 4).map((angle, i) => ({
+  const extras = leftover
+    .filter((angle) => !isReactionHook(angle.hookLine))
+    .slice(0, 4)
+    .map((angle, i) => ({
     title: sliceWords(angle.hookLine, 56),
     hook: sliceWords(angle.hookLine, 72),
     pillar: "ассортимент",
