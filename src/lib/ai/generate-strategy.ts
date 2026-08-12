@@ -227,19 +227,28 @@ export async function generateStrategy(input: {
 
   let completion = await request(6000);
   let content = completion.choices[0]?.message?.content;
-  if (!content) {
+  let parsed: StrategyPayload | null = null;
+  if (content) {
+    try {
+      parsed = parseStrategyJson(content);
+    } catch {
+      parsed = null;
+    }
+  }
+  if (!parsed) {
     completion = await request(7000);
     content = completion.choices[0]?.message?.content;
-  }
-  if (!content) {
-    throw new Error(
-      `Пустой ответ LLM через AITunnel (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
-    );
+    if (!content) {
+      throw new Error(
+        `Пустой ответ LLM через AITunnel (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
+      );
+    }
+    parsed = parseStrategyJson(content);
   }
   await recordCostEvent("llm", input.userId, "strategy");
   return {
     strategy: sanitizeStrategy(
-      normalizeStrategy(parseStrategyJson(content), input.previousTitles, {
+      normalizeStrategy(parsed, input.previousTitles, {
         sharedKeyword,
       }),
       sharedKeyword,
@@ -255,15 +264,14 @@ function parseStrategyJson(raw: string): StrategyPayload {
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
     .replace(/\s*```$/, "");
-  const parsed = JSON.parse(cleaned) as StrategyPayload;
-  if (
-    !parsed.niche ||
-    !parsed.target_audience ||
-    !Array.isArray(parsed.content_pillars) ||
-    !Array.isArray(parsed.profile_audit_tips) ||
-    !Array.isArray(parsed.scripts)
-  ) {
-    throw new Error("LLM JSON не содержит обязательных полей");
+  let parsed: StrategyPayload;
+  try {
+    parsed = JSON.parse(cleaned) as StrategyPayload;
+  } catch {
+    throw new Error("LLM JSON не разбирается");
+  }
+  if (!Array.isArray(parsed.scripts) || parsed.scripts.length === 0) {
+    throw new Error("LLM JSON без сценариев");
   }
   return parsed;
 }
