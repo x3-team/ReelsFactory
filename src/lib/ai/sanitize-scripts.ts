@@ -20,6 +20,13 @@ function replaceKeyword(text: string, from: string[], to: string) {
   return next;
 }
 
+export function formatTeleprompter(text: string) {
+  return text
+    .replace(/\s+(?=\d{1,2}\s*[-–—]\s*\d{1,2}\s*[:сc])/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function stripPrices(text: string) {
   return text
     .replace(priceRe(), "в шапке профиля")
@@ -80,7 +87,9 @@ function applyKeywordToScript(
   keepPriceInCaption: boolean,
 ): GeneratedScript {
   const swap = (value: string) => replaceKeyword(value, from, keyword);
-  const teleprompter = stripPrices(swap(script.teleprompter_script || ""));
+  const teleprompter = formatTeleprompter(
+    stripPrices(swap(script.teleprompter_script || "")),
+  );
   const caption = keepPriceInCaption
     ? swap(script.caption || "")
     : stripPrices(swap(script.caption || ""));
@@ -138,13 +147,27 @@ export function sanitizeStrategy(
 
 export function dropGenericTelegramTips(
   tips: string[],
-  opts: { hasWebsiteCta: boolean; hasTelegramCta: boolean; bioExcerpt: string },
+  opts: {
+    hasWebsiteCta: boolean;
+    hasTelegramCta: boolean;
+    bioExcerpt: string;
+    avgCaptionChars?: number;
+  },
 ) {
   let next = tips.filter((tip) => {
     if (opts.hasWebsiteCta && /(telegram|телеграм)/i.test(tip)) {
       return /(уже есть|уже стоит|сайт в шапке|не дублируй)/i.test(tip);
     }
     if (/стрелк|эмодзи.*ссылк|ссылк.*эмодзи/i.test(tip) && /⬇️|↓/.test(opts.bioExcerpt)) {
+      return false;
+    }
+    if (
+      (opts.avgCaptionChars || 0) >= 80 &&
+      /подписи.*коротк|короткие подписи|подписи к видео сейчас короткие/i.test(tip)
+    ) {
+      return false;
+    }
+    if (opts.hasWebsiteCta && /добавь(те)? в шапку.*кнопк/i.test(tip)) {
       return false;
     }
     return true;

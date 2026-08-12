@@ -1,6 +1,6 @@
 import { sliceChars } from "@/lib/ai/safe-json";
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
-import { humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
+import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
 import { buildProfileInsights } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
@@ -21,7 +21,10 @@ assert(
 );
 
 assert(sliceChars("зефир🩷хвост", 6) === "зефир🩷", "emoji slice");
-assert(humanizeKeyword("СКРИПТ2") === "СКРИПТ", "strip suffix");
+assert(
+  formatTeleprompter("0-3: А. 3-6: Б. 6-9: В.").includes("\n"),
+  "teleprompter lines",
+);
 assert(!/1300/.test(stripPrices("ТК стоит 1300 рублей, берите")), "strip price");
 assert(
   isSkeletonScript({

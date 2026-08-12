@@ -44,6 +44,7 @@ export type ProfileInsights = {
   captionAngles: CaptionAngle[];
   suggestedKeyword: string;
   bioExcerpt: string;
+  avgCaptionChars: number;
 };
 
 function allCaptions(profile: ScrapedProfile): string[] {
@@ -184,6 +185,12 @@ export function buildProfileInsights(profile: ScrapedProfile): ProfileInsights {
     captionAngles: videoAngles(profile.topVideos || []),
     suggestedKeyword: normalizeKeyword(suggestKeyword(captions, bio), "ГАЙД"),
     bioExcerpt: sliceChars(bio.replace(/\s+/g, " ").trim(), 220),
+    avgCaptionChars:
+      captions.length === 0
+        ? 0
+        : Math.round(
+            captions.reduce((sum, c) => sum + c.length, 0) / captions.length,
+          ),
   };
 }
 

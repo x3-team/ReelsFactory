@@ -132,5 +132,59 @@ export function repairStrategy(
     return scriptFromAngle(angle, i, durations[i], keyword);
   });
 
-  return { ...strategy, scripts: filled };
+  return polishCatalog({ ...strategy, scripts: filled }, insights);
+}
+
+function angleKey(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-zа-яё0-9]+/gi, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 4)
+    .slice(0, 4)
+    .join(" ");
+}
+
+function polishCatalog(
+  strategy: StrategyPayload,
+  insights: ProfileInsights,
+): StrategyPayload {
+  const leftover = unusedAngles(strategy, insights);
+  const seen = new Set<string>();
+  const scripts = (strategy.scripts || []).map((script) => {
+    const key = angleKey(script.source_angle || script.title);
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      return script;
+    }
+    const next = leftover.find((a) => !seen.has(angleKey(a.hookLine)));
+    if (!next) return script;
+    seen.add(angleKey(next.hookLine));
+    return { ...script, source_angle: next.hookLine };
+  });
+
+  const extras = leftover.slice(0, 4).map((angle, i) => ({
+    title: angle.hookLine,
+    hook: angle.hookLine,
+    pillar: "ассортимент",
+    duration_sec: i % 2 === 0 ? 15 : 30,
+  }));
+  const shoot = strategy.shoot_day;
+  if (!shoot) return { ...strategy, scripts };
+  const current = Array.isArray(shoot.extra_ideas) ? shoot.extra_ideas : [];
+  const merged = extras.length
+    ? [...extras, ...current]
+        .filter((idea, idx, arr) => {
+          const k = angleKey(idea.title || idea.hook || "");
+          return k && arr.findIndex((x) => angleKey(x.title || x.hook || "") === k) === idx;
+        })
+        .slice(0, 4)
+    : current;
+
+  return {
+    ...strategy,
+    scripts,
+    shoot_day: { ...shoot, extra_ideas: merged },
+  };
 }
