@@ -56,6 +56,7 @@ agent and machine gets the same setup:
 - Lint / build: `pnpm lint`, `pnpm build`
 - DB: `pnpm db:generate`, `pnpm db:push`
 - Smoke: UI или `curl` на `/api/*`
+- Живой прогон анализа: `PLAN=PRO bash scripts/real-run.sh @handle` (отчёт в `/tmp`)
 
 ### Gotchas
 
