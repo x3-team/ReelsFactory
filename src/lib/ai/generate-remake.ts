@@ -1,6 +1,6 @@
 import {
   getAiTunnelClient,
-  llmModelForPlan,
+  llmModelForStudio,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
 import { mockViralRemake } from "@/lib/mocks/demo-data";
@@ -54,7 +54,7 @@ export async function generateViralRemake(input: {
   nichePreset?: string | null;
   plan?: string | null;
 }): Promise<{ remake: ViralRemakePayload; mocked: boolean; model: string }> {
-  const model = llmModelForPlan(input.plan);
+  const model = llmModelForStudio(input.plan);
 
   if (shouldUseMockAi()) {
     return {

@@ -18,6 +18,7 @@ import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
 import { ScriptShareCard } from "@/components/paywall/script-share-card";
 import { ContentStudioTools } from "@/components/results/content-studio-tools";
 import { TeleprompterMode } from "@/components/results/teleprompter";
+import { UsageQuotaCard } from "@/components/results/usage-quota-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,7 @@ import type {
   AppPlatformPack,
   AppScript,
   AppShootDay,
+  AppUsageSnapshot,
   AppUser,
 } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
@@ -62,6 +64,7 @@ export function ResultsDashboard({
   analysis,
   referralUrl,
   clientAccounts = [],
+  usage,
   onSelectPlan,
   loadingPlan,
   onReanalyze,
@@ -79,6 +82,7 @@ export function ResultsDashboard({
     offerSummary?: string | null;
     nichePreset?: string | null;
   }>;
+  usage?: AppUsageSnapshot | null;
   onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
   loadingPlan?: string | null;
   onReanalyze: () => void;
@@ -129,6 +133,8 @@ export function ResultsDashboard({
           onAnalyzeClient={onAnalyzeClient}
         />
       )}
+
+      {usage && <UsageQuotaCard usage={usage} />}
 
       <div className="grid gap-3">
         <Card>
@@ -209,6 +215,8 @@ export function ResultsDashboard({
         userId={user.id}
         analysisId={analysis.id}
         canUse={canStudio}
+        remakesLeft={usage?.remaining.remakes ?? 0}
+        autopsiesLeft={usage?.remaining.autopsies ?? 0}
         onLocked={() => setPaywallOpen(true)}
         onScriptCreated={(script) => {
           onScriptsUpdated?.([...(analysis.scripts || []), script]);

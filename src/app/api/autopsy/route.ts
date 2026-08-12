@@ -5,6 +5,7 @@ import { generateAutopsy } from "@/lib/ai/generate-autopsy";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
+import { assertCanAutopsy, QuotaError } from "@/lib/usage";
 
 const bodySchema = z.object({
   userId: z.string().min(1),
@@ -34,6 +35,8 @@ export async function POST(request: Request) {
         { status: 402 },
       );
     }
+
+    const usage = await assertCanAutopsy(user);
 
     const analysis = body.analysisId
       ? await prisma.profileAnalysis.findFirst({
@@ -74,13 +77,30 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      serialize({ autopsy, script: savedScript, mocked, model }),
+      serialize({
+        autopsy,
+        script: savedScript,
+        mocked,
+        model,
+        usage: {
+          ...usage.usage,
+          remaining: {
+            ...usage.remaining,
+            autopsies: Math.max(0, usage.remaining.autopsies - 1),
+            scripts: Math.max(0, usage.remaining.scripts - 1),
+          },
+        },
+      }),
     );
   } catch (error) {
     console.error("POST /api/autopsy", error);
+    const status = error instanceof QuotaError ? 402 : 400;
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Autopsy failed" },
-      { status: 400 },
+      {
+        error: error instanceof Error ? error.message : "Autopsy failed",
+        code: error instanceof QuotaError ? error.code : undefined,
+      },
+      { status },
     );
   }
 }

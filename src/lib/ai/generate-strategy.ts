@@ -1,8 +1,9 @@
 import {
   getAiTunnelClient,
-  llmModelForPlan,
+  llmModelForStrategy,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
+import { normalizeStrategy } from "@/lib/ai/normalize-strategy";
 import { getNichePreset } from "@/lib/niche-presets";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
@@ -81,7 +82,9 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 8) funnel_kit + funnel у сценариев: одно ключевое слово-коммент → ответ бота / Telegram.
 9) pillars_calendar: ровно 7 дней, чередуй role (trust/expert/offer/social_proof/entertainment).
 10) shoot_day: один образ/фон, props, order для 3 сценариев + 4 extra_ideas для досъёма.
-11) Юридически спокойный тон: без гарантий дохода и серых схем.`;
+11) Юридически спокойный тон: без гарантий дохода и серых схем.
+12) Рынок RU/СНГ: VK Клипы — мягче «реклама», Telegram — ценность в тексте, Reels — жёстче хук.
+13) Удержание: первая конкретная польза не позже 40% хронометража; цифры/ошибки сильнее абстракций.`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
@@ -94,19 +97,21 @@ export async function generateStrategy(input: {
   nichePreset?: string | null;
   voiceDraft?: string | null;
 }): Promise<{ strategy: StrategyPayload; mocked: boolean; model: string }> {
-  const model = llmModelForPlan(input.plan);
+  const model = llmModelForStrategy(input.plan);
   const niche = getNichePreset(input.nichePreset);
 
   if (shouldUseMockAi()) {
     return {
-      strategy: mockStrategy({
-        handle: input.profile.handle,
-        goal: input.goal,
-        tone: input.tone,
-        offerSummary: input.offerSummary,
-        nichePreset: niche?.label || input.nichePreset,
-        voiceDraft: input.voiceDraft,
-      }),
+      strategy: normalizeStrategy(
+        mockStrategy({
+          handle: input.profile.handle,
+          goal: input.goal,
+          tone: input.tone,
+          offerSummary: input.offerSummary,
+          nichePreset: niche?.label || input.nichePreset,
+          voiceDraft: input.voiceDraft,
+        }),
+      ),
       mocked: true,
       model: "mock",
     };
@@ -156,7 +161,8 @@ export async function generateStrategy(input: {
   const completion = await openai.chat.completions.create({
     model,
     response_format: { type: "json_object" },
-    max_tokens: isPro ? 9000 : 7000,
+    // Flash: держим потолок ниже — нормализатор добьёт структуру без второго вызова
+    max_tokens: isPro ? 6500 : 5500,
     messages: [
       { role: "system", content: STRATEGY_SYSTEM_PROMPT },
       { role: "user", content: userPrompt },
@@ -171,7 +177,7 @@ export async function generateStrategy(input: {
     );
   }
   return {
-    strategy: parseStrategyJson(content),
+    strategy: normalizeStrategy(parseStrategyJson(content)),
     mocked: false,
     model: completion.model || model,
   };

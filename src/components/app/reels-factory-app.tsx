@@ -14,6 +14,7 @@ import { useTelegram } from "@/components/telegram/telegram-provider";
 import {
   api,
   type AppAnalysis,
+  type AppUsageSnapshot,
   type AppUser,
 } from "@/lib/client-api";
 import { referralLink, type PlanId } from "@/lib/config";
@@ -37,6 +38,7 @@ export function ReelsFactoryApp() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [analysis, setAnalysis] = useState<AppAnalysis | null>(null);
   const [referralUrl, setReferralUrl] = useState("");
+  const [usage, setUsage] = useState<AppUsageSnapshot | null>(null);
   const [clientAccounts, setClientAccounts] = useState<
     Array<{
       id: string;
@@ -84,6 +86,7 @@ export function ReelsFactoryApp() {
       user: AppUser;
       latestAnalysis: AppAnalysis | null;
       referralLink: string;
+      usage?: AppUsageSnapshot;
       clientAccounts?: Array<{
         id: string;
         socialHandle: string;
@@ -98,6 +101,7 @@ export function ReelsFactoryApp() {
     setUser(data.user);
     setReferralUrl(data.referralLink || referralLink(data.user.telegramId));
     setClientAccounts(data.clientAccounts || []);
+    if (data.usage) setUsage(data.usage);
 
     const paidFlag =
       typeof window !== "undefined" &&
@@ -295,6 +299,7 @@ export function ReelsFactoryApp() {
           analysis={analysis}
           referralUrl={referralUrl}
           clientAccounts={clientAccounts}
+          usage={usage}
           onSelectPlan={handleSelectPlan}
           loadingPlan={loadingPlan}
           onReanalyze={() => {
@@ -305,6 +310,21 @@ export function ReelsFactoryApp() {
           }}
           onScriptsUpdated={(scripts) => {
             setAnalysis((prev) => (prev ? { ...prev, scripts } : prev));
+            setUsage((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    usage: {
+                      ...prev.usage,
+                      scripts: prev.usage.scripts + 1,
+                    },
+                    remaining: {
+                      ...prev.remaining,
+                      scripts: Math.max(0, prev.remaining.scripts - 1),
+                    },
+                  }
+                : prev,
+            );
           }}
         />
       </>

@@ -21,12 +21,16 @@ export function ContentStudioTools({
   userId,
   analysisId,
   canUse,
+  remakesLeft = 0,
+  autopsiesLeft = 0,
   onLocked,
   onScriptCreated,
 }: {
   userId: string;
   analysisId: string;
   canUse: boolean;
+  remakesLeft?: number;
+  autopsiesLeft?: number;
   onLocked: () => void;
   onScriptCreated: (script: AppScript) => void;
 }) {
@@ -116,6 +120,10 @@ export function ContentStudioTools({
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Студия · Pro / Agency
       </h2>
+      <p className="text-xs text-muted-foreground">
+        Осталось ремейков: {canUse ? remakesLeft : 0} · разборов:{" "}
+        {canUse ? autopsiesLeft : 0}
+      </p>
 
       <Card>
         <CardHeader className="pb-2">

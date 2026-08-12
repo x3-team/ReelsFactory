@@ -8,16 +8,25 @@ import { prisma } from "@/lib/prisma";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
 import type { GeneratedScript, ScrapedProfile } from "@/lib/types";
-
-function scriptsLimit(user: User) {
-  if (!hasPaidAccess(user)) return 1;
-  return PLANS[user.subscriptionPlan]?.scriptsPerMonth ?? 12;
-}
+import { getUsageSnapshot } from "@/lib/usage";
 
 function pillarsLimit(user: User) {
   if (user.subscriptionPlan === SubscriptionPlan.START) return 1;
   if (user.subscriptionPlan === SubscriptionPlan.FREE) return 3;
   return 10;
+}
+
+async function scriptsToPersist(user: User, scripts: GeneratedScript[]) {
+  const paid = hasPaidAccess(user);
+  if (!paid) return scripts.slice(0, 1);
+
+  const snap = await getUsageSnapshot(user);
+  const planCap = PLANS[user.subscriptionPlan]?.scriptsPerMonth ?? 12;
+  const room = Math.min(planCap, snap.remaining.scripts);
+  // Analysis itself creates scripts — remaining already includes past month usage,
+  // but not this batch; allow up to room (at least 1 if somehow 0 mid-run).
+  const limit = Math.max(0, room);
+  return scripts.slice(0, Math.max(limit, 0));
 }
 
 function scriptCreateData(
@@ -107,7 +116,10 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     });
 
     const paid = hasPaidAccess(user);
-    const scriptsToSave = strategy.scripts.slice(0, scriptsLimit(user));
+    const scriptsToSave = await scriptsToPersist(user, strategy.scripts);
+    const finalScripts = !paid
+      ? strategy.scripts.slice(0, 1)
+      : scriptsToSave;
     const pillars = strategy.content_pillars.slice(0, pillarsLimit(user));
 
     await prisma.$transaction(async (tx) => {
@@ -136,7 +148,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         },
       });
 
-      for (const script of scriptsToSave) {
+      for (const script of finalScripts) {
         await tx.script.create({
           data: scriptCreateData(user.id, analysisId, script, paid, "core"),
         });

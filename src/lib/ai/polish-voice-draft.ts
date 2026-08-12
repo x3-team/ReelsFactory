@@ -1,6 +1,6 @@
 import {
   getAiTunnelClient,
-  llmModelForPlan,
+  llmModelForStrategy,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
 
@@ -20,7 +20,7 @@ export async function polishVoiceDraft(input: {
     };
   }
 
-  const model = llmModelForPlan(input.plan);
+  const model = llmModelForStrategy(input.plan);
   const openai = getAiTunnelClient();
   const completion = await openai.chat.completions.create({
     model,

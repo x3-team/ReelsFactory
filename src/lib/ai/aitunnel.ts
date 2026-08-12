@@ -49,6 +49,23 @@ export function llmModelPro() {
   return process.env.AITUNNEL_LLM_MODEL_PRO || "gpt-5.6-terra";
 }
 
+/**
+ * Strategy / analysis JSON — всегда Flash (COGS).
+ * Pro-креатив дорогой на output; жирный strategy-JSON на Terra съедает маржу.
+ */
+export function llmModelForStrategy(plan?: string | null) {
+  void plan;
+  return llmModel();
+}
+
+/**
+ * Studio (remake / autopsy) — Terra на Pro/Agency, иначе Flash.
+ */
+export function llmModelForStudio(plan?: string | null) {
+  return llmModelForPlan(plan);
+}
+
+/** @deprecated prefer llmModelForStrategy / llmModelForStudio */
 export function llmModelForPlan(plan?: string | null) {
   const normalized = (plan || "").toUpperCase();
   if (normalized === "PRO" || normalized === "AGENCY") {

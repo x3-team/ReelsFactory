@@ -5,6 +5,7 @@ import { generateViralRemake } from "@/lib/ai/generate-remake";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
+import { assertCanRemake, QuotaError } from "@/lib/usage";
 
 const bodySchema = z.object({
   userId: z.string().min(1),
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
         { status: 402 },
       );
     }
+
+    const usage = await assertCanRemake(user);
 
     const { remake, mocked, model } = await generateViralRemake({
       sourceUrl: body.sourceUrl,
@@ -75,13 +78,30 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      serialize({ remake, script: savedScript, mocked, model }),
+      serialize({
+        remake,
+        script: savedScript,
+        mocked,
+        model,
+        usage: {
+          ...usage.usage,
+          remaining: {
+            ...usage.remaining,
+            remakes: Math.max(0, usage.remaining.remakes - 1),
+            scripts: Math.max(0, usage.remaining.scripts - 1),
+          },
+        },
+      }),
     );
   } catch (error) {
     console.error("POST /api/remake", error);
+    const status = error instanceof QuotaError ? 402 : 400;
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Remake failed" },
-      { status: 400 },
+      {
+        error: error instanceof Error ? error.message : "Remake failed",
+        code: error instanceof QuotaError ? error.code : undefined,
+      },
+      { status },
     );
   }
 }

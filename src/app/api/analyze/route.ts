@@ -4,6 +4,7 @@ import { z } from "zod";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
+import { assertCanEnqueueAnalysis, QuotaError } from "@/lib/usage";
 
 const bodySchema = z.object({
   userId: z.string().min(1),
@@ -17,6 +18,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
+
+    await assertCanEnqueueAnalysis(user);
 
     let socialHandle = user.socialHandle;
     let platform = user.platform;
@@ -64,12 +67,14 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("POST /api/analyze", error);
+    const status = error instanceof QuotaError ? 402 : 500;
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : "Не удалось поставить анализ в очередь",
+        code: error instanceof QuotaError ? error.code : undefined,
       },
-      { status: 500 },
+      { status },
     );
   }
 }

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
 import { resolveTelegramAuth } from "@/lib/telegram/auth";
 import { upsertTelegramUser } from "@/lib/users";
+import { getUsageSnapshot } from "@/lib/usage";
 
 const bodySchema = z.object({
   initData: z.string().nullish(),
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       where: { agencyUserId: user.id },
       orderBy: { createdAt: "asc" },
     });
+    const usage = await getUsageSnapshot(user);
 
     return NextResponse.json(
       serialize({
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
         clientAccounts,
         referralLink: referralLink(user.telegramId.toString()),
         authVerified: auth.verified,
+        usage,
       }),
     );
   } catch (error) {

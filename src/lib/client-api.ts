@@ -97,6 +97,29 @@ export type AppCalendarDay = {
   platform_focus: string;
 };
 
+export type AppUsageSnapshot = {
+  planId: string;
+  limits: {
+    scriptsPerMonth: number;
+    analysesPerMonth: number;
+    remakesPerMonth: number;
+    autopsiesPerMonth: number;
+    maxClientAccounts: number;
+  };
+  usage: {
+    scripts: number;
+    remakes: number;
+    autopsies: number;
+    analyses: number;
+  };
+  remaining: {
+    scripts: number;
+    analyses: number;
+    remakes: number;
+    autopsies: number;
+  };
+};
+
 export type AppAnalysis = {
   id: string;
   status: string;

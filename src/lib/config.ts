@@ -4,6 +4,9 @@ export const PLANS = {
     name: "Бесплатно",
     priceRub: 0,
     scriptsPerMonth: 1,
+    analysesPerMonth: 1,
+    remakesPerMonth: 0,
+    autopsiesPerMonth: 0,
     maxClientAccounts: 0,
     description: "Аудит + 1 тизер · превью кросс‑пакета и съёмочного дня",
   },
@@ -12,27 +15,36 @@ export const PLANS = {
     name: "Старт",
     priceRub: 590,
     scriptsPerMonth: 12,
+    analysesPerMonth: 4,
+    remakesPerMonth: 0,
+    autopsiesPerMonth: 0,
     maxClientAccounts: 0,
     description:
-      "12 сценариев · кросс-пакет Reels/VK/TG · съёмочный день · воронка коммент→бот",
+      "12 сценариев · 4 анализа · кросс‑пакет Reels/VK/TG · съёмочный день",
   },
   PRO: {
     id: "PRO" as const,
     name: "Про",
     priceRub: 1990,
     scriptsPerMonth: 30,
+    analysesPerMonth: 10,
+    remakesPerMonth: 10,
+    autopsiesPerMonth: 10,
     maxClientAccounts: 0,
     description:
-      "30 сценариев · ремейк вирусов · разбор «не залетело» · календарь столпов",
+      "30 сценариев · 10 анализов · 10 ремейков · 10 разборов «не залетело»",
   },
   AGENCY: {
     id: "AGENCY" as const,
     name: "Агентство",
     priceRub: 4990,
     scriptsPerMonth: 100,
+    analysesPerMonth: 30,
+    remakesPerMonth: 30,
+    autopsiesPerMonth: 30,
     maxClientAccounts: 5,
     description:
-      "До 5 клиентов · брифы на аккаунт · командный объём · все Pro-фичи",
+      "До 5 клиентов · 100 сценариев · 30 анализов · студия 30+30",
   },
 } as const;
 
@@ -68,4 +80,9 @@ export function telegramShareUrl(url: string, text?: string) {
   const params = new URLSearchParams({ url });
   if (text) params.set("text", text);
   return `https://t.me/share/url?${params.toString()}`;
+}
+
+export function planLimits(plan: PlanId | string) {
+  const key = (plan || "FREE").toUpperCase() as PlanId;
+  return PLANS[key] || PLANS.FREE;
 }

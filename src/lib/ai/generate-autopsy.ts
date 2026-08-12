@@ -1,6 +1,6 @@
 import {
   getAiTunnelClient,
-  llmModelForPlan,
+  llmModelForStudio,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
 import { mockAutopsy } from "@/lib/mocks/demo-data";
@@ -42,7 +42,7 @@ export async function generateAutopsy(input: {
   offerSummary?: string | null;
   plan?: string | null;
 }): Promise<{ autopsy: AutopsyPayload; mocked: boolean; model: string }> {
-  const model = llmModelForPlan(input.plan);
+  const model = llmModelForStudio(input.plan);
 
   if (shouldUseMockAi()) {
     return {
