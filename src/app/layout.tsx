@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Unbounded } from "next/font/google";
 import localFont from "next/font/local";
 
-import { TelegramProvider } from "@/components/telegram/telegram-provider";
-
 import "./globals.css";
 
 const geistSans = localFont({
@@ -25,16 +23,17 @@ const unbounded = Unbounded({
 });
 
 export const metadata: Metadata = {
-  title: "ReelsFactory",
+  title: {
+    default: "ReelsFactory — сценарии для Reels, VK и Telegram",
+    template: "%s — ReelsFactory",
+  },
   description:
-    "Сценарии для Reels, VK Клипов и Telegram: анализ профиля и суфлёр.",
+    "Разбор профиля и готовые сценарии с суфлёром. Снял раз — выложи в Reels, VK Клипы и Telegram.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: "#14110f",
 };
@@ -49,7 +48,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${unbounded.variable} font-sans antialiased`}
       >
-        <TelegramProvider>{children}</TelegramProvider>
+        {children}
       </body>
     </html>
   );

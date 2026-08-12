@@ -76,3 +76,36 @@
     scroll-margin-bottom: 8rem;
   }
 }
+
+@layer utilities {
+  .rf-grain {
+    opacity: 0.28;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  .rf-rise {
+    animation: rf-rise 0.7s ease-out both;
+  }
+
+  .rf-cta {
+    box-shadow: 0 12px 32px -14px hsl(12 86% 56% / 0.7);
+  }
+
+  @keyframes rf-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rf-rise {
+      animation: none;
+    }
+  }
+}
