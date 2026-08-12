@@ -129,7 +129,7 @@ function Hero() {
             <Sparkles className="size-3.5" />
             Бесплатно: разбор аккаунта + 1 сценарий · 1–2 минуты
           </p>
-          <h1 className="font-display max-w-[17ch] text-[2.35rem] font-semibold leading-[1.08] tracking-tight md:text-6xl md:leading-[1.05]">
+          <h1 className="font-display max-w-[20ch] text-[2.35rem] font-semibold leading-[1.08] tracking-tight md:text-[3.4rem] md:leading-[1.06]">
             Растим твою аудиторию в коротких видео
           </h1>
           <p className="max-w-[42ch] text-[1.08rem] leading-7 text-muted-foreground">
