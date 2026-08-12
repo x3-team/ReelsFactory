@@ -219,21 +219,27 @@ export async function generateStrategy(input: {
   );
 
   const openai = getAiTunnelClient();
-  const completion = await openai.chat.completions.create(
-    {
-      model,
-      response_format: { type: "json_object" },
-      max_tokens: 5500,
-      messages: [
-        { role: "system", content: STRATEGY_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.75,
-    },
-    { timeout: 90_000, maxRetries: 0 },
-  );
+  const request = (maxTokens: number) =>
+    openai.chat.completions.create(
+      {
+        model,
+        response_format: { type: "json_object" },
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: STRATEGY_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.75,
+      },
+      { timeout: 120_000, maxRetries: 0 },
+    );
 
-  const content = completion.choices[0]?.message?.content;
+  let completion = await request(8000);
+  let content = completion.choices[0]?.message?.content;
+  if (!content) {
+    completion = await request(8000);
+    content = completion.choices[0]?.message?.content;
+  }
   if (!content) {
     throw new Error(
       `Пустой ответ LLM через AITunnel (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
