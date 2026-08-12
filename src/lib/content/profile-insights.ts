@@ -1,4 +1,4 @@
-import { sliceChars } from "@/lib/ai/safe-json";
+import { sliceChars, sliceWords } from "@/lib/ai/safe-json";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
 import { normalizeKeyword } from "@/lib/comment-keyword";
 
@@ -35,6 +35,12 @@ export type CaptionAngle = {
   caption: string;
 };
 
+export type FactCard = {
+  allowed: string[];
+  withoutClaims: string[];
+  blob: string;
+};
+
 export type ProfileInsights = {
   products: string[];
   prices: string[];
@@ -45,6 +51,7 @@ export type ProfileInsights = {
   suggestedKeyword: string;
   bioExcerpt: string;
   avgCaptionChars: number;
+  factCard: FactCard;
 };
 
 function allCaptions(profile: ScrapedProfile): string[] {
@@ -81,7 +88,7 @@ function hookLine(caption: string) {
   const line = first || stripDecor(caption);
   const stop = line.search(/[.!?…]|💔|🔥|💚/);
   const sentence = stop >= 12 ? line.slice(0, stop + 1) : line;
-  return sliceChars(sentence.replace(/[«»]/g, "").trim(), 72);
+  return sliceWords(sentence.replace(/[«»]/g, "").trim(), 72);
 }
 
 function extractHashtagProducts(captions: string[]) {
@@ -155,13 +162,72 @@ function voiceSamples(captions: string[]) {
 function videoAngles(videos: ScrapedVideo[]): CaptionAngle[] {
   return videos
     .filter((v) => (v.caption || "").trim().length >= 12)
-    .slice(0, 12)
+    .slice(0, 16)
     .map((v) => ({
       id: v.id,
       views: v.views || 0,
       hookLine: hookLine(v.caption || ""),
       caption: sliceChars(v.caption || "", 400),
     }));
+}
+
+const KNOWN_TERMS = [
+  "зефир",
+  "птичье молоко",
+  "птичьего молока",
+  "шоколад",
+  "миндаль",
+  "клубника",
+  "сливки",
+  "тархун",
+  "маршмеллоу",
+  "трюфель",
+  "карамель",
+  "агар",
+  "пектин",
+  "желатин",
+  "масло",
+  "белок",
+  "йогурт",
+  "бисквит",
+  "фисташка",
+  "малина",
+  "мята",
+  "мятный",
+  "какао",
+  "сахар",
+  "бенто",
+  "плитка",
+  "бельгийск",
+];
+
+function extractWithoutClaims(text: string) {
+  const found: string[] = [];
+  const re = /без\s+[а-яё]+(?:\s+[а-яё]+){0,2}/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    const phrase = match[0].replace(/\s+/g, " ").trim().toLowerCase();
+    if (/связ|обратн|регистр/.test(phrase)) continue;
+    if (!found.includes(phrase)) found.push(phrase);
+  }
+  return found.slice(0, 8);
+}
+
+function extractAllowedTerms(blob: string) {
+  const lower = blob.toLowerCase();
+  return KNOWN_TERMS.filter((term) => lower.includes(term));
+}
+
+export function buildFactCard(bio: string, captions: string[]): FactCard {
+  const blob = `${bio}\n${captions.join("\n")}`.toLowerCase();
+  return {
+    allowed: uniqueKeepOrder([
+      ...extractAllowedTerms(blob),
+      ...extractQuoted(captions).map((q) => q.toLowerCase()),
+    ]),
+    withoutClaims: extractWithoutClaims(blob),
+    blob,
+  };
 }
 
 export function buildProfileInsights(profile: ScrapedProfile): ProfileInsights {
@@ -191,6 +257,7 @@ export function buildProfileInsights(profile: ScrapedProfile): ProfileInsights {
         : Math.round(
             captions.reduce((sum, c) => sum + c.length, 0) / captions.length,
           ),
+    factCard: buildFactCard(bio, captions),
   };
 }
 

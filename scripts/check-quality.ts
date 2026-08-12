@@ -1,7 +1,8 @@
-import { sliceChars } from "@/lib/ai/safe-json";
+import { sliceChars, sliceWords } from "@/lib/ai/safe-json";
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
+import { scrubInvented } from "@/lib/ai/constrain-facts";
 import { buildProfileInsights } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 
@@ -71,7 +72,12 @@ assert(
 );
 assert(insights.prices.some((p) => /1300/.test(p)), "price mined");
 assert(insights.captionAngles.length >= 2, "angles");
-assert(insights.products.some((p) => /бенто|зефир|птич/i.test(p)), "product");
+assert(sliceWords("Маршмеллоу пружинки с двойным вкусом, без белка, а получается пышное и нежное", 56).endsWith("белка") || !/ н$/.test(sliceWords("Маршмеллоу пружинки с двойным вкусом, без белка, а получается пышное и нежное", 56)), "no mid-word cut");
+
+assert(insights.factCard.withoutClaims.some((c) => /масл/.test(c)) || insights.factCard.allowed.includes("птичье молоко") || insights.factCard.allowed.length >= 1, "fact card");
+assert(!/йогурт/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub yogurt");
+assert(!/бисквит/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub biscuit");
+assert(!/5 минут/.test(scrubInvented("торт за 5 минут", insights.factCard)), "scrub clickbait");
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,

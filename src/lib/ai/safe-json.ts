@@ -1,8 +1,16 @@
 /** Slice by Unicode code points so we never split an emoji surrogate pair. */
 export function sliceChars(text: string, max: number) {
   if (!text) return "";
-  if (text.length <= max) return text;
+  if (Array.from(text).length <= max) return text;
   return Array.from(text).slice(0, max).join("");
+}
+
+/** Same as sliceChars, but never cut in the middle of a word. */
+export function sliceWords(text: string, max: number) {
+  const cut = sliceChars(text.trim(), max).trim();
+  if (Array.from(text.trim()).length <= max) return text.trim();
+  const spaced = cut.replace(/\s+\S*$/, "").trim();
+  return spaced.length >= 12 ? spaced : cut;
 }
 
 export function sanitizeForJson<T>(value: T): T {

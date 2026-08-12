@@ -90,13 +90,15 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 10) shoot_day: один образ/фон, props, order для 3 сценариев + 4 extra_ideas для досъёма.
 11) Юридически спокойный тон: без гарантий дохода и серых схем.
 12) Рынок RU/СНГ: VK Клипы — мягче «реклама», Telegram — ценность в тексте, Reels — жёстче хук.
-13) Каждый сценарий обязан взять source_angle из caption_angles/products — конкретный продукт или приём автора, не общую тему ниши.
+13) Каждый сценарий обязан взять source_angle из caption_angles — конкретный продукт автора. Текст сценария про ТОТ ЖЕ продукт (если угол «мятный зефир в шоколаде» — в кадре мята и шоколад, не общие «3 ошибки»).
 14) shot_list: 4–6 кадров «что в кадре». Если content_mode = process_no_speech, суфлёр = закадр или текст на экране, НЕ «смотри в камеру».
 15) Одно comment_keyword на funnel_kit и ВСЕ сценарии. Без суффиксов 2/3.
 16) Цену не произносить в суфлёре. В подписи — максимум в 1 ролике.
 17) Аудит профиля: каждый совет цитирует био или подпись. Не предлагай Telegram, если has_website_cta. Не предлагай «добавь CTA», если подписи уже продают.
 18) Голос копируй с voice_samples (я/мы, плотность эмодзи, тепло vs эксперт).
-19) Не повторяй названия из avoid_titles. winning_hooks — паттерны, которые уже залетели у автора: усиливай этот угол, не копируй дословно.`;
+19) Не повторяй названия из avoid_titles. winning_hooks — паттерны, которые уже залетели у автора: усиливай этот угол, не копируй дословно.
+20) fact_card.allowed и without — единственные продукты/ингредиенты. НЕ выдумывай йогурт, бисквит, глютен, кокос, желатин, пектин, если их нет в allowed.
+21) Не пиши «за N минут» и температуры °C, если их нет в подписях. Не подменяй продукт (птичье молоко ≠ бисквит).`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
@@ -173,6 +175,17 @@ export async function generateStrategy(input: {
             })),
             suggested_keyword: input.insights.suggestedKeyword,
             bio_excerpt: input.insights.bioExcerpt,
+            fact_card: {
+              allowed: input.insights.factCard.allowed,
+              without: input.insights.factCard.withoutClaims,
+              do_not_invent: [
+                "йогурт",
+                "бисквит",
+                "глютен",
+                "за N минут",
+                "температура °C",
+              ],
+            },
           }
         : null,
       goal: input.goal,

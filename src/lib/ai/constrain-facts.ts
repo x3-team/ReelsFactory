@@ -1,0 +1,149 @@
+import { sliceWords } from "@/lib/ai/safe-json";
+import type { FactCard, ProfileInsights } from "@/lib/content/profile-insights";
+import type { GeneratedScript, StrategyPayload } from "@/lib/types";
+
+const INVENTED_PHRASES = [
+  { re: /крем на (основе )?йогурта|на основе йогурта|йогуртов\w* крем/gi, key: "йогурт" },
+  { re: /нарезки бисквита|бисквит\w*/gi, key: "бисквит" },
+  { re: /без глютена/gi, key: "глютен" },
+];
+
+const INVENTED = [
+  { re: /йогурт\w*/gi, key: "йогурт" },
+  { re: /бисквит\w*/gi, key: "бисквит" },
+  { re: /маскарпоне/gi, key: "маскарпоне" },
+  { re: /крем-?чиз|сливочный сыр/gi, key: "крем-чиз" },
+  { re: /глютен\w*/gi, key: "глютен" },
+  { re: /кокос\w*/gi, key: "кокос" },
+  { re: /желатин\w*/gi, key: "желатин" },
+  { re: /пектин\w*/gi, key: "пектин" },
+];
+
+const CLICKBAIT_TIME = /за\s+\d+\s+минут\w*/gi;
+const TEMPERATURE = /\d+\s*°\s*[cс]|\d+\s*градус\w*/gi;
+
+function allowedHas(facts: FactCard, key: string) {
+  return facts.blob.includes(key.toLowerCase());
+}
+
+export function scrubInvented(text: string, facts: FactCard): string {
+  if (!text) return text;
+  let next = text;
+  for (const item of INVENTED_PHRASES) {
+    if (allowedHas(facts, item.key)) continue;
+    next = next.replace(item.re, "").replace(/ {2,}/g, " ");
+  }
+  for (const item of INVENTED) {
+    if (allowedHas(facts, item.key)) continue;
+    next = next.replace(item.re, "").replace(/ {2,}/g, " ");
+  }
+  if (!/\d+\s*минут/.test(facts.blob)) {
+    next = next.replace(CLICKBAIT_TIME, "").replace(/ {2,}/g, " ");
+  }
+  if (!/°|градус/.test(facts.blob)) {
+    next = next.replace(TEMPERATURE, "").replace(/ {2,}/g, " ");
+  }
+  return next
+    .replace(/\s+([.,!?])/g, "$1")
+    .replace(/[—–-]\s*[—–-]/g, "—")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+function scriptBlob(script: GeneratedScript) {
+  return [
+    script.title,
+    script.source_angle,
+    ...(script.hook_options || []),
+    script.teleprompter_script,
+    script.caption,
+    script.cta,
+    ...(script.shot_list || []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function significantWords(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-zа-яё0-9]+/gi, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 4);
+}
+
+function overlapScore(scriptText: string, angleText: string) {
+  const words = significantWords(angleText);
+  if (!words.length) return 0;
+  return words.filter((w) => scriptText.includes(w)).length;
+}
+
+function scrubScript(script: GeneratedScript, facts: FactCard): GeneratedScript {
+  const run = (value: string) => scrubInvented(value, facts);
+  return {
+    ...script,
+    title: run(script.title),
+    source_angle: script.source_angle ? run(script.source_angle) : script.source_angle,
+    hook_options: (script.hook_options || []).map(run),
+    teleprompter_script: run(script.teleprompter_script),
+    caption: run(script.caption),
+    cta: run(script.cta),
+    shot_list: (script.shot_list || []).map(run),
+    props_checklist: (script.props_checklist || []).map(run),
+  };
+}
+
+function alignAngles(
+  scripts: GeneratedScript[],
+  insights: ProfileInsights,
+): GeneratedScript[] {
+  const angles = insights.captionAngles || [];
+  if (!angles.length) return scripts;
+
+  return scripts.map((script) => {
+    const blob = scriptBlob(script);
+    const currentScore = overlapScore(blob, script.source_angle || "");
+    const ranked = angles
+      .map((angle) => ({
+        angle,
+        score: overlapScore(blob, `${angle.hookLine} ${angle.caption}`),
+      }))
+      .sort((a, b) => b.score - a.score);
+    const best = ranked[0];
+    if (!best || best.score < 2 || best.score <= currentScore) return script;
+    return { ...script, source_angle: best.angle.hookLine };
+  });
+}
+
+function cleanExtras(strategy: StrategyPayload): StrategyPayload {
+  const shoot = strategy.shoot_day;
+  if (!shoot?.extra_ideas) return strategy;
+  return {
+    ...strategy,
+    shoot_day: {
+      ...shoot,
+      extra_ideas: shoot.extra_ideas.map((idea) => ({
+        ...idea,
+        title: sliceWords(idea.title || "", 56),
+        hook: sliceWords(idea.hook || idea.title || "", 72),
+      })),
+    },
+  };
+}
+
+/**
+ * Drop ingredients/times the captions never mentioned, and retag each
+ * script with the caption angle it actually matches.
+ */
+export function constrainFacts(
+  strategy: StrategyPayload,
+  insights: ProfileInsights,
+): StrategyPayload {
+  const facts = insights.factCard;
+  const scripts = alignAngles(
+    (strategy.scripts || []).map((s) => scrubScript(s, facts)),
+    insights,
+  );
+  return cleanExtras({ ...strategy, scripts });
+}

@@ -1,4 +1,4 @@
-import { sliceChars } from "@/lib/ai/safe-json";
+import { sliceChars, sliceWords } from "@/lib/ai/safe-json";
 import type { ProfileInsights } from "@/lib/content/profile-insights";
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 
@@ -165,8 +165,8 @@ function polishCatalog(
   });
 
   const extras = leftover.slice(0, 4).map((angle, i) => ({
-    title: angle.hookLine,
-    hook: angle.hookLine,
+    title: sliceWords(angle.hookLine, 56),
+    hook: sliceWords(angle.hookLine, 72),
     pillar: "ассортимент",
     duration_sec: i % 2 === 0 ? 15 : 30,
   }));

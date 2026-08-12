@@ -8,6 +8,7 @@ import {
   dropGenericTelegramTips,
   sanitizeStrategy,
 } from "@/lib/ai/sanitize-scripts";
+import { constrainFacts } from "@/lib/ai/constrain-facts";
 import { repairStrategy } from "@/lib/ai/repair-scripts";
 import { allocateSharedKeyword } from "@/lib/comment-keyword";
 import { PLANS } from "@/lib/config";
@@ -183,9 +184,12 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       insights.suggestedKeyword || rawStrategy.funnel_kit?.comment_keyword,
       user.id,
     );
-    const strategy = sanitizeStrategy(
-      repairStrategy(sanitizeStrategy(rawStrategy, keyword), insights, keyword),
-      keyword,
+    const strategy = constrainFacts(
+      sanitizeStrategy(
+        repairStrategy(sanitizeStrategy(rawStrategy, keyword), insights, keyword),
+        keyword,
+      ),
+      insights,
     );
     strategy.profile_audit_tips = dropGenericTelegramTips(
       strategy.profile_audit_tips || [],
