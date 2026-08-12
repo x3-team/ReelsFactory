@@ -154,7 +154,6 @@ export async function generateStrategy(input: {
         bio: input.profile.bio,
         followers: input.profile.followers,
         topVideos: input.profile.topVideos.slice(0, 12).map((v) => ({
-          caption: v.caption,
           views: v.views,
           durationSec: v.durationSec,
         })),
@@ -207,12 +206,11 @@ export async function generateStrategy(input: {
   );
 
   const openai = getAiTunnelClient();
-  const isPro = ["PRO", "AGENCY"].includes((input.plan || "").toUpperCase());
   const completion = await openai.chat.completions.create({
     model,
     response_format: { type: "json_object" },
     // Flash: держим потолок ниже — нормализатор добьёт структуру без второго вызова
-    max_tokens: isPro ? 6500 : 5500,
+    max_tokens: 8000,
     messages: [
       { role: "system", content: STRATEGY_SYSTEM_PROMPT },
       { role: "user", content: userPrompt },

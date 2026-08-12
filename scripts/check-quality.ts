@@ -1,5 +1,6 @@
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
+import { isSkeletonScript } from "@/lib/ai/repair-scripts";
 import { buildProfileInsights } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 
@@ -20,6 +21,17 @@ assert(
 
 assert(humanizeKeyword("СКРИПТ2") === "СКРИПТ", "strip suffix");
 assert(!/1300/.test(stripPrices("ТК стоит 1300 рублей, берите")), "strip price");
+assert(
+  isSkeletonScript({
+    title: "Сценарий 30 сек",
+    format: "Reels 30с",
+    hook_options: ["Остановитесь, если ролик умирает на 3-й секунде"],
+    teleprompter_script: "0–3с: Хук — смотрите в камеру, без приветствия.",
+    caption: "",
+    cta: "",
+  }),
+  "skeleton",
+);
 
 const profile: ScrapedProfile = {
   handle: "desertmsk",

@@ -140,9 +140,13 @@ export function dropGenericTelegramTips(
   opts: { hasWebsiteCta: boolean; hasTelegramCta: boolean; bioExcerpt: string },
 ) {
   let next = tips.filter((tip) => {
-    if (!opts.hasWebsiteCta) return true;
-    if (!/(telegram|телеграм)/i.test(tip)) return true;
-    return /(уже есть|уже стоит|сайт в шапке)/i.test(tip);
+    if (opts.hasWebsiteCta && /(telegram|телеграм)/i.test(tip)) {
+      return /(уже есть|уже стоит|сайт в шапке|не дублируй)/i.test(tip);
+    }
+    if (/стрелк|эмодзи.*ссылк|ссылк.*эмодзи/i.test(tip) && /⬇️|↓/.test(opts.bioExcerpt)) {
+      return false;
+    }
+    return true;
   });
 
   if (opts.hasWebsiteCta && opts.bioExcerpt) {

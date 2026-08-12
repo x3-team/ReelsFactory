@@ -7,6 +7,7 @@ import {
   dropGenericTelegramTips,
   sanitizeStrategy,
 } from "@/lib/ai/sanitize-scripts";
+import { repairStrategy } from "@/lib/ai/repair-scripts";
 import { allocateSharedKeyword } from "@/lib/comment-keyword";
 import { PLANS } from "@/lib/config";
 import { buildProfileInsights } from "@/lib/content/profile-insights";
@@ -174,10 +175,13 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     });
 
     const keyword = await allocateSharedKeyword(
-      rawStrategy.funnel_kit?.comment_keyword || insights.suggestedKeyword,
+      insights.suggestedKeyword || rawStrategy.funnel_kit?.comment_keyword,
       user.id,
     );
-    const strategy = sanitizeStrategy(rawStrategy, keyword);
+    const strategy = sanitizeStrategy(
+      repairStrategy(sanitizeStrategy(rawStrategy, keyword), insights, keyword),
+      keyword,
+    );
     strategy.profile_audit_tips = dropGenericTelegramTips(
       strategy.profile_audit_tips || [],
       insights,

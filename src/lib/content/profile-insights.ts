@@ -134,7 +134,7 @@ function detectTelegram(text: string) {
 function suggestKeyword(captions: string[], bio: string) {
   const blob = `${bio}\n${captions.join("\n")}`.toLowerCase();
   if (/рецепт/.test(blob)) return "РЕЦЕПТ";
-  if (/\bтк\b|технологическ/.test(blob)) return "ТК";
+  if (/(^|[^а-яa-z0-9])тк([^а-яa-z0-9]|$)|технологическ/.test(blob)) return "ТК";
   if (/урок|обучен/.test(blob)) return "УРОК";
   if (/гайд|чеклист|чек-лист/.test(blob)) return "ГАЙД";
   return "ГАЙД";
