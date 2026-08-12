@@ -1,11 +1,16 @@
-import { ProfileGoal, ToneOfVoice } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+
+import { ProfileGoal, ToneOfVoice } from "@prisma/client";
 
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
 import { serialize } from "@/lib/serialize";
 import { completeOnboarding } from "@/lib/users";
+import { polishVoiceDraft } from "@/lib/ai/polish-voice-draft";
+import { NICHE_PRESETS } from "@/lib/niche-presets";
 import { prisma } from "@/lib/prisma";
+
+const nicheIds = NICHE_PRESETS.map((p) => p.id) as [string, ...string[]];
 
 const bodySchema = z.object({
   userId: z.string().min(1),
@@ -14,6 +19,8 @@ const bodySchema = z.object({
   toneOfVoice: z.nativeEnum(ToneOfVoice),
   websiteUrl: z.string().url().optional().or(z.literal("")),
   offerSummary: z.string().max(500).optional(),
+  nichePreset: z.enum(nicheIds).optional(),
+  voiceDraft: z.string().max(4000).optional(),
 });
 
 export async function POST(request: Request) {
@@ -22,6 +29,15 @@ export async function POST(request: Request) {
     const platform = detectPlatform(body.socialHandle);
     const handle = normalizeHandle(body.socialHandle, platform);
 
+    let voiceDraft = body.voiceDraft?.trim() || null;
+    if (voiceDraft) {
+      const polished = await polishVoiceDraft({
+        rawText: voiceDraft,
+        nichePreset: body.nichePreset,
+      });
+      voiceDraft = polished.polished;
+    }
+
     const user = await completeOnboarding(body.userId, {
       socialHandle: handle,
       platform,
@@ -29,6 +45,8 @@ export async function POST(request: Request) {
       toneOfVoice: body.toneOfVoice,
       websiteUrl: body.websiteUrl || null,
       offerSummary: body.offerSummary || null,
+      nichePreset: body.nichePreset || null,
+      voiceDraft,
     });
 
     return NextResponse.json(serialize({ user }));

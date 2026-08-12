@@ -76,6 +76,10 @@ model User {
   websiteUrl   String?
   offerSummary String?
   toneOfVoice  ToneOfVoice?
+  /// beauty | realty | clinic | coach | shop | edtech | food | smm | custom
+  nichePreset  String?
+  /// Voice/idea draft pasted by user (Telegram voice → text)
+  voiceDraft   String? @db.Text
 
   subscriptionPlan      SubscriptionPlan @default(FREE)
   subscriptionExpiresAt DateTime?
@@ -109,6 +113,12 @@ model ClientAccount {
   label        String?
   socialHandle String
   platform     String
+  /// Per-client brief (Agency 2.0)
+  profileGoal  ProfileGoal?
+  toneOfVoice  ToneOfVoice?
+  offerSummary String?
+  nichePreset  String?
+  websiteUrl   String?
 
   analyses ProfileAnalysis[]
 
@@ -143,6 +153,14 @@ model ProfileAnalysis {
   rawProfileData   Json?
   /// Whisper transcriptions for top videos
   transcriptions   Json?
+  /// Shoot-day session plan (outfit, props, order, extra ideas)
+  shootDayPlan     Json?
+  /// 7-day pillars calendar
+  pillarsCalendar  Json?
+  /// Default comment→Telegram funnel kit
+  funnelKit        Json?
+  /// Template tips for «why didn't viral» reshoots
+  autopsyTemplate  Json?
   errorMessage     String?
 
   scripts Script[]
@@ -172,6 +190,18 @@ model Script {
   cta                String
   /// Free-plan teaser (1 script) vs full unlocked script
   isTeaser           Boolean @default(false)
+
+  durationSec      Int?
+  commentKeyword   String?
+  /// { reels, vk_clips, shorts, telegram_post }
+  platformPacks    Json?
+  /// { comment_keyword, bot_reply, lead_magnet, telegram_cta }
+  funnel           Json?
+  /// string[] — props to prepare
+  propsChecklist   Json?
+  shootOrder       Int?
+  /// core | shoot_day | remake | autopsy
+  sourceType       String  @default("core")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

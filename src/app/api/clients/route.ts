@@ -12,6 +12,9 @@ const createSchema = z.object({
   userId: z.string().min(1),
   socialHandle: z.string().min(2),
   label: z.string().max(80).optional(),
+  offerSummary: z.string().max(500).optional(),
+  nichePreset: z.string().max(40).optional(),
+  websiteUrl: z.string().url().optional().or(z.literal("")),
 });
 
 export async function GET(request: Request) {
@@ -62,6 +65,9 @@ export async function POST(request: Request) {
         socialHandle: handle,
         platform,
         label: body.label || handle,
+        offerSummary: body.offerSummary || null,
+        nichePreset: body.nichePreset || null,
+        websiteUrl: body.websiteUrl || null,
       },
     });
 

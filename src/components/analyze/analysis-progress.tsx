@@ -67,9 +67,9 @@ function percentForStatus(
   if (status === "FAILED") return 100;
 
   const idx = stepIndex(status);
-  if (idx < 0 || idx >= STEPS.length) return 5;
+  const step = STEPS.find((_, i) => i === idx);
+  if (!step) return 5;
 
-  const step = STEPS[idx];
   const [from, to] = step.range;
   // Асимптота к верхней границе этапа — не «прыгает» на 100% раньше времени
   const t = 1 - Math.exp(-stageElapsedSec / Math.max(8, step.expectedSec * 0.55));

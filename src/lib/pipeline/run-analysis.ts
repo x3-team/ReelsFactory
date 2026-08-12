@@ -7,7 +7,7 @@ import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
-import type { ScrapedProfile } from "@/lib/types";
+import type { GeneratedScript, ScrapedProfile } from "@/lib/types";
 
 function scriptsLimit(user: User) {
   if (!hasPaidAccess(user)) return 1;
@@ -18,6 +18,35 @@ function pillarsLimit(user: User) {
   if (user.subscriptionPlan === SubscriptionPlan.START) return 1;
   if (user.subscriptionPlan === SubscriptionPlan.FREE) return 3;
   return 10;
+}
+
+function scriptCreateData(
+  userId: string,
+  analysisId: string,
+  script: GeneratedScript,
+  paid: boolean,
+  sourceType = "core",
+) {
+  return {
+    userId,
+    analysisId,
+    title: script.title,
+    format: script.format,
+    hookOptions: script.hook_options,
+    teleprompterScript: script.teleprompter_script,
+    caption: script.caption,
+    cta: script.cta,
+    isTeaser: !paid,
+    durationSec: script.duration_sec ?? null,
+    commentKeyword: script.comment_keyword ?? script.funnel?.comment_keyword ?? null,
+    platformPacks: script.platform_packs
+      ? (script.platform_packs as object)
+      : undefined,
+    funnel: script.funnel ? (script.funnel as object) : undefined,
+    propsChecklist: script.props_checklist ?? undefined,
+    shootOrder: script.shoot_order ?? null,
+    sourceType,
+  };
 }
 
 export async function runAnalysisForExisting(user: User, analysisId: string) {
@@ -48,7 +77,6 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
-    // 3 ролика достаточно для стратегии; 5 × Whisper сильно раздувают ожидание
     const transcriptions: string[] = [];
     for (const video of profile.topVideos.slice(0, 3)) {
       const { text } = await transcribeAudio({
@@ -74,6 +102,8 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       offerSummary: user.offerSummary,
       websiteUrl: user.websiteUrl,
       plan: user.subscriptionPlan,
+      nichePreset: user.nichePreset,
+      voiceDraft: user.voiceDraft,
     });
 
     const paid = hasPaidAccess(user);
@@ -90,23 +120,25 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
           targetAudience: strategy.target_audience,
           contentPillars: pillars,
           profileAuditTips: strategy.profile_audit_tips,
+          shootDayPlan: strategy.shoot_day
+            ? (strategy.shoot_day as object)
+            : undefined,
+          pillarsCalendar: strategy.pillars_calendar
+            ? (strategy.pillars_calendar as object)
+            : undefined,
+          funnelKit: strategy.funnel_kit
+            ? (strategy.funnel_kit as object)
+            : undefined,
+          autopsyTemplate: strategy.autopsy_template
+            ? (strategy.autopsy_template as object)
+            : undefined,
           errorMessage: null,
         },
       });
 
       for (const script of scriptsToSave) {
         await tx.script.create({
-          data: {
-            userId: user.id,
-            analysisId,
-            title: script.title,
-            format: script.format,
-            hookOptions: script.hook_options,
-            teleprompterScript: script.teleprompter_script,
-            caption: script.caption,
-            cta: script.cta,
-            isTeaser: !paid,
-          },
+          data: scriptCreateData(user.id, analysisId, script, paid, "core"),
         });
       }
     });

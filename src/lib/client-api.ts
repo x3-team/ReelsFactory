@@ -29,10 +29,26 @@ export type AppUser = {
   toneOfVoice?: "DIRECT" | "HUMOROUS" | "EXPERT" | "STORYTELLING" | null;
   websiteUrl?: string | null;
   offerSummary?: string | null;
+  nichePreset?: string | null;
+  voiceDraft?: string | null;
   subscriptionPlan: "FREE" | "START" | "PRO" | "AGENCY";
   subscriptionExpiresAt?: string | null;
   referralBalance: number;
   onboardedAt?: string | null;
+};
+
+export type AppPlatformPack = {
+  reels: { caption: string; cta: string; hashtags?: string[] };
+  vk_clips: { caption: string; cta: string };
+  shorts: { title: string; description: string; cta: string };
+  telegram_post: { text: string; cta: string };
+};
+
+export type AppFunnel = {
+  comment_keyword: string;
+  bot_reply: string;
+  lead_magnet: string;
+  telegram_cta: string;
 };
 
 export type AppScript = {
@@ -44,6 +60,41 @@ export type AppScript = {
   caption: string;
   cta: string;
   isTeaser: boolean;
+  durationSec?: number | null;
+  commentKeyword?: string | null;
+  platformPacks?: AppPlatformPack | null;
+  funnel?: AppFunnel | null;
+  propsChecklist?: string[] | null;
+  shootOrder?: number | null;
+  sourceType?: string | null;
+};
+
+export type AppShootDay = {
+  title: string;
+  duration_min: number;
+  outfit: string;
+  location: string;
+  props: string[];
+  order: Array<{
+    shoot_order: number;
+    script_title: string;
+    duration_sec: number;
+    note: string;
+  }>;
+  extra_ideas: Array<{
+    title: string;
+    hook: string;
+    pillar: string;
+    duration_sec: number;
+  }>;
+};
+
+export type AppCalendarDay = {
+  day: number;
+  pillar: string;
+  role: string;
+  topic: string;
+  platform_focus: string;
 };
 
 export type AppAnalysis = {
@@ -53,6 +104,15 @@ export type AppAnalysis = {
   targetAudience?: string | null;
   contentPillars?: Array<{ title: string; description: string }> | null;
   profileAuditTips?: string[] | null;
+  shootDayPlan?: AppShootDay | null;
+  pillarsCalendar?: AppCalendarDay[] | null;
+  funnelKit?: AppFunnel | null;
+  autopsyTemplate?: {
+    weak_hook_fix: string;
+    retention_fix: string;
+    cta_fix: string;
+    reshoot_hook: string;
+  } | null;
   socialHandle: string;
   platform: string;
   errorMessage?: string | null;

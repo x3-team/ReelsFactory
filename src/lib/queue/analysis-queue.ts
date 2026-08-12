@@ -57,6 +57,11 @@ async function processAnalysisJob(data: AnalysisJobData) {
       ...user,
       socialHandle: client.socialHandle,
       platform: client.platform,
+      offerSummary: client.offerSummary || user.offerSummary,
+      nichePreset: client.nichePreset || user.nichePreset,
+      websiteUrl: client.websiteUrl || user.websiteUrl,
+      profileGoal: client.profileGoal || user.profileGoal,
+      toneOfVoice: client.toneOfVoice || user.toneOfVoice,
     };
   }
 

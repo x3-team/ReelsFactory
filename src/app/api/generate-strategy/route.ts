@@ -30,6 +30,8 @@ const bodySchema = z.object({
   offerSummary: z.string().nullish(),
   websiteUrl: z.string().nullish(),
   plan: z.enum(["FREE", "START", "PRO", "AGENCY"]).optional(),
+  nichePreset: z.string().nullish(),
+  voiceDraft: z.string().nullish(),
 });
 
 export async function POST(request: Request) {

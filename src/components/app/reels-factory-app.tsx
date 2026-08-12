@@ -303,6 +303,9 @@ export function ReelsFactoryApp() {
           onAnalyzeClient={(clientAccountId) => {
             if (user) void runAnalysis(user.id, clientAccountId);
           }}
+          onScriptsUpdated={(scripts) => {
+            setAnalysis((prev) => (prev ? { ...prev, scripts } : prev));
+          }}
         />
       </>
     );

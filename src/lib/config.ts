@@ -5,7 +5,7 @@ export const PLANS = {
     priceRub: 0,
     scriptsPerMonth: 1,
     maxClientAccounts: 0,
-    description: "Аудит профиля + 1 тизер-сценарий",
+    description: "Аудит + 1 тизер · превью кросс‑пакета и съёмочного дня",
   },
   START: {
     id: "START" as const,
@@ -13,7 +13,8 @@ export const PLANS = {
     priceRub: 590,
     scriptsPerMonth: 12,
     maxClientAccounts: 0,
-    description: "12 сценариев / месяц · полный суфлёр · 1 столп",
+    description:
+      "12 сценариев · кросс-пакет Reels/VK/TG · съёмочный день · воронка коммент→бот",
   },
   PRO: {
     id: "PRO" as const,
@@ -21,7 +22,8 @@ export const PLANS = {
     priceRub: 1990,
     scriptsPerMonth: 30,
     maxClientAccounts: 0,
-    description: "30 сценариев / месяц · конкуренты · посты для Telegram",
+    description:
+      "30 сценариев · ремейк вирусов · разбор «не залетело» · календарь столпов",
   },
   AGENCY: {
     id: "AGENCY" as const,
@@ -29,7 +31,8 @@ export const PLANS = {
     priceRub: 4990,
     scriptsPerMonth: 100,
     maxClientAccounts: 5,
-    description: "До 5 клиентских аккаунтов · командный объём",
+    description:
+      "До 5 клиентов · брифы на аккаунт · командный объём · все Pro-фичи",
   },
 } as const;
 

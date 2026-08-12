@@ -6,7 +6,13 @@ import { Check, Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { telegramShareUrl } from "@/lib/config";
 
-export function ReferralShareBar({ referralUrl }: { referralUrl: string }) {
+export function ReferralShareBar({
+  referralUrl,
+  shareText,
+}: {
+  referralUrl: string;
+  shareText?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -17,7 +23,8 @@ export function ReferralShareBar({ referralUrl }: { referralUrl: string }) {
 
   const shareHref = telegramShareUrl(
     referralUrl,
-    "Собери сценарии для Reels за минуты — ReelsFactory",
+    shareText ||
+      "Снял раз — выложи в Reels, VK Клипы и Telegram. ReelsFactory собирает сценарии под твой аккаунт.",
   );
 
   return (

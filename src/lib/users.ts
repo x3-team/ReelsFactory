@@ -70,6 +70,8 @@ export async function completeOnboarding(
     toneOfVoice: ToneOfVoice;
     websiteUrl?: string | null;
     offerSummary?: string | null;
+    nichePreset?: string | null;
+    voiceDraft?: string | null;
   },
 ) {
   return prisma.user.update({
@@ -81,6 +83,8 @@ export async function completeOnboarding(
       toneOfVoice: data.toneOfVoice,
       websiteUrl: data.websiteUrl || null,
       offerSummary: data.offerSummary || null,
+      nichePreset: data.nichePreset || null,
+      voiceDraft: data.voiceDraft || null,
       onboardedAt: new Date(),
     },
   });

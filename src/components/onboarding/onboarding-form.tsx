@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Clapperboard } from "lucide-react";
+import { ArrowRight, Clapperboard, Mic } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { NICHE_PRESETS, type NichePresetId } from "@/lib/niche-presets";
 import { cn } from "@/lib/utils";
 
 export type OnboardingValues = {
@@ -15,6 +16,8 @@ export type OnboardingValues = {
   toneOfVoice: "DIRECT" | "HUMOROUS" | "EXPERT" | "STORYTELLING";
   websiteUrl?: string;
   offerSummary?: string;
+  nichePreset?: NichePresetId;
+  voiceDraft?: string;
 };
 
 const GOALS = [
@@ -26,7 +29,7 @@ const GOALS = [
   {
     id: "SELL_PRODUCT" as const,
     title: "Продажа продукта / услуги",
-    description: "Сценарии, которые ведут к комментариям и сообщениям",
+    description: "Сценарии, которые ведут к комментариям и Telegram",
   },
 ];
 
@@ -48,13 +51,17 @@ export function OnboardingForm({
 }) {
   const [step, setStep] = useState(0);
   const [socialHandle, setSocialHandle] = useState("");
+  const [nichePreset, setNichePreset] = useState<NichePresetId>("custom");
   const [profileGoal, setProfileGoal] =
     useState<OnboardingValues["profileGoal"]>("GROW_AUDIENCE");
   const [toneOfVoice, setToneOfVoice] =
     useState<OnboardingValues["toneOfVoice"]>("DIRECT");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [offerSummary, setOfferSummary] = useState("");
+  const [voiceDraft, setVoiceDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const totalSteps = 4;
 
   async function next() {
     setError(null);
@@ -62,16 +69,21 @@ export function OnboardingForm({
       setError("Укажите @username Instagram/TikTok или ссылку на YouTube");
       return;
     }
-    if (step < 2) {
+    if (step < totalSteps - 1) {
       setStep((s) => s + 1);
       return;
     }
+    const preset = NICHE_PRESETS.find((p) => p.id === nichePreset);
     await onSubmit({
       socialHandle: socialHandle.trim(),
       profileGoal,
       toneOfVoice,
       websiteUrl: websiteUrl.trim() || undefined,
-      offerSummary: offerSummary.trim() || undefined,
+      offerSummary:
+        offerSummary.trim() ||
+        (preset && preset.id !== "custom" ? preset.defaultOffer : undefined),
+      nichePreset,
+      voiceDraft: voiceDraft.trim() || undefined,
     });
   }
 
@@ -83,13 +95,13 @@ export function OnboardingForm({
         </div>
         <p className="text-sm text-muted-foreground">Привет, {userName}</p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Настроим контент-машину
+          Настроим контент‑машину
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Шаг {step + 1} из 3
+          Шаг {step + 1} из {totalSteps}
         </p>
         <div className="mt-3 flex gap-2">
-          {[0, 1, 2].map((i) => (
+          {Array.from({ length: totalSteps }).map((_, i) => (
             <div
               key={i}
               className={cn(
@@ -112,12 +124,43 @@ export function OnboardingForm({
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Мы проанализируем био и топ‑5 видео, чтобы вытащить вирусные хуки.
+            Разберём био и топ‑видео, соберём пакет под Reels, VK Клипы и Telegram.
           </p>
         </section>
       )}
 
       {step === 1 && (
+        <section className="space-y-3">
+          <Label>Ниша (пресет для СНГ)</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {NICHE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => {
+                  setNichePreset(preset.id);
+                  if (!offerSummary && preset.id !== "custom") {
+                    setOfferSummary(preset.defaultOffer);
+                  }
+                }}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-left text-sm",
+                  nichePreset === preset.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border",
+                )}
+              >
+                <div className="font-medium">{preset.label}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {preset.pain}
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {step === 2 && (
         <section className="space-y-3">
           <Label>Цель профиля</Label>
           <div className="grid gap-2">
@@ -162,16 +205,31 @@ export function OnboardingForm({
         </section>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <section className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="offer">Оффер (необязательно)</Label>
+            <Label htmlFor="offer">Оффер / лидмагнит</Label>
             <Textarea
               id="offer"
               placeholder="Бесплатный чеклист, консультация, курс…"
               value={offerSummary}
               onChange={(e) => setOfferSummary(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="voice" className="flex items-center gap-2">
+              <Mic className="size-3.5" /> Идея голосом / черновик
+            </Label>
+            <Textarea
+              id="voice"
+              placeholder="Вставьте расшифровку голосового из Telegram или набросайте идею своими словами…"
+              value={voiceDraft}
+              onChange={(e) => setVoiceDraft(e.target.value)}
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              В Mini App удобно надиктовать в чат боту и вставить текст сюда — мы сожмём в бриф.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="website">Сайт (необязательно)</Label>
@@ -205,7 +263,7 @@ export function OnboardingForm({
           onClick={() => void next()}
           disabled={loading}
         >
-          {step === 2
+          {step === totalSteps - 1
             ? loading
               ? "Запускаем…"
               : "Анализировать профиль"
