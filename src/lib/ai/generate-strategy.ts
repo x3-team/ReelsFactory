@@ -222,39 +222,36 @@ export async function generateStrategy(input: {
         ],
         temperature: 0.75,
       },
-      { timeout: 180_000, maxRetries: 0 },
+      { timeout: 240_000, maxRetries: 0 },
     );
 
-  let completion = await request(6000);
-  let content = completion.choices[0]?.message?.content;
-  let parsed: StrategyPayload | null = null;
-  if (content) {
-    try {
-      parsed = parseStrategyJson(content);
-    } catch {
-      parsed = null;
-    }
-  }
-  if (!parsed) {
-    completion = await request(7000);
-    content = completion.choices[0]?.message?.content;
+  async function attempt(maxTokens: number) {
+    const completion = await request(maxTokens);
+    const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new Error(
-        `Пустой ответ LLM через AITunnel (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
+        `Пустой ответ LLM (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
       );
     }
-    parsed = parseStrategyJson(content);
+    return { completion, parsed: parseStrategyJson(content) };
+  }
+
+  let result: Awaited<ReturnType<typeof attempt>>;
+  try {
+    result = await attempt(6000);
+  } catch {
+    result = await attempt(7000);
   }
   await recordCostEvent("llm", input.userId, "strategy");
   return {
     strategy: sanitizeStrategy(
-      normalizeStrategy(parsed, input.previousTitles, {
+      normalizeStrategy(result.parsed, input.previousTitles, {
         sharedKeyword,
       }),
       sharedKeyword,
     ),
     mocked: false,
-    model: completion.model || model,
+    model: result.completion.model || model,
   };
 }
 

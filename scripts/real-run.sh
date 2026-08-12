@@ -103,7 +103,7 @@ ANALYSIS_ID="$(echo "$analyze_json" | jq -r '.analysis.id // .id')"
 [ -n "$ANALYSIS_ID" ] && [ "$ANALYSIS_ID" != "null" ] || { echo "анализ не запустился: $analyze_json" >&2; exit 1; }
 
 status="QUEUED"
-for _ in $(seq 1 120); do
+for _ in $(seq 1 180); do
   poll="$(curl -sf "$BASE/api/analyze?id=$ANALYSIS_ID&userId=$USER_ID" || true)"
   status="$(echo "$poll" | jq -r '.analysis.status // "UNKNOWN"')"
   printf '  %s\n' "$status"
