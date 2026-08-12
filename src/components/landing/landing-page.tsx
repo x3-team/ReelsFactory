@@ -30,6 +30,11 @@ const APP_HREF = "/app";
 const TG_HREF = `https://t.me/${botUsername()}`;
 const SHOT_W = 780;
 const SHOT_H = 1688;
+/**
+ * Product cards crop away the repeated app header. 48% lands the cut in the blank
+ * band above the tab row (328–382px of the 1688px screenshot), so no line is halved.
+ */
+const TABS_CROP = "48%";
 
 const NAV = [
   { href: "#how", label: "Как работает" },
@@ -174,13 +179,13 @@ function HeroPhones() {
       <PhoneShot
         src="/landing/shoot.png"
         alt="Съёмочный день и воронка в Telegram"
-        objectPosition="50% 34%"
+        objectPosition="50% 0%"
         className="absolute left-0 top-14 w-[56%] -rotate-[9deg]"
       />
       <PhoneShot
         src="/landing/scripts.png"
         alt="Готовый сценарий с хуком и таймкодами"
-        objectPosition="50% 30%"
+        objectPosition="50% 0%"
         priority
         className="absolute right-0 top-0 z-10 w-[64%] rotate-[6deg]"
       />
@@ -220,19 +225,22 @@ function PhoneShot({
           style={{ objectPosition }}
           className="block aspect-[9/17] w-full object-cover"
         />
-        <ShotFade />
+        <ShotFade top={false} />
       </div>
     </div>
   );
 }
 
-function ShotFade() {
+/** Softens a crop edge. The top edge only needs it when the crop starts mid-screen. */
+function ShotFade({ top = true }: { top?: boolean }) {
   return (
     <>
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background/95 to-transparent"
-      />
+      {top ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-background/85 to-transparent"
+        />
+      ) : null}
       <span
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background/95 to-transparent"
@@ -400,19 +408,16 @@ function Product() {
   const shots = [
     {
       src: "/landing/scripts.png",
-      pos: "50% 33%",
       title: "Сценарии",
       d: "Три хука, пропы, суфлёр с таймкодами. Слово‑CTA для комментария.",
     },
     {
       src: "/landing/shoot.png",
-      pos: "50% 30%",
       title: "Съёмочный день",
       d: "Один образ, порядок дублей, календарь на 7 дней, воронка в Telegram.",
     },
     {
       src: "/landing/studio.png",
-      pos: "50% 28%",
       title: "Студия",
       d: "Ремейк чужого вируса под себя и разбор «почему не залетело».",
     },
@@ -440,7 +445,7 @@ function Product() {
                   width={SHOT_W}
                   height={SHOT_H}
                   sizes="(min-width: 768px) 33vw, 100vw"
-                  style={{ objectPosition: shot.pos }}
+                  style={{ objectPosition: `50% ${TABS_CROP}` }}
                   className="aspect-[9/11] w-full object-cover"
                 />
                 <ShotFade />
