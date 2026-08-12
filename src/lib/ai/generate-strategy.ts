@@ -15,9 +15,24 @@ import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
 const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для рынка РФ/СНГ (Instagram Reels, VK Клипы, YouTube Shorts, Telegram).
 Пиши ВСЕ строки JSON на русском. Верни ТОЛЬКО валидный JSON без markdown.
+СНАЧАЛА заполни массив scripts (ровно 3 штуки). Потом остальное. Если место кончается — лучше 3 полных сценария без календаря, чем календарь без сценариев.
 
 Схема:
 {
+  "scripts": [{
+    "title": string,
+    "format": string,
+    "duration_sec": number,
+    "shoot_order": number,
+    "comment_keyword": string,
+    "props_checklist": string[],
+    "hook_options": string[],
+    "teleprompter_script": string,
+    "caption": string,
+    "cta": string,
+    "source_angle": string,
+    "shot_list": string[]
+  }],
   "niche": string,
   "target_audience": string,
   "content_pillars": [{"title": string, "description": string}],
@@ -34,13 +49,6 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
     "cta_fix": string,
     "reshoot_hook": string
   },
-  "pillars_calendar": [{
-    "day": number,
-    "pillar": string,
-    "role": "trust"|"expert"|"offer"|"social_proof"|"entertainment",
-    "topic": string,
-    "platform_focus": "reels"|"vk"|"shorts"|"telegram"
-  }],
   "shoot_day": {
     "title": string,
     "duration_min": number,
@@ -49,21 +57,7 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
     "props": string[],
     "order": [{"shoot_order": number, "script_title": string, "duration_sec": number, "note": string}],
     "extra_ideas": [{"title": string, "hook": string, "pillar": string, "duration_sec": number}]
-  },
-  "scripts": [{
-    "title": string,
-    "format": string,
-    "duration_sec": number,
-    "shoot_order": number,
-    "comment_keyword": string,
-    "props_checklist": string[],
-    "hook_options": string[],
-    "teleprompter_script": string,
-    "caption": string,
-    "cta": string,
-    "source_angle": string,
-    "shot_list": string[]
-  }]
+  }
 }
 
 ЖЁСТКИЕ ПРАВИЛА:
@@ -75,7 +69,7 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 6) Опирайся на captions/transcriptions, niche_preset и voice_draft если есть.
 7) platform_packs и funnel можно опустить — сервер допишет Reels/VK/Shorts/Telegram и воронку.
 8) funnel_kit: одно ключевое слово-коммент на все сценарии.
-9) pillars_calendar можно опустить — сервер соберёт неделю из столпов.
+9) pillars_calendar можно опустить — сервер соберёт неделю из столпов. Не пиши календарь, пока не готовы 3 сценария.
 10) shoot_day: один образ/фон, props, order для 3 сценариев + 4 extra_ideas для досъёма.
 11) Юридически спокойный тон: без гарантий дохода и серых схем.
 12) Рынок RU/СНГ: VK Клипы — мягче «реклама», Telegram — ценность в тексте, Reels — жёстче хук.
@@ -200,6 +194,7 @@ export async function generateStrategy(input: {
         require_platform_packs: false,
         require_shoot_day: true,
         require_pillars_calendar: false,
+        require_scripts_first: true,
         require_source_angle: true,
         require_shot_list: true,
         market: "RU_CIS",
@@ -268,7 +263,8 @@ function parseStrategyJson(raw: string): StrategyPayload {
     throw new Error("LLM JSON не разбирается");
   }
   if (!Array.isArray(parsed.scripts) || parsed.scripts.length === 0) {
-    throw new Error("LLM JSON без сценариев");
+    const keys = Object.keys(parsed as object).join(",");
+    throw new Error(`LLM JSON без сценариев (${keys || "empty"})`);
   }
   return parsed;
 }
