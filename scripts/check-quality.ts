@@ -1,3 +1,4 @@
+import { sliceChars } from "@/lib/ai/safe-json";
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
@@ -19,6 +20,7 @@ assert(
   "ru speech",
 );
 
+assert(sliceChars("зефир🩷хвост", 6) === "зефир🩷", "emoji slice");
 assert(humanizeKeyword("СКРИПТ2") === "СКРИПТ", "strip suffix");
 assert(!/1300/.test(stripPrices("ТК стоит 1300 рублей, берите")), "strip price");
 assert(

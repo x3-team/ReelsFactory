@@ -1,3 +1,4 @@
+import { sliceChars } from "@/lib/ai/safe-json";
 import type { ProfileInsights } from "@/lib/content/profile-insights";
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 
@@ -18,7 +19,7 @@ export function processTeleprompter(
   const mid = Math.max(8, Math.round(duration * 0.55));
   const preCta = Math.max(12, duration - 4);
   return [
-    `0–3с: Крупный план. Текст на экране: «${hook.slice(0, 70)}»`,
+    `0–3с: Крупный план. Текст на экране: «${sliceChars(hook, 70)}»`,
     `3–${mid}с: Показываем процесс / ошибку крупно, без речи в камеру.`,
     `${mid}–${preCta}с: Результат — текстура, разлом или готовый десерт.`,
     `${preCta}–${duration}с: Надпись: «Напиши ${keyword} в комментарии».`,
@@ -44,7 +45,7 @@ function scriptFromAngle(
   duration: number,
   keyword: string,
 ): GeneratedScript {
-  const hook = angle.hookLine.slice(0, 72);
+  const hook = sliceChars(angle.hookLine, 72);
   const variants = [
     hook,
     `Как это выглядит крупным планом`,
@@ -59,18 +60,18 @@ function scriptFromAngle(
     variants[2] = `Сохрани, если собираешься снимать процесс`;
   }
   return {
-    title: hook.replace(/[!.?…🔥💔💚]+$/g, "").slice(0, 56) || `Ролик ${duration}с`,
+    title: sliceChars(hook.replace(/[!.?…🔥💔💚]+$/g, ""), 56) || `Ролик ${duration}с`,
     format: "процесс",
     duration_sec: duration,
     shoot_order: index + 1,
     comment_keyword: keyword,
-    hook_options: variants.map((h) => h.slice(0, 90)),
+    hook_options: variants.map((h) => sliceChars(h, 90)),
     teleprompter_script: processTeleprompter(hook, duration, keyword),
     caption: `${hook} Напиши «${keyword}» в комментариях — пришлю материал.`,
     cta: `Напиши ${keyword} в комментариях`,
     source_angle: hook,
     shot_list: [
-      `Крупный план: ${hook.slice(0, 50)}`,
+      `Крупный план: ${sliceChars(hook, 50)}`,
       "Руки и текстура без лица в кадре",
       "Результат в разломе или в готовом виде",
       `Текст на экране: напиши «${keyword}»`,

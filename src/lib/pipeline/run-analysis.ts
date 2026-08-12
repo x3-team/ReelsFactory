@@ -1,3 +1,4 @@
+import { sanitizeForJson } from "@/lib/ai/safe-json";
 import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
@@ -54,7 +55,7 @@ function scriptCreateData(
     analysisId,
     title: script.title,
     format: script.format,
-    hookOptions: script.hook_options,
+    hookOptions: sanitizeForJson(script.hook_options),
     teleprompterScript: script.teleprompter_script,
     caption: script.caption,
     cta: script.cta,
@@ -62,14 +63,18 @@ function scriptCreateData(
     durationSec: script.duration_sec ?? null,
     commentKeyword: script.comment_keyword ?? script.funnel?.comment_keyword ?? null,
     platformPacks: script.platform_packs
-      ? (script.platform_packs as object)
+      ? sanitizeForJson(script.platform_packs as object)
       : undefined,
-    funnel: script.funnel ? (script.funnel as object) : undefined,
-    propsChecklist: script.props_checklist ?? undefined,
+    funnel: script.funnel ? sanitizeForJson(script.funnel as object) : undefined,
+    propsChecklist: script.props_checklist
+      ? sanitizeForJson(script.props_checklist)
+      : undefined,
     shootOrder: script.shoot_order ?? null,
     sourceType,
     sourceAngle: script.source_angle || null,
-    shotList: script.shot_list?.length ? script.shot_list : undefined,
+    shotList: script.shot_list?.length
+      ? sanitizeForJson(script.shot_list)
+      : undefined,
   };
 }
 
@@ -209,19 +214,19 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
           status: AnalysisStatus.COMPLETED,
           niche: strategy.niche,
           targetAudience: strategy.target_audience,
-          contentPillars: pillars,
-          profileAuditTips: strategy.profile_audit_tips,
+          contentPillars: sanitizeForJson(pillars),
+          profileAuditTips: sanitizeForJson(strategy.profile_audit_tips),
           shootDayPlan: strategy.shoot_day
-            ? (strategy.shoot_day as object)
+            ? sanitizeForJson(strategy.shoot_day as object)
             : undefined,
           pillarsCalendar: strategy.pillars_calendar
-            ? (strategy.pillars_calendar as object)
+            ? sanitizeForJson(strategy.pillars_calendar as object)
             : undefined,
           funnelKit: strategy.funnel_kit
-            ? (strategy.funnel_kit as object)
+            ? sanitizeForJson(strategy.funnel_kit as object)
             : undefined,
           autopsyTemplate: strategy.autopsy_template
-            ? (strategy.autopsy_template as object)
+            ? sanitizeForJson(strategy.autopsy_template as object)
             : undefined,
           errorMessage: null,
         },

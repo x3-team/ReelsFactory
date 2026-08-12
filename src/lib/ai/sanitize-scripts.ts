@@ -1,3 +1,4 @@
+import { sliceChars } from "@/lib/ai/safe-json";
 import { priceRe } from "@/lib/content/profile-insights";
 import type { GeneratedScript, PlatformPack, StrategyPayload } from "@/lib/types";
 import { normalizeKeyword } from "@/lib/comment-keyword";
@@ -150,7 +151,7 @@ export function dropGenericTelegramTips(
   });
 
   if (opts.hasWebsiteCta && opts.bioExcerpt) {
-    const grounded = `В био уже есть призыв к покупке/ссылка («${opts.bioExcerpt.slice(0, 80)}…») — не дублируй Telegram, веди в ту же шапку.`;
+    const grounded = `В био уже есть призыв к покупке/ссылка («${sliceChars(opts.bioExcerpt, 80)}…») — не дублируй Telegram, веди в ту же шапку.`;
     if (!next.some((t) => /шапк/i.test(t) && /био/i.test(t))) {
       next = [grounded, ...next].slice(0, 6);
     }

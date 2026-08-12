@@ -1,3 +1,4 @@
+import { sliceChars } from "@/lib/ai/safe-json";
 import { normalizeKeyword } from "@/lib/comment-keyword";
 import type {
   FunnelKit,
@@ -33,7 +34,7 @@ function defaultPacks(keyword: string, title: string): PlatformPack {
       cta: `Напиши «${keyword}»`,
     },
     shorts: {
-      title: title.slice(0, 70),
+      title: sliceChars(title, 70),
       description: `Короткий разбор. Комментарий «${keyword}».`,
       cta: `Комментарий «${keyword}»`,
     },
@@ -135,7 +136,7 @@ function normalizeScript(
           script.source_angle || script.title,
           `Один кадр — и видно, получилось ли`,
         ].filter(Boolean).slice(0, 3),
-  );
+  ).map((h) => sliceChars(h, 90));
 
   const title = asString(script.title, `Сценарий ${duration} сек`);
   const funnel = normalizeFunnel(script.funnel, keyword, "бесплатный гайд");

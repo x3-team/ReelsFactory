@@ -1,3 +1,4 @@
+import { sliceChars } from "@/lib/ai/safe-json";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
 import { normalizeKeyword } from "@/lib/comment-keyword";
 
@@ -54,7 +55,7 @@ function allCaptions(profile: ScrapedProfile): string[] {
   for (const raw of merged) {
     const t = raw.replace(/\s+/g, " ").trim();
     if (t.length < 12) continue;
-    const key = t.slice(0, 80).toLowerCase();
+    const key = sliceChars(t, 80).toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(raw.trim());
@@ -79,7 +80,7 @@ function hookLine(caption: string) {
   const line = first || stripDecor(caption);
   const stop = line.search(/[.!?…]|💔|🔥|💚/);
   const sentence = stop >= 12 ? line.slice(0, stop + 1) : line;
-  return sentence.replace(/[«»]/g, "").trim().slice(0, 72);
+  return sliceChars(sentence.replace(/[«»]/g, "").trim(), 72);
 }
 
 function extractHashtagProducts(captions: string[]) {
@@ -145,7 +146,7 @@ function suggestKeyword(captions: string[], bio: string) {
 
 function voiceSamples(captions: string[]) {
   return captions
-    .map((c) => stripDecor(c).slice(0, 160))
+    .map((c) => sliceChars(stripDecor(c), 160))
     .filter((s) => s.length >= 20)
     .slice(0, 4);
 }
@@ -158,7 +159,7 @@ function videoAngles(videos: ScrapedVideo[]): CaptionAngle[] {
       id: v.id,
       views: v.views || 0,
       hookLine: hookLine(v.caption || ""),
-      caption: (v.caption || "").slice(0, 400),
+      caption: sliceChars(v.caption || "", 400),
     }));
 }
 
@@ -182,7 +183,7 @@ export function buildProfileInsights(profile: ScrapedProfile): ProfileInsights {
     voiceSamples: voiceSamples(captions),
     captionAngles: videoAngles(profile.topVideos || []),
     suggestedKeyword: normalizeKeyword(suggestKeyword(captions, bio), "ГАЙД"),
-    bioExcerpt: bio.replace(/\s+/g, " ").trim().slice(0, 220),
+    bioExcerpt: sliceChars(bio.replace(/\s+/g, " ").trim(), 220),
   };
 }
 
