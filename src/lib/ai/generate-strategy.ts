@@ -61,19 +61,7 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
     "caption": string,
     "cta": string,
     "source_angle": string,
-    "shot_list": string[],
-    "platform_packs": {
-      "reels": {"caption": string, "cta": string, "hashtags": string[]},
-      "vk_clips": {"caption": string, "cta": string},
-      "shorts": {"title": string, "description": string, "cta": string},
-      "telegram_post": {"text": string, "cta": string}
-    },
-    "funnel": {
-      "comment_keyword": string,
-      "bot_reply": string,
-      "lead_magnet": string,
-      "telegram_cta": string
-    }
+    "shot_list": string[]
   }]
 }
 
@@ -84,9 +72,9 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 4) Цену/оффер — максимум в 1 из 3 сценариев.
 5) Разные форматы (ошибка, процесс, до/после, миф, чеклист). Без «привет друзья».
 6) Опирайся на captions/transcriptions, niche_preset и voice_draft если есть.
-7) platform_packs обязателен у каждого сценария: Reels + VK Клипы + Shorts + Telegram-пост (разный CTA/язык площадки).
-8) funnel_kit + funnel у сценариев: одно ключевое слово-коммент → ответ бота / Telegram.
-9) pillars_calendar: ровно 7 дней, чередуй role (trust/expert/offer/social_proof/entertainment).
+7) platform_packs и funnel можно опустить — сервер допишет Reels/VK/Shorts/Telegram и воронку.
+8) funnel_kit: одно ключевое слово-коммент на все сценарии.
+9) pillars_calendar можно опустить — сервер соберёт неделю из столпов.
 10) shoot_day: один образ/фон, props, order для 3 сценариев + 4 extra_ideas для досъёма.
 11) Юридически спокойный тон: без гарантий дохода и серых схем.
 12) Рынок RU/СНГ: VK Клипы — мягче «реклама», Telegram — ценность в тексте, Reels — жёстче хук.
@@ -206,9 +194,9 @@ export async function generateStrategy(input: {
         no_price_in_teleprompter: true,
         shared_comment_keyword: sharedKeyword,
         avoid_greetings: true,
-        require_platform_packs: true,
+        require_platform_packs: false,
         require_shoot_day: true,
-        require_pillars_calendar: true,
+        require_pillars_calendar: false,
         require_source_angle: true,
         require_shot_list: true,
         market: "RU_CIS",
@@ -234,10 +222,10 @@ export async function generateStrategy(input: {
       { timeout: 120_000, maxRetries: 0 },
     );
 
-  let completion = await request(8000);
+  let completion = await request(6000);
   let content = completion.choices[0]?.message?.content;
   if (!content) {
-    completion = await request(8000);
+    completion = await request(7000);
     content = completion.choices[0]?.message?.content;
   }
   if (!content) {
