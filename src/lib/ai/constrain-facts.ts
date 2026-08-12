@@ -46,6 +46,12 @@ export function scrubInvented(text: string, facts: FactCard): string {
   return next
     .replace(/\s+([.,!?])/g, "$1")
     .replace(/[—–-]\s*[—–-]/g, "—")
+    .replace(/«\s+/g, "«")
+    .replace(/\s+»/g, "»")
+    .replace(/до,\s*/gi, "")
+    .replace(/при,\s*/gi, "")
+    .replace(/до\s+тогда/gi, "тогда")
+    .replace(/(^|[.!?]\s+|«)\s*из\s+/gi, "$1")
     .replace(/ {2,}/g, " ")
     .trim();
 }
@@ -53,7 +59,6 @@ export function scrubInvented(text: string, facts: FactCard): string {
 function scriptBlob(script: GeneratedScript) {
   return [
     script.title,
-    script.source_angle,
     ...(script.hook_options || []),
     script.teleprompter_script,
     script.caption,
@@ -94,7 +99,7 @@ function scrubScript(script: GeneratedScript, facts: FactCard): GeneratedScript 
   };
 }
 
-function alignAngles(
+export function alignAngles(
   scripts: GeneratedScript[],
   insights: ProfileInsights,
 ): GeneratedScript[] {

@@ -2,7 +2,7 @@ import { sanitizeForJson, sliceChars, sliceWords, stripLoneSurrogates } from "@/
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
-import { scrubInvented } from "@/lib/ai/constrain-facts";
+import { alignAngles, scrubInvented } from "@/lib/ai/constrain-facts";
 import { buildProfileInsights } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 
@@ -58,6 +58,13 @@ const profile: ScrapedProfile = {
       views: 8000,
       caption: "Мятный зефир в горьком бельгийском шоколаде. Обучение на сайте.",
     },
+    {
+      id: "3",
+      url: "https://instagram.com/p/3",
+      views: 14000,
+      caption:
+        "Делаем бенто-торт из птичьего молока «Фисташка-малина», одно из моих любимых сочетаний.",
+    },
   ],
   recentCaptions: [
     "Лайфхак: как проверить, получился ли зефир? Если отламывается кусочками — всё правильно.",
@@ -78,6 +85,28 @@ assert(insights.factCard.withoutClaims.some((c) => /масл/.test(c)) || insigh
 assert(!/йогурт/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub yogurt");
 assert(!/бисквит/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub biscuit");
 assert(!/5 минут/.test(scrubInvented("торт за 5 минут", insights.factCard)), "scrub clickbait");
+assert(
+  !/^\s*из /.test(scrubInvented("бисквит из птичьего молока", insights.factCard)) &&
+    /птичьего молока/.test(scrubInvented("бисквит из птичьего молока", insights.factCard)),
+  "scrub leftover iz",
+);
+assert(!/до,/.test(scrubInvented("вари до 180°C, тогда гладко", insights.factCard)), "scrub dangling do");
+
+const aligned = alignAngles(
+  [
+    {
+      title: "Бенто-торт Фисташка-малина",
+      format: "до/после",
+      hook_options: ["Фисташка-малина — идеальное сочетание для бенто"],
+      teleprompter_script: "Фисташковый крем и малиновое конфи из птичьего молока",
+      caption: "Бенто-торт из птичьего молока «Фисташка-малина»",
+      cta: "РЕЦЕПТ",
+      source_angle: "Собираем бенто-торт из птичьего молока Клубника со сливками",
+    },
+  ],
+  insights,
+);
+assert(/фисташк/i.test(aligned[0].source_angle || ""), `angle retag ${aligned[0].source_angle}`);
 
 const lone = "пышное \uD83D и нежное";
 assert(!/[\uD800-\uDFFF]/.test(stripLoneSurrogates(lone)), "strip lone surrogate");
