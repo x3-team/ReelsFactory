@@ -256,6 +256,7 @@ export function ResultsDashboard({
                   onPlatformTab={setPlatformTab}
                   lockedTeleprompter={isFree && selected.isTeaser}
                   packsLocked={isFree}
+                  hooksLocked={isFree && selected.isTeaser}
                   onOpenTeleprompter={() => {
                     if (isFree && selected.isTeaser) {
                       openPaywall("scripts");
@@ -650,6 +651,7 @@ function ScriptViewer({
   onPlatformTab,
   lockedTeleprompter,
   packsLocked,
+  hooksLocked,
   onOpenTeleprompter,
   onUnlock,
   onHooksUpdated,
@@ -662,6 +664,8 @@ function ScriptViewer({
   onPlatformTab: (tab: PlatformTab) => void;
   lockedTeleprompter: boolean;
   packsLocked: boolean;
+  /** Teaser on a free plan: regeneration is a paid action, so send them to plans. */
+  hooksLocked: boolean;
   onOpenTeleprompter: () => void;
   onUnlock: () => void;
   onHooksUpdated?: (scriptId: string, hooks: string[]) => void;
@@ -711,12 +715,14 @@ function ScriptViewer({
             <button
               type="button"
               disabled={hooksBusy}
-              onClick={() => void refreshHooks()}
+              onClick={() => (hooksLocked ? onUnlock() : void refreshHooks())}
               className="flex items-center gap-1.5 text-[11px] font-medium text-primary disabled:opacity-60"
             >
-              <RefreshCw
-                className={cn("size-3", hooksBusy && "animate-spin")}
-              />
+              {hooksLocked ? (
+                <Lock className="size-3" />
+              ) : (
+                <RefreshCw className={cn("size-3", hooksBusy && "animate-spin")} />
+              )}
               {hooksBusy ? "Подбираем…" : "Другие хуки"}
             </button>
           </div>

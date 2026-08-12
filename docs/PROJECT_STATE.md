@@ -76,14 +76,14 @@ scripts/dev-env-*.sh     установка и запуск dev-окружени
 ```
 
 API: `analyze`, `parse-profile`, `generate-strategy`, `transcribe`, `remake`,
-`autopsy`, `hooks/feedback`, `users`, `users/onboard`, `clients`,
-`reports/agency`, `payments/create`, `payments/webhook`,
-`payments/mock-complete`, `referrals/payout`, `telegram/webhook`,
-`telegram/setup`, `health`.
+`autopsy`, `hooks/feedback`, `scripts/regenerate-hooks`, `users`,
+`users/onboard`, `clients`, `reports/agency`, `payments/create`,
+`payments/webhook`, `payments/mock-complete`, `referrals/payout`, `reminders`,
+`telegram/webhook`, `telegram/setup`, `health`.
 
 Модели Prisma: `User`, `ClientAccount`, `ProfileAnalysis`, `Script`,
 `WhisperCache`, `ScrapeCache`, `CostEvent`, `HookFeedback`, `Payment`,
-`Referral`, `UsageCounter`, `BotSession`, `ReferralPayout`.
+`Referral`, `UsageCounter`, `BotSession`, `ReferralPayout`, `Reminder`.
 
 ## 5. Бизнес-правила
 
@@ -91,9 +91,17 @@ API: `analyze`, `parse-profile`, `generate-strategy`, `transcribe`, `remake`,
 аккаунтов). Источник истины — `PLANS` в `src/lib/config.ts`; лендинг и пейволл
 рендерятся из него, поэтому цены не могут разойтись.
 
+Периоды оплаты: месяц или год. Год стоит как 10 месяцев (`YEARLY_BILLED_MONTHS`),
+то есть два месяца в подарок; подписка продлевается на 365 дней, а досрочное
+продление того же тарифа не сжигает оставшиеся дни.
+
 Рефералка: 30% с первой оплаты, 10% с продлений. Баланс работает как скидка при
 оплате; при полном покрытии YooKassa не вызывается. Вывод — заявка от 500₽,
 подтверждается вручную.
+
+Напоминания: через 2 дня после разбора бот пишет «сценарий 2 ждёт съёмки».
+Планируется автоматически при завершении анализа, рассылается кроном:
+`curl -X POST "$APP_URL/api/reminders" -H "x-setup-secret: $TELEGRAM_WEBHOOK_SECRET"`.
 
 AI (AITunnel, `https://api.aitunnel.ru/v1/`): `deepseek-v4-flash` для Free/Start,
 `gpt-5.6-terra` для Pro/Agency, `whisper-1` для расшифровки. Whisper — около 90%
@@ -175,6 +183,10 @@ Webhook YooKassa перезапрашивает платёж через API.
 - `NEXT_PUBLIC_LEGAL_*` не заполнены.
 - Вебхук бота нужно зарегистрировать после деплоя:
   `curl -X POST "$APP_URL/api/telegram/setup" -H "x-setup-secret: $TELEGRAM_WEBHOOK_SECRET"`.
+- Рассылку напоминаний нужно повесить на крон — сама она не запускается.
+- Съёмка внутри приложения (камера в суфлёре) осталась в ветке
+  `cursor/ui-refresh-a284` и сюда не переносилась: она меняет обещание продукта,
+  потому что сейчас FAQ честно говорит «снимаешь родной камерой».
 
 ## 10. Куда двигаться
 
