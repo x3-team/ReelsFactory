@@ -24,11 +24,11 @@ const unbounded = Unbounded({
 
 export const metadata: Metadata = {
   title: {
-    default: "ReelsFactory — сценарии для Reels, VK и Telegram",
+    default: "ReelsFactory — рост аудитории в коротких видео",
     template: "%s — ReelsFactory",
   },
   description:
-    "Разбор профиля и готовые сценарии с суфлёром. Снял раз — выложи в Reels, VK Клипы и Telegram.",
+    "Разбор аккаунта и инструменты роста: сценарии с суфлёром, съёмочный день, ремейки и воронка в Telegram.",
 };
 
 export const viewport: Viewport = {

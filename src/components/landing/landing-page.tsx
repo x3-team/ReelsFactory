@@ -5,12 +5,18 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  CalendarDays,
   Check,
   Clapperboard,
   Gift,
   MessageCircle,
   Minus,
+  Repeat2,
+  ScanSearch,
+  ScrollText,
+  Share2,
   Sparkles,
+  TrendingUp,
   Video,
 } from "lucide-react";
 
@@ -27,7 +33,7 @@ const SHOT_H = 1688;
 
 const NAV = [
   { href: "#how", label: "Как работает" },
-  { href: "#product", label: "Продукт" },
+  { href: "#tools", label: "Инструменты" },
   { href: "#pricing", label: "Цены" },
   { href: "#faq", label: "Вопросы" },
 ];
@@ -50,6 +56,7 @@ export function LandingPage() {
       <Hero />
       <ProofStrip />
       <How />
+      <Tools />
       <Product />
       <Compare />
       <Pricing />
@@ -120,15 +127,15 @@ function Hero() {
         <div className="rf-rise space-y-6">
           <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[12px] font-medium text-primary">
             <Sparkles className="size-3.5" />
-            Бесплатно: разбор + 1 сценарий · 1–2 минуты
+            Бесплатно: разбор аккаунта + 1 сценарий · 1–2 минуты
           </p>
-          <h1 className="font-display max-w-[16ch] text-[2.35rem] font-semibold leading-[1.08] tracking-tight md:text-6xl md:leading-[1.05]">
-            Снял раз — выложи в Reels, VK и Telegram
+          <h1 className="font-display max-w-[17ch] text-[2.35rem] font-semibold leading-[1.08] tracking-tight md:text-6xl md:leading-[1.05]">
+            Растим твою аудиторию в коротких видео
           </h1>
-          <p className="max-w-[40ch] text-[1.08rem] leading-7 text-muted-foreground">
-            Разберём твои залетевшие ролики и соберём сценарии с суфлёром:
-            хук → проблема → демо → CTA. Не простыня из ChatGPT — текст под
-            твой аккаунт.
+          <p className="max-w-[42ch] text-[1.08rem] leading-7 text-muted-foreground">
+            Разбираем твой аккаунт, находим, что у тебя уже работает, и даём
+            инструменты, чтобы ролики выходили регулярно: сценарии с суфлёром,
+            съёмочный день, ремейки и воронка в Telegram.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="rf-cta h-12 px-6 text-base">
@@ -178,8 +185,8 @@ function HeroPhones() {
         className="absolute right-0 top-0 z-10 w-[64%] rotate-[6deg]"
       />
       <p className="absolute -left-2 bottom-0 z-20 w-max rounded-full border border-white/10 bg-card/90 px-3.5 py-2 text-[12px] font-medium text-muted-foreground shadow-[0_16px_40px_-18px_rgba(0,0,0,0.9)] backdrop-blur">
-        <span className="text-foreground">15 / 30 / 45 сек</span> · суфлёр с
-        таймкодами
+        <span className="text-foreground">Хуки из твоих же роликов</span> ·
+        суфлёр с таймкодами
       </p>
     </div>
   );
@@ -236,10 +243,10 @@ function ShotFade() {
 
 function ProofStrip() {
   const items = [
-    "Instagram и TikTok",
-    "Reels + VK Клипы + Telegram",
-    "Суфлёр на одном телефоне",
-    "Воронка: коммент → бот",
+    "Разбор Instagram и TikTok",
+    "Регулярность без выгорания",
+    "Зрители с трёх площадок",
+    "Подписчик из комментария",
   ];
   return (
     <section className="border-y border-border/70 bg-card/40">
@@ -268,13 +275,13 @@ function How() {
     },
     {
       n: "02",
-      t: "Собираем машину контента",
+      t: "Получаешь машину контента",
       d: "Ниша, столпы, хуки, съёмочный день и пакет под три площадки. Один образ — пачка роликов.",
     },
     {
       n: "03",
-      t: "Читаешь суфлёр и снимаешь",
-      d: "Таймкоды хук → проблема → демо → CTA. Выложил в Reels, Клипы и Telegram без переписывания.",
+      t: "Снимаешь по суфлёру и растёшь",
+      d: "Ролики выходят регулярно, хуки берутся из того, что у тебя уже работало, а каждый провал разбирается.",
     },
   ];
   return (
@@ -309,6 +316,86 @@ function How() {
   );
 }
 
+function Tools() {
+  const tools = [
+    {
+      icon: ScanSearch,
+      t: "Разбор аккаунта",
+      d: "Читаем био и ролики, которые уже залетали, и слушаем их речь. Дальше растём на том, что работает у тебя, а не на чужих шаблонах.",
+    },
+    {
+      icon: ScrollText,
+      t: "Сценарии с суфлёром",
+      d: "Хук → проблема → демо → CTA на 15, 30 или 45 секунд с таймкодами. Ролик выходит сегодня, а не «когда придёт идея».",
+    },
+    {
+      icon: CalendarDays,
+      t: "Съёмочный день и календарь",
+      d: "Один образ, порядок дублей, план на 7 дней. Регулярность — то, за что площадки дают охват.",
+    },
+    {
+      icon: Share2,
+      t: "Кросс-пакет площадок",
+      d: "Reels, VK Клипы и Telegram со своими обложками и подписями. Одна съёмка приводит зрителей с трёх источников.",
+    },
+    {
+      icon: Repeat2,
+      t: "Ремейк вирусного ролика",
+      d: "Берём чужую структуру, которая уже собрала просмотры, и переносим на твой продукт. Меньше шансов уйти в ноль.",
+    },
+    {
+      icon: TrendingUp,
+      t: "Разбор «почему не залетело»",
+      d: "Раскладываем провал на хук, темп и оффер. Следующий ролик выходит с исправленной первой фразой.",
+    },
+    {
+      icon: MessageCircle,
+      t: "Воронка: коммент → бот",
+      d: "Зритель пишет слово под роликом, бот отдаёт гайд. Просмотры превращаются в подписчиков и заявки.",
+    },
+    {
+      icon: Video,
+      t: "Копилка хуков",
+      d: "Отмечаешь «Залетело» — и мы запоминаем, какие заходы работают именно на твоей аудитории.",
+    },
+  ];
+
+  return (
+    <section
+      id="tools"
+      className="scroll-mt-20 border-t border-border/70 bg-card/30 px-5 py-16 md:px-8 md:py-24"
+    >
+      <div className="mx-auto max-w-5xl">
+        <SectionLabel>Инструменты</SectionLabel>
+        <h2 className="font-display mt-2 max-w-[20ch] text-3xl font-semibold tracking-tight md:text-4xl">
+          Чем именно растим аудиторию
+        </h2>
+        <p className="mt-3 max-w-[48ch] text-[1.05rem] leading-7 text-muted-foreground">
+          Аудитория растёт от двух вещей: ролики выходят регулярно и попадают в
+          хук. Каждый инструмент закрывает одну из этих задач.
+        </p>
+        <div className="mt-10 grid gap-x-8 gap-y-8 md:grid-cols-2">
+          {tools.map((tool) => (
+            <div key={tool.t} className="flex gap-4">
+              <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                <tool.icon className="size-4" />
+              </span>
+              <div>
+                <p className="font-display text-[17px] font-semibold tracking-tight">
+                  {tool.t}
+                </p>
+                <p className="mt-1.5 text-[15px] leading-6 text-muted-foreground">
+                  {tool.d}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Product() {
   const shots = [
     {
@@ -333,10 +420,10 @@ function Product() {
   return (
     <section
       id="product"
-      className="scroll-mt-20 border-t border-border/70 bg-card/30 px-5 py-16 md:px-8 md:py-24"
+      className="scroll-mt-20 border-t border-border/70 px-5 py-16 md:px-8 md:py-24"
     >
       <div className="mx-auto max-w-6xl">
-        <SectionLabel>Продукт</SectionLabel>
+        <SectionLabel>Как это выглядит внутри</SectionLabel>
         <h2 className="font-display mt-2 max-w-[18ch] text-3xl font-semibold tracking-tight md:text-4xl">
           Не идеи «о чём снять». Готовый текст в камеру.
         </h2>
@@ -398,7 +485,10 @@ function Compare() {
     },
   ];
   return (
-    <section id="compare" className="scroll-mt-20 px-5 py-16 md:px-8 md:py-24">
+    <section
+      id="compare"
+      className="scroll-mt-20 border-t border-border/70 bg-card/30 px-5 py-16 md:px-8 md:py-24"
+    >
       <div className="mx-auto max-w-5xl">
         <SectionLabel>Честно про отличия</SectionLabel>
         <h2 className="font-display mt-2 max-w-[22ch] text-3xl font-semibold tracking-tight md:text-4xl">
@@ -479,7 +569,7 @@ function Pricing() {
   return (
     <section
       id="pricing"
-      className="scroll-mt-20 border-t border-border/70 bg-card/30 px-5 py-16 md:px-8 md:py-24"
+      className="scroll-mt-20 border-t border-border/70 px-5 py-16 md:px-8 md:py-24"
     >
       <div className="mx-auto max-w-6xl">
         <SectionLabel>Цены без мелкого шрифта</SectionLabel>
@@ -568,11 +658,11 @@ function Audience() {
     },
   ];
   return (
-    <section className="px-5 py-16 md:px-8 md:py-24">
+    <section className="border-t border-border/70 bg-card/30 px-5 py-16 md:px-8 md:py-24">
       <div className="mx-auto max-w-3xl">
         <SectionLabel>Для кого</SectionLabel>
-        <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-          Если снимаешь для СНГ — это твой конвейер
+        <h2 className="font-display mt-2 max-w-[24ch] text-3xl font-semibold tracking-tight md:text-4xl">
+          Кому эти инструменты дают рост
         </h2>
         <ul className="mt-10 space-y-6">
           {roles.map((role) => (
@@ -624,7 +714,7 @@ function Faq() {
   return (
     <section
       id="faq"
-      className="scroll-mt-20 border-t border-border/70 bg-card/30 px-5 py-16 md:px-8 md:py-24"
+      className="scroll-mt-20 border-t border-border/70 px-5 py-16 md:px-8 md:py-24"
     >
       <div className="mx-auto max-w-3xl">
         <SectionLabel>Вопросы</SectionLabel>
@@ -658,13 +748,13 @@ function Offer() {
   return (
     <section className="px-5 py-16 md:px-8 md:py-24">
       <div className="mx-auto max-w-3xl rounded-[2rem] border border-primary/30 bg-primary/10 p-6 md:p-10">
-        <SectionLabel>Оффер</SectionLabel>
-        <h2 className="font-display mt-2 max-w-[16ch] text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.08]">
-          Сегодня разбор. Сегодня первый ролик.
+        <SectionLabel>С чего начать</SectionLabel>
+        <h2 className="font-display mt-2 max-w-[18ch] text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.08]">
+          Посмотри, что у тебя уже работает
         </h2>
         <p className="mt-4 max-w-[42ch] text-[1.05rem] leading-7 text-muted-foreground">
-          Бесплатно разбираем профиль и даём 1 сценарий с суфлёром. Без карты.
-          Если зайдёт — Старт 590 ₽, чтобы снимать пачками.
+          Бесплатно разбираем аккаунт и даём 1 сценарий с суфлёром. Без карты.
+          Понравится — Старт 590 ₽, чтобы выпускать ролики пачками.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button asChild size="lg" className="rf-cta h-12 px-6 text-base">
@@ -701,9 +791,9 @@ function LandingFooter() {
             Открыть в Telegram
           </a>
         </div>
-        <p className="max-w-[44ch] text-sm leading-6 text-muted-foreground">
-          Сценарии коротких видео для авторов и экспертов СНГ. Снял раз — выложи
-          в Reels, VK Клипы и Telegram.
+        <p className="max-w-[46ch] text-sm leading-6 text-muted-foreground">
+          Инструменты роста в коротких видео для авторов и экспертов СНГ: разбор
+          аккаунта, сценарии с суфлёром, съёмочный день и воронка в Telegram.
         </p>
         <div className="grid gap-6 sm:grid-cols-2">
           <div>

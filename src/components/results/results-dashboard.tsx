@@ -166,7 +166,7 @@ export function ResultsDashboard({
             Сценарии готовы
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Снял раз — выложи в Reels, VK и Telegram
+            Хуки из твоих роликов · пакет под Reels, VK и Telegram
           </p>
           {usage && <div className="mt-2"><UsageQuotaCard usage={usage} /></div>}
         </div>

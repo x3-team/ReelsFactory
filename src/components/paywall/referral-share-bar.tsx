@@ -24,7 +24,7 @@ export function ReferralShareBar({
   const shareHref = telegramShareUrl(
     referralUrl,
     shareText ||
-      "Снял раз — выложи в Reels, VK Клипы и Telegram. ReelsFactory собирает сценарии под твой аккаунт.",
+      "ReelsFactory растит аудиторию в коротких видео: разбирает твой аккаунт и собирает сценарии с суфлёром под него.",
   );
 
   return (
