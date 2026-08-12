@@ -50,6 +50,36 @@ export const PLANS = {
 
 export type PlanId = keyof typeof PLANS;
 
+export type BillingPeriod = "month" | "year";
+
+/** Год = цена 10 месяцев: «2 месяца в подарок», скидка ~17% */
+export const YEARLY_BILLED_MONTHS = 10;
+
+export function planPriceRub(
+  planId: Exclude<PlanId, "FREE">,
+  period: BillingPeriod = "month",
+) {
+  const monthly = PLANS[planId].priceRub;
+  return period === "year" ? monthly * YEARLY_BILLED_MONTHS : monthly;
+}
+
+/** Сколько выходит в месяц при годовой оплате */
+export function planMonthlyEquivalentRub(planId: Exclude<PlanId, "FREE">) {
+  return Math.round(planPriceRub(planId, "year") / 12);
+}
+
+export function billingPeriodDays(period: BillingPeriod) {
+  return period === "year" ? 365 : 30;
+}
+
+export function billingPeriodLabel(period: BillingPeriod) {
+  return period === "year" ? "год" : "мес";
+}
+
+export function isBillingPeriod(value: unknown): value is BillingPeriod {
+  return value === "month" || value === "year";
+}
+
 /** 30% с первой оплаты приглашённого */
 export const REFERRAL_FIRST_COMMISSION_RATE = 0.3;
 /** 10% с продлений */

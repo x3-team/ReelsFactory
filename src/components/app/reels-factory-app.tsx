@@ -19,7 +19,7 @@ import {
   type AppUsageSnapshot,
   type AppUser,
 } from "@/lib/client-api";
-import { referralLink, type PlanId } from "@/lib/config";
+import { referralLink, type BillingPeriod, type PlanId } from "@/lib/config";
 
 type Screen = "boot" | "onboarding" | "analyzing" | "results" | "error";
 
@@ -262,7 +262,10 @@ export function ReelsFactoryApp() {
     }
   }
 
-  async function handleSelectPlan(plan: Exclude<PlanId, "FREE">) {
+  async function handleSelectPlan(
+    plan: Exclude<PlanId, "FREE">,
+    billingPeriod: BillingPeriod = "month",
+  ) {
     if (!user) return;
     setLoadingPlan(plan);
     try {
@@ -273,7 +276,7 @@ export function ReelsFactoryApp() {
         payment: { providerPaymentId?: string };
       }>("/api/payments/create", {
         method: "POST",
-        body: JSON.stringify({ userId: user.id, plan }),
+        body: JSON.stringify({ userId: user.id, plan, billingPeriod }),
       });
 
       if (data.paidFromBalance) {

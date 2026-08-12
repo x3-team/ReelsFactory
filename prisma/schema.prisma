@@ -105,6 +105,7 @@ model User {
   clientAccounts    ClientAccount[]
   hookFeedback      HookFeedback[]
   referralPayouts   ReferralPayout[]
+  reminders         Reminder[]
 
   onboardedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -354,4 +355,23 @@ model ReferralPayout {
 
   @@index([userId])
   @@index([status])
+}
+
+/// Telegram nudge that keeps the shooting cadence going ("сними сценарий 2")
+model Reminder {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysisId String?
+  /// shoot_next_script | cadence_week
+  kind       String
+  text       String   @db.Text
+  dueAt      DateTime
+  sentAt     DateTime?
+  /// Set when Telegram rejected the message, so a retry loop does not spin
+  failedAt   DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, analysisId, kind])
+  @@index([sentAt, dueAt])
 }

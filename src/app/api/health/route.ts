@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { pingRedis, redisUrl } from "@/lib/queue/analysis-queue";
+import { APP_VERSION } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export async function GET() {
   return NextResponse.json(
     {
       ok,
+      version: APP_VERSION,
       postgres,
       redis: redis.configured ? (redis.ok ? "up" : "down") : "unconfigured",
       queue: redis.ok ? "bullmq" : "memory",

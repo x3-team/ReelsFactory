@@ -7,10 +7,12 @@ import {
   Copy,
   Lock,
   MessageCircle,
+  RefreshCw,
   Video,
 } from "lucide-react";
 
 import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
+import { AppVersion } from "@/components/app/app-version";
 import { PaywallDrawer, type PaywallReason } from "@/components/paywall/paywall-drawer";
 import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { ScriptShareCard } from "@/components/paywall/script-share-card";
@@ -38,7 +40,7 @@ import {
   type AppUsageSnapshot,
   type AppUser,
 } from "@/lib/client-api";
-import type { PlanId } from "@/lib/config";
+import type { BillingPeriod, PlanId } from "@/lib/config";
 import { PLANS } from "@/lib/config";
 import { formatPlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
@@ -94,7 +96,10 @@ export function ResultsDashboard({
     nichePreset?: string | null;
   }>;
   usage?: AppUsageSnapshot | null;
-  onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
+  onSelectPlan: (
+    plan: Exclude<PlanId, "FREE">,
+    billingPeriod: BillingPeriod,
+  ) => Promise<void> | void;
   loadingPlan?: string | null;
   onReanalyze: () => void;
   onAnalyzeClient?: (clientAccountId: string) => void;
@@ -259,6 +264,13 @@ export function ResultsDashboard({
                     setTeleprompterOpen(true);
                   }}
                   onUnlock={() => openPaywall("scripts")}
+                  onHooksUpdated={(scriptId, hookOptions) => {
+                    onScriptsUpdated?.(
+                      analysis.scripts.map((s) =>
+                        s.id === scriptId ? { ...s, hookOptions } : s,
+                      ),
+                    );
+                  }}
                 />
               )}
             </>
@@ -421,6 +433,7 @@ export function ResultsDashboard({
           Тарифы
         </Button>
         <ReferralShareBar referralUrl={referralUrl} />
+        <AppVersion className="pt-1 text-center" />
       </div>
 
       {teleprompterOpen && selected && (
@@ -639,6 +652,7 @@ function ScriptViewer({
   packsLocked,
   onOpenTeleprompter,
   onUnlock,
+  onHooksUpdated,
 }: {
   script: AppScript;
   userId: string;
@@ -650,10 +664,34 @@ function ScriptViewer({
   packsLocked: boolean;
   onOpenTeleprompter: () => void;
   onUnlock: () => void;
+  onHooksUpdated?: (scriptId: string, hooks: string[]) => void;
 }) {
+  const [hooksBusy, setHooksBusy] = useState(false);
+  const [hooksError, setHooksError] = useState<string | null>(null);
   const hooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
   const packs = script.platformPacks as AppPlatformPack | null | undefined;
   const props = Array.isArray(script.propsChecklist) ? script.propsChecklist : [];
+
+  async function refreshHooks() {
+    setHooksError(null);
+    setHooksBusy(true);
+    try {
+      const data = await api<{ hookOptions: string[] }>(
+        "/api/scripts/regenerate-hooks",
+        {
+          method: "POST",
+          body: JSON.stringify({ userId, scriptId: script.id }),
+        },
+      );
+      onHooksUpdated?.(script.id, data.hookOptions);
+    } catch (error) {
+      setHooksError(
+        error instanceof Error ? error.message : "Не удалось обновить хуки",
+      );
+    } finally {
+      setHooksBusy(false);
+    }
+  }
 
   return (
     <Card>
@@ -666,9 +704,22 @@ function ScriptViewer({
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Хуки
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Хуки
+            </p>
+            <button
+              type="button"
+              disabled={hooksBusy}
+              onClick={() => void refreshHooks()}
+              className="flex items-center gap-1.5 text-[11px] font-medium text-primary disabled:opacity-60"
+            >
+              <RefreshCw
+                className={cn("size-3", hooksBusy && "animate-spin")}
+              />
+              {hooksBusy ? "Подбираем…" : "Другие хуки"}
+            </button>
+          </div>
           <ul className="space-y-2">
             {hooks.map((hook, index) => (
               <HookFeedbackRow
@@ -681,6 +732,9 @@ function ScriptViewer({
               />
             ))}
           </ul>
+          {hooksError ? (
+            <p className="mt-2 text-xs text-destructive">{hooksError}</p>
+          ) : null}
         </div>
 
         {props.length > 0 && (

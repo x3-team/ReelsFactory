@@ -22,7 +22,7 @@ import {
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
-import { PLANS } from "@/lib/config";
+import { PLANS, YEARLY_BILLED_MONTHS } from "@/lib/config";
 import { botUsername } from "@/lib/config";
 import { legalEntity } from "@/lib/legal";
 
@@ -634,11 +634,18 @@ function Pricing() {
             );
           })}
         </div>
-        <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Gift className="size-4 text-primary" />
-          Рефералка: 30% с первой оплаты друга, 10% с продлений — на баланс или в
-          скидку тарифа.
-        </p>
+        <div className="mt-6 space-y-2 text-sm text-muted-foreground">
+          <p className="flex items-center gap-2">
+            <CalendarDays className="size-4 text-primary" />
+            Годовая оплата — за {YEARLY_BILLED_MONTHS} месяцев вместо 12: два
+            месяца в подарок.
+          </p>
+          <p className="flex items-center gap-2">
+            <Gift className="size-4 text-primary" />
+            Рефералка: 30% с первой оплаты друга, 10% с продлений — на баланс или
+            в скидку тарифа.
+          </p>
+        </div>
       </div>
     </section>
   );

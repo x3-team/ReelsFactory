@@ -15,7 +15,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/client-api";
-import { PLANS, type PlanId } from "@/lib/config";
+import {
+  billingPeriodLabel,
+  planMonthlyEquivalentRub,
+  planPriceRub,
+  PLANS,
+  YEARLY_BILLED_MONTHS,
+  type BillingPeriod,
+  type PlanId,
+} from "@/lib/config";
 import {
   computeReferralCredit,
   REFERRAL_MIN_PAYOUT_RUB,
@@ -78,11 +86,15 @@ export function PaywallDrawer({
   referralBalance: number;
   currentPlan: PlanId;
   userId: string;
-  onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
+  onSelectPlan: (
+    plan: Exclude<PlanId, "FREE">,
+    billingPeriod: BillingPeriod,
+  ) => Promise<void> | void;
   loadingPlan?: string | null;
   reason?: PaywallReason;
   onBalanceChange?: (balance: number) => void;
 }) {
+  const [period, setPeriod] = useState<BillingPeriod>("month");
   const [copied, setCopied] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState(
     String(Math.max(REFERRAL_MIN_PAYOUT_RUB, Math.floor(referralBalance))),
@@ -138,18 +150,56 @@ export function PaywallDrawer({
           <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
+        <div
+          role="group"
+          aria-label="Период оплаты"
+          className="flex rounded-2xl border border-border/80 p-1"
+        >
+          {(["month", "year"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPeriod(value)}
+              className={cn(
+                "flex-1 rounded-xl px-3 py-2 text-sm font-medium transition",
+                period === value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground",
+              )}
+            >
+              {value === "month" ? "Помесячно" : "На год"}
+              {value === "year" ? (
+                <span
+                  className={cn(
+                    "ml-1.5 text-[11px]",
+                    period === "year" ? "opacity-80" : "text-primary",
+                  )}
+                >
+                  −{12 - YEARLY_BILLED_MONTHS} мес
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+        {period === "year" ? (
+          <p className="-mt-1 text-xs text-muted-foreground">
+            Год по цене {YEARLY_BILLED_MONTHS} месяцев — два месяца в подарок.
+          </p>
+        ) : null}
+
         <div className="space-y-2">
           {(["START", "PRO", "AGENCY"] as const).map((planId) => {
             const plan = PLANS[planId];
             const active = currentPlan === planId;
             const recommended = planId === "PRO";
-            const split = computeReferralCredit(plan.priceRub, referralBalance);
+            const price = planPriceRub(planId, period);
+            const split = computeReferralCredit(price, referralBalance);
             return (
               <button
                 key={planId}
                 type="button"
                 disabled={!!loadingPlan || active}
-                onClick={() => void onSelectPlan(planId)}
+                onClick={() => void onSelectPlan(planId, period)}
                 className={cn(
                   "w-full rounded-2xl border p-4 text-left transition",
                   recommended
@@ -176,7 +226,7 @@ export function PaywallDrawer({
                     {split.credit > 0 ? (
                       <>
                         <div className="text-xs text-muted-foreground line-through">
-                          {plan.priceRub} ₽
+                          {price} ₽
                         </div>
                         <div className="font-display text-lg font-semibold">
                           {split.fullyCovered ? "0 ₽" : `${split.charge} ₽`}
@@ -188,9 +238,16 @@ export function PaywallDrawer({
                     ) : (
                       <>
                         <div className="font-display text-lg font-semibold">
-                          {plan.priceRub} ₽
+                          {price} ₽
                         </div>
-                        <div className="text-xs text-muted-foreground">/ месяц</div>
+                        <div className="text-xs text-muted-foreground">
+                          / {billingPeriodLabel(period)}
+                        </div>
+                        {period === "year" ? (
+                          <div className="text-[11px] text-primary">
+                            {planMonthlyEquivalentRub(planId)} ₽ / мес
+                          </div>
+                        ) : null}
                       </>
                     )}
                   </div>

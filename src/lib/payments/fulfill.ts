@@ -6,6 +6,8 @@ import {
 } from "@prisma/client";
 
 import {
+  billingPeriodDays,
+  isBillingPeriod,
   REFERRAL_FIRST_COMMISSION_RATE,
   REFERRAL_RENEWAL_COMMISSION_RATE,
 } from "@/lib/config";
@@ -18,9 +20,14 @@ function creditFromMetadata(metadata: unknown) {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+function periodFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return "month" as const;
+  const raw = (metadata as { billingPeriod?: unknown }).billingPeriod;
+  return isBillingPeriod(raw) ? raw : ("month" as const);
+}
+
 export async function fulfillSuccessfulPayment(payment: Payment) {
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30);
+  const days = billingPeriodDays(periodFromMetadata(payment.metadata));
   const reservedCredit = creditFromMetadata(payment.metadata);
 
   const result = await prisma.$transaction(async (tx) => {
@@ -38,6 +45,22 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
     const updatedPayment = await tx.payment.findUniqueOrThrow({
       where: { id: payment.id },
     });
+
+    const current = await tx.user.findUniqueOrThrow({
+      where: { id: payment.userId },
+      select: { subscriptionPlan: true, subscriptionExpiresAt: true },
+    });
+
+    // Renewing the same plan early keeps the days already paid for.
+    const now = new Date();
+    const base =
+      current.subscriptionPlan === payment.plan &&
+      current.subscriptionExpiresAt &&
+      current.subscriptionExpiresAt > now
+        ? current.subscriptionExpiresAt
+        : now;
+    const expiresAt = new Date(base);
+    expiresAt.setDate(expiresAt.getDate() + days);
 
     const user = await tx.user.update({
       where: { id: payment.userId },

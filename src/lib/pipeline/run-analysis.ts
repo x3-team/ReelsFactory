@@ -6,6 +6,7 @@ import { allocateCommentKeyword } from "@/lib/comment-keyword";
 import { PLANS } from "@/lib/config";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
+import { scheduleShootReminder } from "@/lib/reminders";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
 import type { GeneratedScript, ScrapedProfile } from "@/lib/types";
@@ -200,6 +201,11 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
           data: scriptCreateData(user.id, analysisId, script, paid, "core"),
         });
       }
+    });
+
+    // Best effort: a missing nudge must not fail a finished analysis.
+    await scheduleShootReminder({ userId: user.id, analysisId }).catch((error) => {
+      console.warn("scheduleShootReminder failed:", error);
     });
 
     return prisma.profileAnalysis.findUniqueOrThrow({

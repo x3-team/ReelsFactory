@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authErrorResponse, requireUser } from "@/lib/api-auth";
-import { PLANS } from "@/lib/config";
+import { planPriceRub } from "@/lib/config";
 import { fulfillSuccessfulPayment } from "@/lib/payments/fulfill";
 import { computeReferralCredit } from "@/lib/payments/referral-credit";
 import { createYooKassaPayment } from "@/lib/payments/yookassa";
@@ -14,6 +14,7 @@ import { serialize } from "@/lib/serialize";
 const bodySchema = z.object({
   userId: z.string().min(1),
   plan: z.enum(["START", "PRO", "AGENCY"]),
+  billingPeriod: z.enum(["month", "year"]).default("month"),
   applyCredit: z.boolean().optional(),
 });
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       windowSec: 3600,
     });
 
-    const planPrice = PLANS[body.plan].priceRub;
+    const planPrice = planPriceRub(body.plan, body.billingPeriod);
     const applyCredit = body.applyCredit !== false;
     const balance = Number(user.referralBalance);
     const split = applyCredit
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
               mocked: false,
               paidFromBalance: true,
               creditApplied: split.credit,
+              billingPeriod: body.billingPeriod,
             },
           },
         });
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
 
       const { payment, mocked } = await createYooKassaPayment({
         plan: body.plan,
+        billingPeriod: body.billingPeriod,
         userId: user.id,
         telegramId: user.telegramId.toString(),
         amountRub: split.charge,
@@ -102,6 +105,7 @@ export async function POST(request: Request) {
             confirmationUrl: payment.confirmation?.confirmation_url || null,
             creditApplied: split.credit,
             planPrice,
+            billingPeriod: body.billingPeriod,
           },
         },
       });

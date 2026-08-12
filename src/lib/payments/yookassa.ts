@@ -1,6 +1,14 @@
 import { randomUUID, timingSafeEqual } from "crypto";
 
-import { appUrl, isMockMode, PLANS, type PlanId } from "@/lib/config";
+import {
+  appUrl,
+  billingPeriodLabel,
+  isMockMode,
+  planPriceRub,
+  PLANS,
+  type BillingPeriod,
+  type PlanId,
+} from "@/lib/config";
 
 export type YooKassaPayment = {
   id: string;
@@ -21,11 +29,15 @@ export async function createYooKassaPayment(input: {
   plan: Exclude<PlanId, "FREE">;
   userId: string;
   telegramId: string;
+  billingPeriod?: BillingPeriod;
   amountRub?: number;
   creditApplied?: number;
 }): Promise<{ payment: YooKassaPayment; mocked: boolean }> {
   const plan = PLANS[input.plan];
-  const amountValue = (input.amountRub ?? plan.priceRub).toFixed(2);
+  const period = input.billingPeriod ?? "month";
+  const amountValue = (
+    input.amountRub ?? planPriceRub(input.plan, period)
+  ).toFixed(2);
 
   if (
     isMockMode() ||
@@ -47,6 +59,7 @@ export async function createYooKassaPayment(input: {
           userId: input.userId,
           plan: input.plan,
           telegramId: input.telegramId,
+          billingPeriod: period,
           creditApplied: String(input.creditApplied || 0),
         },
       },
@@ -69,13 +82,14 @@ export async function createYooKassaPayment(input: {
       capture: true,
       confirmation: {
         type: "redirect",
-        return_url: `${appUrl()}/?paid=1`,
+        return_url: `${appUrl()}/app?paid=1`,
       },
-      description: `ReelsFactory — тариф «${plan.name}»`,
+      description: `ReelsFactory — тариф «${plan.name}», ${billingPeriodLabel(period)}`,
       metadata: {
         userId: input.userId,
         plan: input.plan,
         telegramId: input.telegramId,
+        billingPeriod: period,
         creditApplied: String(input.creditApplied || 0),
       },
     }),
