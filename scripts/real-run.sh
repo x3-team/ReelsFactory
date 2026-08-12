@@ -34,6 +34,24 @@ log() { printf '\n[real-run] %s\n' "$*"; }
 
 log "сервер: $BASE · аккаунт: $HANDLE · тариф: $PLAN · telegramId: $TG_ID"
 
+# Без ключа скрейпинга профиль берётся из демо-данных. Если при этом есть ключ AI,
+# модель отработает по-настоящему — и отчёт будет выглядеть настоящим, хотя факты
+# в нём выдуманы. Предупреждаем громко, чтобы такой прогон не приняли за живой.
+if ! grep -qE '^(APIFY_TOKEN|RAPIDAPI_KEY)=.+' .env; then
+  cat >&2 <<'WARN'
+
+  ВНИМАНИЕ: в .env нет ни APIFY_TOKEN, ни RAPIDAPI_KEY.
+  Профиль будет взят из демо-данных, а не из реального аккаунта.
+  Если задан AITUNNEL_API_KEY, модель отработает вживую по выдуманным фактам —
+  такой отчёт нельзя использовать для вывода «полезно или нет».
+
+WARN
+  if [ "${ALLOW_MOCK_PROFILE:-}" != "true" ]; then
+    echo "  Прогон остановлен. Для демо-прогона: ALLOW_MOCK_PROFILE=true" >&2
+    exit 2
+  fi
+fi
+
 health="$(curl -sf "$BASE/api/health" || true)"
 if [ -z "$health" ]; then
   echo "[real-run] сервер не отвечает на $BASE — запусти pnpm dev" >&2
