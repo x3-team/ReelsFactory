@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ProfileGoal, ToneOfVoice } from "@prisma/client";
 
+import { authErrorResponse, requireUser } from "@/lib/api-auth";
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
 import { serialize } from "@/lib/serialize";
 import { completeOnboarding } from "@/lib/users";
@@ -26,6 +27,7 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
+    await requireUser(request, body.userId);
     const platform = detectPlatform(body.socialHandle);
     const handle = normalizeHandle(body.socialHandle, platform);
 
@@ -51,6 +53,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(serialize({ user }));
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     console.error("POST /api/users/onboard", error);
     return NextResponse.json(
       {
@@ -63,13 +67,17 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const userId = new URL(request.url).searchParams.get("userId");
-  if (!userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
+  try {
+    const userId = new URL(request.url).searchParams.get("userId");
+    const user = await requireUser(request, userId);
+    const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!fresh) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json(serialize({ user: fresh }));
+  } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  return NextResponse.json(serialize({ user }));
 }

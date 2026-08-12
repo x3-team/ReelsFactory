@@ -92,6 +92,9 @@ export async function completeOnboarding(
 
 export function hasPaidAccess(user: User) {
   if (user.subscriptionPlan === SubscriptionPlan.FREE) return false;
-  if (!user.subscriptionExpiresAt) return true;
+  // Missing expiry used to mean "paid forever" — treat as expired in production.
+  if (!user.subscriptionExpiresAt) {
+    return process.env.NODE_ENV !== "production";
+  }
   return user.subscriptionExpiresAt.getTime() > Date.now();
 }

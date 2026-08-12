@@ -2,6 +2,7 @@ import { PaymentProvider, PaymentStatus, SubscriptionPlan } from "@prisma/client
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { authErrorResponse, requireUser } from "@/lib/api-auth";
 import { PLANS } from "@/lib/config";
 import { createYooKassaPayment } from "@/lib/payments/yookassa";
 import { prisma } from "@/lib/prisma";
@@ -15,10 +16,7 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
-    const user = await prisma.user.findUnique({ where: { id: body.userId } });
-    if (!user) {
-      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
-    }
+    const user = await requireUser(request, body.userId);
 
     const { payment, mocked } = await createYooKassaPayment({
       plan: body.plan,
@@ -50,6 +48,8 @@ export async function POST(request: Request) {
       }),
     );
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     console.error("POST /api/payments/create", error);
     return NextResponse.json(
       {

@@ -4,6 +4,7 @@ import type {
   PlatformPack,
   StrategyPayload,
 } from "@/lib/types";
+import { isDuplicateTitle, rankHooks } from "@/lib/ai/score-hooks";
 
 const DURATIONS = [15, 30, 45] as const;
 
@@ -135,7 +136,10 @@ function normalizeScript(
     "Остановитесь, если ролик умирает на 3-й секунде",
     "Одна ошибка убивает удержание — проверьте её",
     "Не алгоритм виноват. Виновата первая фраза.",
-  ]).slice(0, 3);
+  ])
+    .slice(0, 3)
+    .map((h) => h.slice(0, 90));
+  const ranked = rankHooks(hooks);
 
   const title = asString(script.title, `Сценарий ${duration} сек`);
   const funnel = normalizeFunnel(script.funnel, keyword, "бесплатный гайд");
@@ -148,7 +152,7 @@ function normalizeScript(
     duration_sec: duration,
     shoot_order: script.shoot_order || index + 1,
     comment_keyword: keyword,
-    hook_options: hooks.map((h) => h.slice(0, 90)),
+    hook_options: ranked,
     teleprompter_script: ensureTeleprompter(
       script.teleprompter_script,
       duration,
@@ -166,11 +170,20 @@ function normalizeScript(
  * Post-process LLM strategy: fix lengths, unique keywords, packs, teleprompter skeleton.
  * Improves reliability without a second expensive LLM call.
  */
-export function normalizeStrategy(raw: StrategyPayload): StrategyPayload {
+export function normalizeStrategy(
+  raw: StrategyPayload,
+  previousTitles: string[] = [],
+): StrategyPayload {
   const usedKeywords = new Set<string>();
   const scripts = (raw.scripts || [])
     .slice(0, 3)
-    .map((s, i) => normalizeScript(s, i, usedKeywords));
+    .map((s, i) => {
+      const normalized = normalizeScript(s, i, usedKeywords);
+      if (isDuplicateTitle(normalized.title, previousTitles)) {
+        normalized.title = `${normalized.title} · новый угол`;
+      }
+      return normalized;
+    });
 
   while (scripts.length < 3) {
     const i = scripts.length;

@@ -13,6 +13,7 @@ import { TelegramBackButton } from "@/components/telegram/back-button";
 import { useTelegram } from "@/components/telegram/telegram-provider";
 import {
   api,
+  setClientInitData,
   type AppAnalysis,
   type AppUsageSnapshot,
   type AppUser,
@@ -63,6 +64,7 @@ export function ReelsFactoryApp() {
   }, [user, tgUser]);
 
   const bootstrap = useCallback(async () => {
+    setClientInitData(rawInitData);
     setScreen("boot");
     setError(null);
 
@@ -132,6 +134,38 @@ export function ReelsFactoryApp() {
       return;
     }
 
+    const inFlight = new Set([
+      "PENDING",
+      "QUEUED",
+      "SCRAPING",
+      "TRANSCRIBING",
+      "GENERATING",
+    ]);
+    if (
+      data.latestAnalysis &&
+      inFlight.has(data.latestAnalysis.status)
+    ) {
+      setScreen("analyzing");
+      setAnalysisStatus(data.latestAnalysis.status);
+      const analysisResult = await pollAnalysis(
+        data.latestAnalysis.id,
+        data.user.id,
+        Date.now(),
+      );
+      setAnalysis(analysisResult);
+      setScreen("results");
+      return;
+    }
+
+    if (data.latestAnalysis?.status === "FAILED") {
+      setError(
+        data.latestAnalysis.errorMessage ||
+          "Последний анализ не удался. Можно запустить заново.",
+      );
+      setScreen("error");
+      return;
+    }
+
     if (data.user.onboardedAt) {
       setScreen("analyzing");
       await runAnalysis(data.user.id);
@@ -151,7 +185,11 @@ export function ReelsFactoryApp() {
     });
   }, [ready, bootstrap]);
 
-  async function pollAnalysis(analysisId: string, startedAt: number) {
+  async function pollAnalysis(
+    analysisId: string,
+    userId: string,
+    startedAt: number,
+  ) {
     const terminal = new Set(["COMPLETED", "FAILED"]);
     const maxMs = 180_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
     for (;;) {
@@ -164,7 +202,7 @@ export function ReelsFactoryApp() {
       }
 
       const data = await api<{ analysis: AppAnalysis }>(
-        `/api/analyze?id=${encodeURIComponent(analysisId)}`,
+        `/api/analyze?id=${encodeURIComponent(analysisId)}&userId=${encodeURIComponent(userId)}`,
       );
       setAnalysisStatus(data.analysis.status);
 
@@ -194,7 +232,7 @@ export function ReelsFactoryApp() {
         body: JSON.stringify({ userId, clientAccountId }),
       });
       setAnalysisStatus(data.analysis.status);
-      const analysisResult = await pollAnalysis(data.analysis.id, startedAt);
+      const analysisResult = await pollAnalysis(data.analysis.id, userId, startedAt);
       setAnalysis(analysisResult);
       setScreen("results");
     } catch (err) {
@@ -257,9 +295,15 @@ export function ReelsFactoryApp() {
         <button
           type="button"
           className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-          onClick={() => void bootstrap()}
+          onClick={() => {
+            if (user?.onboardedAt) {
+              void runAnalysis(user.id);
+              return;
+            }
+            void bootstrap();
+          }}
         >
-          Повторить
+          {user?.onboardedAt ? "Запустить анализ" : "Повторить"}
         </button>
       </div>
     );

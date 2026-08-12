@@ -76,6 +76,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     const profile = await parseProfile({
       handle: user.socialHandle,
       platform: user.platform as Platform,
+      userId: user.id,
     });
 
     await prisma.profileAnalysis.update({
@@ -91,6 +92,8 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       const { text } = await transcribeAudio({
         audioUrl: video.audioUrl || video.url,
         hint: video.caption,
+        cacheKey: `${user.platform}:${video.id}`,
+        userId: user.id,
       });
       transcriptions.push(text);
     }
@@ -103,6 +106,30 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
+    const previous = await prisma.script.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      select: { title: true },
+    });
+    const flew = await prisma.hookFeedback.findMany({
+      where: { userId: user.id, outcome: "flew" },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    });
+    const flewScripts = await prisma.script.findMany({
+      where: { id: { in: flew.map((row) => row.scriptId) } },
+      select: { id: true, hookOptions: true },
+    });
+    const byId = new Map(flewScripts.map((s) => [s.id, s]));
+    const winningHooks: string[] = [];
+    for (const row of flew) {
+      const hooks = Array.isArray(byId.get(row.scriptId)?.hookOptions)
+        ? (byId.get(row.scriptId)!.hookOptions as string[])
+        : [];
+      if (hooks[row.hookIndex]) winningHooks.push(hooks[row.hookIndex]);
+    }
+
     const { strategy } = await generateStrategy({
       profile,
       transcriptions,
@@ -113,6 +140,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       plan: user.subscriptionPlan,
       nichePreset: user.nichePreset,
       voiceDraft: user.voiceDraft,
+      previousTitles: previous.map((s) => s.title),
+      winningHooks,
+      userId: user.id,
     });
 
     const paid = hasPaidAccess(user);

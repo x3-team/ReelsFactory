@@ -28,15 +28,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type {
-  AppAnalysis,
-  AppCalendarDay,
-  AppFunnel,
-  AppPlatformPack,
-  AppScript,
-  AppShootDay,
-  AppUsageSnapshot,
-  AppUser,
+import {
+  api,
+  type AppAnalysis,
+  type AppCalendarDay,
+  type AppFunnel,
+  type AppPlatformPack,
+  type AppScript,
+  type AppShootDay,
+  type AppUsageSnapshot,
+  type AppUser,
 } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
 import { PLANS } from "@/lib/config";
@@ -266,6 +267,7 @@ export function ResultsDashboard({
         {selected && (
           <ScriptViewer
             script={selected}
+            userId={user.id}
             referralUrl={referralUrl}
             handle={analysis.socialHandle}
             platformTab={platformTab}
@@ -361,6 +363,9 @@ function FunnelCard({
             </p>
             <p className="text-muted-foreground">{funnel.bot_reply}</p>
             <p className="text-xs text-muted-foreground">{funnel.telegram_cta}</p>
+            <p className="text-xs text-muted-foreground">
+              Зритель пишет это слово боту в Telegram — приходит ответ с лидмагнитом.
+            </p>
           </>
         )}
       </CardContent>
@@ -493,6 +498,7 @@ function CalendarCard({
 
 function ScriptViewer({
   script,
+  userId,
   referralUrl,
   handle,
   platformTab,
@@ -503,6 +509,7 @@ function ScriptViewer({
   onUnlock,
 }: {
   script: AppScript;
+  userId: string;
   referralUrl: string;
   handle?: string;
   platformTab: PlatformTab;
@@ -531,13 +538,15 @@ function ScriptViewer({
             Варианты хуков
           </p>
           <ul className="space-y-2">
-            {hooks.map((hook) => (
-              <li
-                key={hook}
-                className="rounded-lg bg-secondary/70 px-3 py-2 text-sm"
-              >
-                {hook}
-              </li>
+            {hooks.map((hook, index) => (
+              <HookFeedbackRow
+                key={`${script.id}-${index}`}
+                hook={hook}
+                index={index}
+                scriptId={script.id}
+                userId={userId}
+                locked={packsLocked}
+              />
             ))}
           </ul>
         </div>
@@ -619,6 +628,70 @@ function ScriptViewer({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function HookFeedbackRow({
+  hook,
+  index,
+  scriptId,
+  userId,
+  locked,
+}: {
+  hook: string;
+  index: number;
+  scriptId: string;
+  userId: string;
+  locked: boolean;
+}) {
+  const [outcome, setOutcome] = useState<"flew" | "flopped" | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function send(next: "flew" | "flopped") {
+    if (locked) return;
+    setSaving(true);
+    try {
+      await api("/api/hooks/feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          userId,
+          scriptId,
+          hookIndex: index,
+          outcome: next,
+        }),
+      });
+      setOutcome(next);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <li className="rounded-lg bg-secondary/70 px-3 py-2 text-sm">
+      <p>{hook}</p>
+      {!locked && (
+        <div className="mt-2 flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={outcome === "flew" ? "default" : "outline"}
+            disabled={saving}
+            onClick={() => void send("flew")}
+          >
+            Залетело
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={outcome === "flopped" ? "default" : "outline"}
+            disabled={saving}
+            onClick={() => void send("flopped")}
+          >
+            Не залетело
+          </Button>
+        </div>
+      )}
+    </li>
   );
 }
 

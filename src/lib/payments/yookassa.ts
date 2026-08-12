@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "crypto";
+import { randomUUID, timingSafeEqual } from "crypto";
 
 import { appUrl, isMockMode, PLANS, type PlanId } from "@/lib/config";
 
@@ -80,11 +80,13 @@ export async function createYooKassaPayment(input: {
 }
 
 export function verifyYooKassaBasicAuth(header: string | null): boolean {
-  // Optional shared-secret style check for webhook endpoints behind a proxy.
   const secret = process.env.YOOKASSA_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) {
+    return process.env.NODE_ENV !== "production";
+  }
   if (!header) return false;
-  const hash = createHash("sha256").update(header).digest("hex");
-  const expected = createHash("sha256").update(secret).digest("hex");
-  return hash === expected;
+  const a = Buffer.from(header);
+  const b = Buffer.from(secret);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }

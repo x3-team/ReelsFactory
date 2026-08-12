@@ -1,10 +1,9 @@
+import { PaymentStatus, type Payment } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 import {
-  PaymentStatus,
   ReferralStatus,
   SubscriptionPlan,
-  type Payment,
 } from "@prisma/client";
-import { Decimal } from "@prisma/client/runtime/library";
 
 import {
   REFERRAL_FIRST_COMMISSION_RATE,
@@ -13,17 +12,23 @@ import {
 import { prisma } from "@/lib/prisma";
 
 export async function fulfillSuccessfulPayment(payment: Payment) {
-  if (payment.status === PaymentStatus.SUCCEEDED) {
-    return { payment, alreadyFulfilled: true as const };
-  }
-
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30);
 
   const result = await prisma.$transaction(async (tx) => {
-    const updatedPayment = await tx.payment.update({
-      where: { id: payment.id },
+    const claimed = await tx.payment.updateMany({
+      where: { id: payment.id, status: PaymentStatus.PENDING },
       data: { status: PaymentStatus.SUCCEEDED },
+    });
+    if (claimed.count === 0) {
+      const current = await tx.payment.findUniqueOrThrow({
+        where: { id: payment.id },
+      });
+      return { payment: current, alreadyFulfilled: true as const };
+    }
+
+    const updatedPayment = await tx.payment.findUniqueOrThrow({
+      where: { id: payment.id },
     });
 
     const user = await tx.user.update({
@@ -66,8 +71,8 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
       });
     }
 
-    return updatedPayment;
+    return { payment: updatedPayment, alreadyFulfilled: false as const };
   });
 
-  return { payment: result, alreadyFulfilled: false as const };
+  return result;
 }

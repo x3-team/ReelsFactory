@@ -96,6 +96,7 @@ model User {
   referralsGiven    Referral[]      @relation("Referrer")
   referralsReceived Referral[]      @relation("Referred")
   clientAccounts    ClientAccount[]
+  hookFeedback      HookFeedback[]
 
   onboardedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -203,11 +204,60 @@ model Script {
   /// core | shoot_day | remake | autopsy
   sourceType       String  @default("core")
 
+  hookFeedback HookFeedback[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([analysisId])
+  @@index([commentKeyword])
+}
+
+/// Whisper transcript cache — same reel must not be billed twice
+model WhisperCache {
+  id        String   @id @default(cuid())
+  videoKey  String   @unique
+  text      String   @db.Text
+  source    String   @default("whisper")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Profile scrape cache (Apify/Rapid) — TTL enforced in code
+model ScrapeCache {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  profile   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Meter for Apify / Whisper / LLM spend control
+model CostEvent {
+  id        String   @id @default(cuid())
+  kind      String
+  userId    String?
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([userId])
+}
+
+/// A/B: creator marks which hook flew after publishing
+model HookFeedback {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scriptId  String
+  script    Script   @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  hookIndex Int
+  outcome   String
+  createdAt DateTime @default(now())
+
+  @@unique([scriptId, hookIndex])
+  @@index([userId])
 }
 
 /// Subscription payment (YoKassa / CloudPayments)

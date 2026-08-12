@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { generateAutopsy } from "@/lib/ai/generate-autopsy";
+import { authErrorResponse, requireUser } from "@/lib/api-auth";
+import { recordCostEvent } from "@/lib/cost-meter";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
@@ -12,16 +14,13 @@ const bodySchema = z.object({
   sourceUrl: z.string().url(),
   caption: z.string().max(2000).optional(),
   transcript: z.string().max(8000).optional(),
-  analysisId: z.string().optional(),
+  analysisId: z.string().min(1),
 });
 
 export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
-    const user = await prisma.user.findUnique({ where: { id: body.userId } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const user = await requireUser(request, body.userId);
 
     if (
       !hasPaidAccess(user) ||
@@ -36,44 +35,45 @@ export async function POST(request: Request) {
       );
     }
 
-    const usage = await assertCanAutopsy(user);
+    const analysis = await prisma.profileAnalysis.findFirst({
+      where: { id: body.analysisId, userId: user.id },
+    });
+    if (!analysis) {
+      return NextResponse.json(
+        { error: "Сначала нужен готовый анализ профиля" },
+        { status: 400 },
+      );
+    }
 
-    const analysis = body.analysisId
-      ? await prisma.profileAnalysis.findFirst({
-          where: { id: body.analysisId, userId: user.id },
-        })
-      : await prisma.profileAnalysis.findFirst({
-          where: { userId: user.id, status: "COMPLETED" },
-          orderBy: { createdAt: "desc" },
-        });
+    const usage = await assertCanAutopsy(user);
 
     const { autopsy, mocked, model } = await generateAutopsy({
       sourceUrl: body.sourceUrl,
       caption: body.caption,
       transcript: body.transcript,
-      niche: analysis?.niche,
+      niche: analysis.niche,
       offerSummary: user.offerSummary,
       plan: user.subscriptionPlan,
     });
 
-    let savedScript = null;
-    if (analysis) {
-      savedScript = await prisma.script.create({
-        data: {
-          userId: user.id,
-          analysisId: analysis.id,
-          title: autopsy.reshoot_script.title,
-          format: autopsy.reshoot_script.format,
-          hookOptions: autopsy.reshoot_script.hook_options,
-          teleprompterScript: autopsy.reshoot_script.teleprompter_script,
-          caption: autopsy.reshoot_script.caption,
-          cta: autopsy.reshoot_script.cta,
-          isTeaser: false,
-          durationSec: autopsy.reshoot_script.duration_sec ?? 20,
-          commentKeyword: autopsy.reshoot_script.comment_keyword ?? null,
-          sourceType: "autopsy",
-        },
-      });
+    const savedScript = await prisma.script.create({
+      data: {
+        userId: user.id,
+        analysisId: analysis.id,
+        title: autopsy.reshoot_script.title,
+        format: autopsy.reshoot_script.format,
+        hookOptions: autopsy.reshoot_script.hook_options,
+        teleprompterScript: autopsy.reshoot_script.teleprompter_script,
+        caption: autopsy.reshoot_script.caption,
+        cta: autopsy.reshoot_script.cta,
+        isTeaser: false,
+        durationSec: autopsy.reshoot_script.duration_sec ?? 20,
+        commentKeyword: autopsy.reshoot_script.comment_keyword ?? null,
+        sourceType: "autopsy",
+      },
+    });
+    if (!mocked) {
+      await recordCostEvent("llm", user.id, "autopsy");
     }
 
     return NextResponse.json(
@@ -93,6 +93,8 @@ export async function POST(request: Request) {
       }),
     );
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     console.error("POST /api/autopsy", error);
     const status = error instanceof QuotaError ? 402 : 400;
     return NextResponse.json(

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { authErrorResponse, publicAnalysis, requireUser } from "@/lib/api-auth";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
@@ -14,10 +15,7 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
-    const user = await prisma.user.findUnique({ where: { id: body.userId } });
-    if (!user) {
-      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
-    }
+    const user = await requireUser(request, body.userId);
 
     await assertCanEnqueueAnalysis(user);
 
@@ -59,13 +57,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       serialize({
-        analysis,
+        analysis: publicAnalysis(analysis),
         queued: true,
         jobId: queued.jobId,
         queueMode: queued.mode,
       }),
     );
   } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     console.error("POST /api/analyze", error);
     const status = error instanceof QuotaError ? 402 : 500;
     return NextResponse.json(
@@ -80,19 +80,32 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const id = new URL(request.url).searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "id обязателен" }, { status: 400 });
-  }
+  try {
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+    const userId = url.searchParams.get("userId");
+    if (!id) {
+      return NextResponse.json({ error: "id обязателен" }, { status: 400 });
+    }
 
-  const analysis = await prisma.profileAnalysis.findUnique({
-    where: { id },
-    include: { scripts: { orderBy: { createdAt: "asc" } } },
-  });
+    const user = await requireUser(request, userId);
+    const analysis = await prisma.profileAnalysis.findUnique({
+      where: { id },
+      include: { scripts: { orderBy: { createdAt: "asc" } } },
+    });
 
-  if (!analysis) {
+    if (!analysis || analysis.userId !== user.id) {
+      return NextResponse.json({ error: "Не найдено" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      serialize({
+        analysis: publicAnalysis(analysis),
+      }),
+    );
+  } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     return NextResponse.json({ error: "Не найдено" }, { status: 404 });
   }
-
-  return NextResponse.json(serialize({ analysis }));
 }

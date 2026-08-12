@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,9 @@ export function AgencyClientsPanel({
   const [offerSummary, setOfferSummary] = useState("");
   const [nichePreset, setNichePreset] = useState("custom");
   const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<string | null>(null);
 
   async function addAccount() {
     setLoading(true);
@@ -64,6 +66,22 @@ export function AgencyClientsPanel({
   async function removeAccount(id: string) {
     await api(`/api/clients?userId=${userId}&id=${id}`, { method: "DELETE" });
     setAccounts((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  async function weeklyReport() {
+    setReportLoading(true);
+    setError(null);
+    try {
+      const data = await api<{ report: string }>("/api/reports/agency", {
+        method: "POST",
+        body: JSON.stringify({ userId, sendTelegram: true }),
+      });
+      setReport(data.report);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка отчёта");
+    } finally {
+      setReportLoading(false);
+    }
   }
 
   return (
@@ -148,6 +166,22 @@ export function AgencyClientsPanel({
           <li className="text-sm text-muted-foreground">Пока пусто</li>
         )}
       </ul>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={reportLoading}
+        onClick={() => void weeklyReport()}
+      >
+        <FileText className="size-4" />
+        {reportLoading ? "Собираем отчёт…" : "Отчёт за неделю"}
+      </Button>
+      {report && (
+        <pre className="whitespace-pre-wrap rounded-lg bg-secondary/60 p-3 text-xs">
+          {report}
+        </pre>
+      )}
     </section>
   );
 }

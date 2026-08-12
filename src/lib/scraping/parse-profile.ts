@@ -1,5 +1,7 @@
 import { isMockMode } from "@/lib/config";
+import { canRunApify, recordCostEvent } from "@/lib/cost-meter";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
+import { prisma } from "@/lib/prisma";
 import { normalizeHandle, type Platform } from "@/lib/platform";
 import {
   fetchInstagramViaApify,
@@ -15,39 +17,60 @@ export function hasScrapingCredentials() {
   return hasApifyCredentials() || hasRapidApiCredentials();
 }
 
+function scrapeTtlMs() {
+  return Number(process.env.SCRAPE_CACHE_TTL_HOURS || 24) * 60 * 60 * 1000;
+}
+
 export async function parseProfile(input: {
   handle: string;
   platform: Platform;
+  userId?: string;
 }): Promise<ScrapedProfile> {
   const handle = normalizeHandle(input.handle, input.platform);
+  const cacheKey = `${input.platform}:${handle.toLowerCase()}`;
+
+  const cached = await prisma.scrapeCache.findUnique({
+    where: { cacheKey },
+  });
+  if (cached && Date.now() - cached.createdAt.getTime() < scrapeTtlMs()) {
+    return cached.profile as unknown as ScrapedProfile;
+  }
 
   if (isMockMode() || !hasScrapingCredentials()) {
     return mockScrapedProfile(handle, input.platform);
   }
 
+  let profile: ScrapedProfile | null = null;
+
   if (input.platform === "instagram") {
-    // Apify first (videoUrl для Whisper), RapidAPI — fallback
-    if (hasApifyCredentials()) {
+    if (hasApifyCredentials() && (await canRunApify())) {
       try {
-        const profile = await fetchInstagramViaApify(handle);
-        if (profile.topVideos.length === 0) {
-          // Профиль есть, но без видео — не падаем в mock-био
-          return profile;
-        }
-        return profile;
+        profile = await fetchInstagramViaApify(handle);
+        await recordCostEvent("apify", input.userId, handle);
       } catch (error) {
         console.error("Apify Instagram scrape failed, trying RapidAPI", error);
         if (!hasRapidApiCredentials()) throw error;
       }
+    } else if (hasApifyCredentials()) {
+      console.warn("Apify monthly cap reached — RapidAPI/mock fallback");
     }
 
-    if (hasRapidApiCredentials()) {
-      return fetchInstagramViaRapidApi(handle);
+    if (!profile && hasRapidApiCredentials()) {
+      profile = await fetchInstagramViaRapidApi(handle);
     }
   }
 
-  // TikTok/YouTube — пока mock, пока нет отдельного актора
-  return mockScrapedProfile(handle, input.platform);
+  if (!profile) {
+    return mockScrapedProfile(handle, input.platform);
+  }
+
+  await prisma.scrapeCache.upsert({
+    where: { cacheKey },
+    create: { cacheKey, profile: profile as object },
+    update: { profile: profile as object, createdAt: new Date() },
+  });
+
+  return profile;
 }
 
 async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile> {

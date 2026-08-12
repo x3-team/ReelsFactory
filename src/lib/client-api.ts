@@ -1,3 +1,9 @@
+let clientInitData = "";
+
+export function setClientInitData(raw?: string | null) {
+  clientInitData = raw?.trim() || "";
+}
+
 export async function api<T>(
   path: string,
   init?: RequestInit,
@@ -6,6 +12,7 @@ export async function api<T>(
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(clientInitData ? { "x-telegram-init-data": clientInitData } : {}),
       ...(init?.headers || {}),
     },
   });

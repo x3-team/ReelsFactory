@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { denyPublicCogs } from "@/lib/api-auth";
 import { transcribeAudio } from "@/lib/ai/transcribe";
 
 const bodySchema = z.object({
@@ -9,6 +10,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const closed = denyPublicCogs();
+  if (closed) return closed;
+
   try {
     const body = bodySchema.parse(await request.json());
     const result = await transcribeAudio(body);

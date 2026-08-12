@@ -3,6 +3,7 @@ import {
   llmModelForStrategy,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
+import { recordCostEvent } from "@/lib/cost-meter";
 import { normalizeStrategy } from "@/lib/ai/normalize-strategy";
 import { getNichePreset } from "@/lib/niche-presets";
 import { mockStrategy } from "@/lib/mocks/demo-data";
@@ -84,7 +85,7 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 10) shoot_day: один образ/фон, props, order для 3 сценариев + 4 extra_ideas для досъёма.
 11) Юридически спокойный тон: без гарантий дохода и серых схем.
 12) Рынок RU/СНГ: VK Клипы — мягче «реклама», Telegram — ценность в тексте, Reels — жёстче хук.
-13) Удержание: первая конкретная польза не позже 40% хронометража; цифры/ошибки сильнее абстракций.`;
+14) Не повторяй названия из avoid_titles. winning_hooks — паттерны, которые уже залетели у автора: усиливай этот угол, не копируй дословно.`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
@@ -96,6 +97,9 @@ export async function generateStrategy(input: {
   plan?: string | null;
   nichePreset?: string | null;
   voiceDraft?: string | null;
+  previousTitles?: string[];
+  winningHooks?: string[];
+  userId?: string;
 }): Promise<{ strategy: StrategyPayload; mocked: boolean; model: string }> {
   const model = llmModelForStrategy(input.plan);
   const niche = getNichePreset(input.nichePreset);
@@ -111,6 +115,7 @@ export async function generateStrategy(input: {
           nichePreset: niche?.label || input.nichePreset,
           voiceDraft: input.voiceDraft,
         }),
+        input.previousTitles,
       ),
       mocked: true,
       model: "mock",
@@ -140,6 +145,8 @@ export async function generateStrategy(input: {
         ? { id: niche.id, label: niche.label, pain: niche.pain }
         : null,
       voice_draft: input.voiceDraft || null,
+      avoid_titles: (input.previousTitles || []).slice(0, 20),
+      winning_hooks: (input.winningHooks || []).slice(0, 10),
       plan: input.plan || "FREE",
       script_brief: {
         count: 3,
@@ -176,8 +183,12 @@ export async function generateStrategy(input: {
       `Пустой ответ LLM через AITunnel (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
     );
   }
+  await recordCostEvent("llm", input.userId, "strategy");
   return {
-    strategy: normalizeStrategy(parseStrategyJson(content)),
+    strategy: normalizeStrategy(
+      parseStrategyJson(content),
+      input.previousTitles,
+    ),
     mocked: false,
     model: completion.model || model,
   };

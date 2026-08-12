@@ -91,12 +91,14 @@ export async function fetchInstagramViaApify(
   const url = new URL(
     `https://api.apify.com/v2/acts/${path}/run-sync-get-dataset-items`,
   );
-  url.searchParams.set("token", token);
   url.searchParams.set("timeout", process.env.APIFY_TIMEOUT_SECS || "120");
 
-  const res = await fetch(url, {
+  const res = await fetch(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({
       usernames: [handle],
       resultsLimit: 12,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { publicAnalysis } from "@/lib/api-auth";
 import { referralLink } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
@@ -38,7 +39,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       serialize({
         user,
-        latestAnalysis,
+        latestAnalysis: latestAnalysis
+          ? publicAnalysis(latestAnalysis)
+          : null,
         clientAccounts,
         referralLink: referralLink(user.telegramId.toString()),
         authVerified: auth.verified,
