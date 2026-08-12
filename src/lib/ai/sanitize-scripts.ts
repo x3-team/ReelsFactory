@@ -93,7 +93,10 @@ function applyKeywordToScript(
   const caption = keepPriceInCaption
     ? swap(script.caption || "")
     : stripPrices(swap(script.caption || ""));
-  const cta = stripPrices(swap(script.cta || ""));
+  const ctaRaw = stripPrices(swap(script.cta || ""));
+  const cta = ctaRaw.toLowerCase().includes(keyword.toLowerCase())
+    ? ctaRaw
+    : `Напиши ${keyword} в комментариях`;
   return {
     ...script,
     comment_keyword: keyword,

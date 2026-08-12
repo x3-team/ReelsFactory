@@ -19,7 +19,6 @@ const INVENTED = [
   { re: /пектин\w*/gi, key: "пектин" },
 ];
 
-const CLICKBAIT_TIME = /за\s+\d+\s+минут\w*/gi;
 const TEMPERATURE = /\d+\s*°\s*[cс]|\d+\s*градус\w*/gi;
 
 function allowedHas(facts: FactCard, key: string) {
@@ -37,12 +36,12 @@ export function scrubInvented(text: string, facts: FactCard): string {
     if (allowedHas(facts, item.key)) continue;
     next = next.replace(item.re, "").replace(/ {2,}/g, " ");
   }
-  if (!/\d+\s*минут/.test(facts.blob)) {
-    next = next.replace(CLICKBAIT_TIME, "").replace(/ {2,}/g, " ");
-  }
   if (!/°|градус/.test(facts.blob)) {
     next = next.replace(TEMPERATURE, "").replace(/ {2,}/g, " ");
   }
+  next = next.replace(/за\s+(\d+)\s+минут\w*/gi, (full, n: string) => {
+    return new RegExp(`${n}\\s*минут`, "i").test(facts.blob) ? full : "";
+  });
   return next
     .replace(/\s+([.,!?])/g, "$1")
     .replace(/[—–-]\s*[—–-]/g, "—")

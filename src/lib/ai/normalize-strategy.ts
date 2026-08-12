@@ -99,12 +99,14 @@ function normalizePlatformPacks(
 
 function ensureTeleprompter(raw: string, duration: number, keyword: string) {
   const text = asString(raw);
-  if (text.includes("0–3") || text.includes("0-3")) {
+  const hasClock = /0\s*[–—-]\s*3/.test(text) || /\[0/.test(text);
+  if (hasClock) {
     if (/смотрите в камеру/i.test(text) && /ошибка аудитории/i.test(text)) {
       return processFallback(duration, keyword);
     }
     return text;
   }
+  if (Array.from(text).length >= 80) return text;
   return processFallback(duration, keyword);
 }
 

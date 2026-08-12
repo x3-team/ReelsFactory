@@ -84,7 +84,7 @@ assert(sliceWords("Маршмеллоу пружинки с двойным вк�
 assert(insights.factCard.withoutClaims.some((c) => /масл/.test(c)) || insights.factCard.allowed.includes("птичье молоко") || insights.factCard.allowed.length >= 1, "fact card");
 assert(!/йогурт/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub yogurt");
 assert(!/бисквит/.test(scrubInvented("крем на йогурте и бисквит за 5 минут", insights.factCard)), "scrub biscuit");
-assert(!/5 минут/.test(scrubInvented("торт за 5 минут", insights.factCard)), "scrub clickbait");
+assert(!/15 минут/.test(scrubInvented("торт за 15 минут. варим 3 минуты", insights.factCard)), "scrub unmatched clickbait");
 assert(
   !/^\s*из /.test(scrubInvented("бисквит из птичьего молока", insights.factCard)) &&
     /птичьего молока/.test(scrubInvented("бисквит из птичьего молока", insights.factCard)),
