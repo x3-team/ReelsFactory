@@ -57,6 +57,13 @@ enum ReferralStatus {
   PAID_OUT
 }
 
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
 /// Telegram Mini App user + onboarding / subscription state
 model User {
   id           String  @id @default(cuid())
@@ -97,6 +104,7 @@ model User {
   referralsReceived Referral[]      @relation("Referred")
   clientAccounts    ClientAccount[]
   hookFeedback      HookFeedback[]
+  referralPayouts   ReferralPayout[]
 
   onboardedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -305,4 +313,45 @@ model Referral {
 
   @@index([referrerId])
   @@index([referredId])
+}
+
+/// Atomic monthly quotas (increment-if-below-limit)
+model UsageCounter {
+  id        String @id @default(cuid())
+  userId    String
+  year      Int
+  month     Int
+  analyses  Int    @default(0)
+  scripts   Int    @default(0)
+  remakes   Int    @default(0)
+  autopsies Int    @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year, month])
+  @@index([userId])
+}
+
+/// Pending referral from bot /start ref_ before Mini App open
+model BotSession {
+  telegramId         BigInt    @id
+  referrerTelegramId BigInt?
+  lastKeyword        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+/// Cash-out request from referral balance (manual payout)
+model ReferralPayout {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount     Decimal      @db.Decimal(12, 2)
+  requisites String
+  status     PayoutStatus @default(PENDING)
+  note       String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }

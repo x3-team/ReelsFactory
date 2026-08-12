@@ -3,9 +3,12 @@ import { z } from "zod";
 
 import { generateAutopsy } from "@/lib/ai/generate-autopsy";
 import { authErrorResponse, requireUser } from "@/lib/api-auth";
+import { allocateCommentKeyword } from "@/lib/comment-keyword";
 import { recordCostEvent } from "@/lib/cost-meter";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
+import { refundQuota } from "@/lib/quota-lock";
+import { assertRateLimit, httpErrorStatus } from "@/lib/rate-limit";
 import { serialize } from "@/lib/serialize";
 import { assertCanAutopsy, QuotaError } from "@/lib/usage";
 
@@ -18,9 +21,18 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  let consumed = false;
+  let userId: string | null = null;
   try {
     const body = bodySchema.parse(await request.json());
     const user = await requireUser(request, body.userId);
+    userId = user.id;
+    await assertRateLimit({
+      name: "autopsy",
+      id: user.id,
+      max: 20,
+      windowSec: 3600,
+    });
 
     if (
       !hasPaidAccess(user) ||
@@ -46,6 +58,7 @@ export async function POST(request: Request) {
     }
 
     const usage = await assertCanAutopsy(user);
+    consumed = true;
 
     const { autopsy, mocked, model } = await generateAutopsy({
       sourceUrl: body.sourceUrl,
@@ -55,6 +68,11 @@ export async function POST(request: Request) {
       offerSummary: user.offerSummary,
       plan: user.subscriptionPlan,
     });
+
+    const commentKeyword = await allocateCommentKeyword(
+      autopsy.reshoot_script.comment_keyword,
+      user.id,
+    );
 
     const savedScript = await prisma.script.create({
       data: {
@@ -68,7 +86,7 @@ export async function POST(request: Request) {
         cta: autopsy.reshoot_script.cta,
         isTeaser: false,
         durationSec: autopsy.reshoot_script.duration_sec ?? 20,
-        commentKeyword: autopsy.reshoot_script.comment_keyword ?? null,
+        commentKeyword,
         sourceType: "autopsy",
       },
     });
@@ -93,10 +111,14 @@ export async function POST(request: Request) {
       }),
     );
   } catch (error) {
+    if (consumed && userId) {
+      await refundQuota(userId, "autopsies").catch(() => undefined);
+    }
     const auth = authErrorResponse(error);
     if (auth) return auth;
     console.error("POST /api/autopsy", error);
-    const status = error instanceof QuotaError ? 402 : 400;
+    const status =
+      error instanceof QuotaError ? 402 : httpErrorStatus(error, 400);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Autopsy failed",

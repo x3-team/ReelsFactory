@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authErrorResponse, publicAnalysis, requireUser } from "@/lib/api-auth";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
+import { refundQuota } from "@/lib/quota-lock";
+import { assertRateLimit, httpErrorStatus } from "@/lib/rate-limit";
 import { serialize } from "@/lib/serialize";
 import { assertCanEnqueueAnalysis, QuotaError } from "@/lib/usage";
 
@@ -13,11 +15,19 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  let consumedUserId: string | null = null;
   try {
     const body = bodySchema.parse(await request.json());
     const user = await requireUser(request, body.userId);
+    await assertRateLimit({
+      name: "analyze",
+      id: user.id,
+      max: 12,
+      windowSec: 3600,
+    });
 
     await assertCanEnqueueAnalysis(user);
+    consumedUserId = user.id;
 
     let socialHandle = user.socialHandle;
     let platform = user.platform;
@@ -27,6 +37,8 @@ export async function POST(request: Request) {
         where: { id: body.clientAccountId, agencyUserId: user.id },
       });
       if (!client) {
+        await refundQuota(user.id, "analyses");
+        consumedUserId = null;
         return NextResponse.json(
           { error: "Клиентский аккаунт не найден" },
           { status: 404 },
@@ -37,6 +49,8 @@ export async function POST(request: Request) {
     }
 
     if (!socialHandle || !platform) {
+      await refundQuota(user.id, "analyses");
+      consumedUserId = null;
       return NextResponse.json(
         { error: "Сначала завершите онбординг (укажите @username)" },
         { status: 400 },
@@ -49,6 +63,7 @@ export async function POST(request: Request) {
       platform,
       clientAccountId: body.clientAccountId,
     });
+    consumedUserId = null;
 
     const analysis = await prisma.profileAnalysis.findUniqueOrThrow({
       where: { id: queued.analysisId },
@@ -64,10 +79,14 @@ export async function POST(request: Request) {
       }),
     );
   } catch (error) {
+    if (consumedUserId) {
+      await refundQuota(consumedUserId, "analyses").catch(() => undefined);
+    }
     const auth = authErrorResponse(error);
     if (auth) return auth;
     console.error("POST /api/analyze", error);
-    const status = error instanceof QuotaError ? 402 : 500;
+    const status =
+      error instanceof QuotaError ? 402 : httpErrorStatus(error, 500);
     return NextResponse.json(
       {
         error:
@@ -84,11 +103,25 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     const userId = url.searchParams.get("userId");
+    const user = await requireUser(request, userId);
+
     if (!id) {
-      return NextResponse.json({ error: "id обязателен" }, { status: 400 });
+      const analyses = await prisma.profileAnalysis.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          status: true,
+          socialHandle: true,
+          platform: true,
+          niche: true,
+          createdAt: true,
+        },
+      });
+      return NextResponse.json(serialize({ analyses }));
     }
 
-    const user = await requireUser(request, userId);
     const analysis = await prisma.profileAnalysis.findUnique({
       where: { id },
       include: { scripts: { orderBy: { createdAt: "asc" } } },

@@ -3,9 +3,12 @@ import { z } from "zod";
 
 import { generateViralRemake } from "@/lib/ai/generate-remake";
 import { authErrorResponse, requireUser } from "@/lib/api-auth";
+import { allocateCommentKeyword } from "@/lib/comment-keyword";
 import { recordCostEvent } from "@/lib/cost-meter";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
+import { refundQuota } from "@/lib/quota-lock";
+import { assertRateLimit, httpErrorStatus } from "@/lib/rate-limit";
 import { serialize } from "@/lib/serialize";
 import { assertCanRemake, QuotaError } from "@/lib/usage";
 
@@ -18,9 +21,18 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  let consumed = false;
+  let userId: string | null = null;
   try {
     const body = bodySchema.parse(await request.json());
     const user = await requireUser(request, body.userId);
+    userId = user.id;
+    await assertRateLimit({
+      name: "remake",
+      id: user.id,
+      max: 20,
+      windowSec: 3600,
+    });
 
     const plan = user.subscriptionPlan;
     if (!hasPaidAccess(user) || (plan !== "PRO" && plan !== "AGENCY")) {
@@ -45,6 +57,7 @@ export async function POST(request: Request) {
     }
 
     const usage = await assertCanRemake(user);
+    consumed = true;
 
     const { remake, mocked, model } = await generateViralRemake({
       sourceUrl: body.sourceUrl,
@@ -58,6 +71,11 @@ export async function POST(request: Request) {
       plan,
     });
 
+    const commentKeyword = await allocateCommentKeyword(
+      remake.remake.comment_keyword ?? remake.funnel?.comment_keyword,
+      user.id,
+    );
+
     const savedScript = await prisma.script.create({
       data: {
         userId: user.id,
@@ -70,7 +88,7 @@ export async function POST(request: Request) {
         cta: remake.remake.cta,
         isTeaser: false,
         durationSec: remake.remake.duration_sec ?? 30,
-        commentKeyword: remake.remake.comment_keyword ?? null,
+        commentKeyword,
         platformPacks: remake.platform_packs as object,
         funnel: remake.funnel as object,
         propsChecklist: remake.remake.props_checklist ?? undefined,
@@ -98,10 +116,14 @@ export async function POST(request: Request) {
       }),
     );
   } catch (error) {
+    if (consumed && userId) {
+      await refundQuota(userId, "remakes").catch(() => undefined);
+    }
     const auth = authErrorResponse(error);
     if (auth) return auth;
     console.error("POST /api/remake", error);
-    const status = error instanceof QuotaError ? 402 : 400;
+    const status =
+      error instanceof QuotaError ? 402 : httpErrorStatus(error, 400);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Remake failed",

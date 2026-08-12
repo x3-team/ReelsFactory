@@ -25,7 +25,27 @@ export async function upsertTelegramUser(input: {
   const telegramId = BigInt(input.telegramId);
 
   const existing = await prisma.user.findUnique({ where: { telegramId } });
+  const referrerTelegramId =
+    parseReferrerTelegramId(input.startParam) ||
+    (
+      await prisma.botSession.findUnique({
+        where: { telegramId },
+        select: { referrerTelegramId: true },
+      })
+    )?.referrerTelegramId ||
+    null;
+
+  async function resolveReferrerId() {
+    if (!referrerTelegramId || referrerTelegramId === telegramId) return undefined;
+    const referrer = await prisma.user.findUnique({
+      where: { telegramId: referrerTelegramId },
+    });
+    return referrer?.id;
+  }
+
   if (existing) {
+    const referrerId =
+      existing.referrerId || (await resolveReferrerId()) || undefined;
     return prisma.user.update({
       where: { telegramId },
       data: {
@@ -34,18 +54,12 @@ export async function upsertTelegramUser(input: {
         lastName: input.lastName ?? existing.lastName,
         languageCode: input.languageCode ?? existing.languageCode,
         photoUrl: input.photoUrl ?? existing.photoUrl,
+        ...(referrerId && !existing.referrerId ? { referrerId } : {}),
       },
     });
   }
 
-  let referrerId: string | undefined;
-  const referrerTelegramId = parseReferrerTelegramId(input.startParam);
-  if (referrerTelegramId && referrerTelegramId !== telegramId) {
-    const referrer = await prisma.user.findUnique({
-      where: { telegramId: referrerTelegramId },
-    });
-    if (referrer) referrerId = referrer.id;
-  }
+  const referrerId = await resolveReferrerId();
 
   return prisma.user.create({
     data: {

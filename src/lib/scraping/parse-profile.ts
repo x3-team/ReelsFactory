@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeHandle, type Platform } from "@/lib/platform";
 import {
   fetchInstagramViaApify,
+  fetchTikTokViaApify,
   hasApifyCredentials,
 } from "@/lib/scraping/apify";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
@@ -57,6 +58,19 @@ export async function parseProfile(input: {
 
     if (!profile && hasRapidApiCredentials()) {
       profile = await fetchInstagramViaRapidApi(handle);
+    }
+  }
+
+  if (input.platform === "tiktok") {
+    if (hasApifyCredentials() && (await canRunApify())) {
+      try {
+        profile = await fetchTikTokViaApify(handle);
+        await recordCostEvent("apify", input.userId, handle);
+      } catch (error) {
+        console.error("Apify TikTok scrape failed, using mock fallback", error);
+      }
+    } else if (hasApifyCredentials()) {
+      console.warn("Apify monthly cap reached — TikTok mock fallback");
     }
   }
 

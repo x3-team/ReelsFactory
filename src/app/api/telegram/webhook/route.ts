@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { assertRateLimit } from "@/lib/rate-limit";
+import { parseReferrerTelegramId } from "@/lib/users";
 import { sendTelegramMessage, telegramWebhookSecret } from "@/lib/telegram/bot";
 
 type TgUpdate = {
   message?: {
     chat?: { id?: number };
+    from?: { id?: number };
     text?: string;
   };
 };
@@ -14,6 +17,12 @@ function extractKeyword(text: string): string {
   const cleaned = text.replace(/^\/\S+\s*/, "").trim();
   const first = cleaned.split(/\s+/)[0] ?? "";
   return first.replace(/^#/, "").toLowerCase();
+}
+
+function startPayload(text: string): string | null {
+  const m = text.match(/^\/start(?:@\w+)?(?:\s+(.+))?$/i);
+  if (!m) return null;
+  return (m[1] || "").trim();
 }
 
 export async function POST(request: Request) {
@@ -32,18 +41,44 @@ export async function POST(request: Request) {
 
   const update = (await request.json()) as TgUpdate;
   const chatId = update.message?.chat?.id;
+  const fromId = update.message?.from?.id ?? chatId;
   const text = update.message?.text?.trim() ?? "";
   if (!chatId || !text) {
     return NextResponse.json({ ok: true });
   }
 
-  if (text.startsWith("/start")) {
-    const payload = text.slice("/start".length).trim();
-    const ref = payload.startsWith("ref_") ? payload.slice(4) : "";
+  if (fromId) {
+    try {
+      await assertRateLimit({
+        name: "tg-webhook",
+        id: String(fromId),
+        max: 40,
+        windowSec: 60,
+      });
+    } catch {
+      return NextResponse.json({ ok: true, limited: true });
+    }
+  }
+
+  const payload = startPayload(text);
+  if (payload !== null) {
+    const referrerTelegramId = parseReferrerTelegramId(payload);
+    if (fromId) {
+      await prisma.botSession.upsert({
+        where: { telegramId: BigInt(fromId) },
+        create: {
+          telegramId: BigInt(fromId),
+          referrerTelegramId: referrerTelegramId || null,
+        },
+        update: referrerTelegramId
+          ? { referrerTelegramId }
+          : {},
+      });
+    }
     await sendTelegramMessage(
       chatId,
-      ref
-        ? "Привет! Тебя пригласил друг. Открой ReelsFactory в Telegram — бонус начислится после первой оплаты."
+      referrerTelegramId
+        ? "Привет! Тебя пригласил друг. Открой ReelsFactory в меню бота — бонус начислится после первой оплаты."
         : "Привет! Напиши ключевое слово из комментария под рилсом — пришлю оффер.",
     );
     return NextResponse.json({ ok: true });
@@ -54,10 +89,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (fromId) {
+    await prisma.botSession.upsert({
+      where: { telegramId: BigInt(fromId) },
+      create: { telegramId: BigInt(fromId), lastKeyword: keyword },
+      update: { lastKeyword: keyword },
+    });
+  }
+
   const script = await prisma.script.findFirst({
     where: { commentKeyword: { equals: keyword, mode: "insensitive" } },
     orderBy: { createdAt: "desc" },
-    select: { funnel: true },
+    select: { funnel: true, userId: true, commentKeyword: true },
   });
 
   const funnel = (script?.funnel ?? {}) as { bot_reply?: string; offer?: string };

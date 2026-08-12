@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Crown, Gift } from "lucide-react";
+import { Check, Crown, Gift, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/client-api";
 import { PLANS, type PlanId } from "@/lib/config";
+import {
+  computeReferralCredit,
+  REFERRAL_MIN_PAYOUT_RUB,
+} from "@/lib/payments/referral-credit";
 import { cn } from "@/lib/utils";
 
 export type PaywallReason =
@@ -58,26 +66,64 @@ export function PaywallDrawer({
   referralUrl,
   referralBalance,
   currentPlan,
+  userId,
   onSelectPlan,
   loadingPlan,
   reason = "generic",
+  onBalanceChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   referralUrl: string;
   referralBalance: number;
   currentPlan: PlanId;
+  userId: string;
   onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
   loadingPlan?: string | null;
   reason?: PaywallReason;
+  onBalanceChange?: (balance: number) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [payoutAmount, setPayoutAmount] = useState(
+    String(Math.max(REFERRAL_MIN_PAYOUT_RUB, Math.floor(referralBalance))),
+  );
+  const [requisites, setRequisites] = useState("");
+  const [payoutBusy, setPayoutBusy] = useState(false);
+  const [payoutError, setPayoutError] = useState<string | null>(null);
+  const [payoutOk, setPayoutOk] = useState<string | null>(null);
   const copy = COPY[reason] || COPY.generic;
 
   async function copyReferral() {
     await navigator.clipboard.writeText(referralUrl);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  async function submitPayout() {
+    setPayoutError(null);
+    setPayoutOk(null);
+    setPayoutBusy(true);
+    try {
+      const amount = Number(payoutAmount.replace(",", "."));
+      const data = await api<{ balance: number }>(
+        "/api/referrals/payout",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            userId,
+            amount,
+            requisites,
+          }),
+        },
+      );
+      onBalanceChange?.(data.balance);
+      setPayoutOk("Заявка на вывод принята. Переведём вручную после проверки.");
+      setRequisites("");
+    } catch (err) {
+      setPayoutError(err instanceof Error ? err.message : "Не удалось создать заявку");
+    } finally {
+      setPayoutBusy(false);
+    }
   }
 
   return (
@@ -97,6 +143,7 @@ export function PaywallDrawer({
             const plan = PLANS[planId];
             const active = currentPlan === planId;
             const recommended = planId === "PRO";
+            const split = computeReferralCredit(plan.priceRub, referralBalance);
             return (
               <button
                 key={planId}
@@ -126,10 +173,26 @@ export function PaywallDrawer({
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="font-display text-lg font-semibold">
-                      {plan.priceRub} ₽
-                    </div>
-                    <div className="text-xs text-muted-foreground">/ месяц</div>
+                    {split.credit > 0 ? (
+                      <>
+                        <div className="text-xs text-muted-foreground line-through">
+                          {plan.priceRub} ₽
+                        </div>
+                        <div className="font-display text-lg font-semibold">
+                          {split.fullyCovered ? "0 ₽" : `${split.charge} ₽`}
+                        </div>
+                        <div className="text-[11px] text-primary">
+                          −{split.credit} ₽ с баланса
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-display text-lg font-semibold">
+                          {plan.priceRub} ₽
+                        </div>
+                        <div className="text-xs text-muted-foreground">/ месяц</div>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="mt-3 text-sm font-medium text-primary">
@@ -137,7 +200,9 @@ export function PaywallDrawer({
                     ? "Текущий план"
                     : loadingPlan === planId
                       ? "Создаём оплату…"
-                      : "Выбрать"}
+                      : split.fullyCovered
+                        ? "Оплатить с баланса"
+                        : "Выбрать"}
                 </div>
               </button>
             );
@@ -154,6 +219,7 @@ export function PaywallDrawer({
             <span className="font-semibold text-foreground">
               {referralBalance} ₽
             </span>
+            {referralBalance > 0 ? " — спишется при оплате тарифа" : ""}
           </p>
           <Button
             type="button"
@@ -168,6 +234,50 @@ export function PaywallDrawer({
             ) : (
               "Скопировать реферальную ссылку"
             )}
+          </Button>
+        </div>
+
+        <div className="space-y-3 rounded-2xl border border-border/80 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Wallet className="size-4 text-primary" />
+            Вывод рефералки
+          </div>
+          <p className="text-xs text-muted-foreground">
+            От {REFERRAL_MIN_PAYOUT_RUB} ₽. Заявка уходит в обработку, перевод
+            вручную по реквизитам.
+          </p>
+          <div className="space-y-1">
+            <Label htmlFor="payout-amount">Сумма, ₽</Label>
+            <Input
+              id="payout-amount"
+              inputMode="decimal"
+              value={payoutAmount}
+              onChange={(e) => setPayoutAmount(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="payout-req">Карта / СБП / телефон</Label>
+            <Textarea
+              id="payout-req"
+              rows={3}
+              placeholder="Номер карты или телефон СБП, ФИО"
+              value={requisites}
+              onChange={(e) => setRequisites(e.target.value)}
+            />
+          </div>
+          {payoutError ? (
+            <p className="text-sm text-destructive">{payoutError}</p>
+          ) : null}
+          {payoutOk ? (
+            <p className="text-sm text-primary">{payoutOk}</p>
+          ) : null}
+          <Button
+            type="button"
+            className="w-full"
+            disabled={payoutBusy || referralBalance < REFERRAL_MIN_PAYOUT_RUB}
+            onClick={() => void submitPayout()}
+          >
+            {payoutBusy ? "Отправляем…" : "Оставить заявку"}
           </Button>
         </div>
       </DialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   Clapperboard,
@@ -29,6 +29,7 @@ import {
 import {
   api,
   type AppAnalysis,
+  type AppAnalysisSummary,
   type AppCalendarDay,
   type AppFunnel,
   type AppPlatformPack,
@@ -78,6 +79,8 @@ export function ResultsDashboard({
   onReanalyze,
   onAnalyzeClient,
   onScriptsUpdated,
+  onAnalysisChange,
+  onUserPatch,
 }: {
   user: AppUser;
   analysis: AppAnalysis;
@@ -96,6 +99,8 @@ export function ResultsDashboard({
   onReanalyze: () => void;
   onAnalyzeClient?: (clientAccountId: string) => void;
   onScriptsUpdated?: (scripts: AppScript[]) => void;
+  onAnalysisChange?: (analysis: AppAnalysis) => void;
+  onUserPatch?: (patch: Partial<AppUser>) => void;
 }) {
   const [selectedId, setSelectedId] = useState(analysis.scripts[0]?.id);
   const [teleprompterOpen, setTeleprompterOpen] = useState(false);
@@ -104,6 +109,22 @@ export function ResultsDashboard({
   const [platformTab, setPlatformTab] = useState<PlatformTab>("reels");
   const [mainTab, setMainTab] = useState<MainTab>("scripts");
   const [reanalyzeArmed, setReanalyzeArmed] = useState(false);
+  const [history, setHistory] = useState<AppAnalysisSummary[]>([]);
+  const [historyBusy, setHistoryBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedId(analysis.scripts[0]?.id);
+    // Reset selection when switching a past analysis, not when studio adds a script.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis.id]);
+
+  useEffect(() => {
+    void api<{ analyses: AppAnalysisSummary[] }>(
+      `/api/analyze?userId=${encodeURIComponent(user.id)}`,
+    )
+      .then((data) => setHistory(data.analyses || []))
+      .catch(() => undefined);
+  }, [user.id, analysis.id]);
 
   const selected = useMemo(
     () => analysis.scripts.find((s) => s.id === selectedId) || analysis.scripts[0],
@@ -329,6 +350,53 @@ export function ResultsDashboard({
               ? "Точно? Спишется 1 анализ"
               : "Запустить новый анализ"}
           </Button>
+
+          {history.length > 1 && (
+            <section className="space-y-2">
+              <h2 className="text-sm font-medium">История разборов</h2>
+              <div className="grid gap-2">
+                {history.map((item) => {
+                  const active = item.id === analysis.id;
+                  const date = item.createdAt
+                    ? new Date(item.createdAt).toLocaleDateString("ru-RU", {
+                        day: "numeric",
+                        month: "short",
+                      })
+                    : "";
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      disabled={active || historyBusy === item.id}
+                      onClick={() => {
+                        if (!onAnalysisChange) return;
+                        setHistoryBusy(item.id);
+                        void api<{ analysis: AppAnalysis }>(
+                          `/api/analyze?id=${encodeURIComponent(item.id)}&userId=${encodeURIComponent(user.id)}`,
+                        )
+                          .then((data) => onAnalysisChange(data.analysis))
+                          .finally(() => setHistoryBusy(null));
+                      }}
+                      className={cn(
+                        "rounded-xl border px-3 py-3 text-left",
+                        active ? "border-primary bg-primary/10" : "border-border/80",
+                      )}
+                    >
+                      <p className="font-medium">
+                        @{item.socialHandle} · {item.platform}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {date}
+                        {item.niche ? ` · ${item.niche}` : ""}
+                        {` · ${item.status}`}
+                        {historyBusy === item.id ? " · открываем…" : ""}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
@@ -369,9 +437,13 @@ export function ResultsDashboard({
         referralUrl={referralUrl}
         referralBalance={user.referralBalance || 0}
         currentPlan={user.subscriptionPlan}
+        userId={user.id}
         onSelectPlan={onSelectPlan}
         loadingPlan={loadingPlan}
         reason={paywallReason}
+        onBalanceChange={(balance) => {
+          onUserPatch?.({ referralBalance: balance });
+        }}
       />
     </div>
   );

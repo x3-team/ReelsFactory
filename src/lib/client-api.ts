@@ -146,5 +146,15 @@ export type AppAnalysis = {
   socialHandle: string;
   platform: string;
   errorMessage?: string | null;
+  createdAt?: string;
   scripts: AppScript[];
+};
+
+export type AppAnalysisSummary = {
+  id: string;
+  status: string;
+  socialHandle: string;
+  platform: string;
+  niche?: string | null;
+  createdAt: string;
 };

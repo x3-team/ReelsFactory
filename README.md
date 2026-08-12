@@ -27,6 +27,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 With `MOCK_EXTERNAL_APIS=true` (default when AI keys are missing), scraping / Whisper / LLM / YooKassa use realistic demo responses so the full flow works offline.
 
+Production needs Redis (`REDIS_URL`, or `docker compose up -d redis`) and `TELEGRAM_WEBHOOK_SECRET`. Register the bot webhook with `POST /api/telegram/setup` (header `x-setup-secret`) or set `REGISTER_TELEGRAM_WEBHOOK=true`. Health: `GET /api/health`.
+
+YooKassa notifications: `POST /api/payments/webhook` — the handler re-fetches the payment from YooKassa. You can also append `?secret=` matching `YOOKASSA_WEBHOOK_SECRET`.
+
 ## App flow
 
 1. **Onboarding** — social handle, goal, tone, optional offer
@@ -43,10 +47,16 @@ With `MOCK_EXTERNAL_APIS=true` (default when AI keys are missing), scraping / Wh
 | `POST /api/parse-profile` | Scrape profile bio + top videos |
 | `POST /api/transcribe` | Whisper transcription for an audio URL |
 | `POST /api/generate-strategy` | LLM strategy JSON |
-| `POST /api/analyze` | Full pipeline → persists `ProfileAnalysis` + `Script`s |
-| `POST /api/payments/create` | Create YooKassa (or mock) payment |
-| `POST /api/payments/webhook` | YooKassa webhook → subscription + 30% referral credit |
+| `POST /api/analyze` | Queue full pipeline → `ProfileAnalysis` + scripts |
+| `GET /api/analyze?id=` | Poll one analysis |
+| `GET /api/analyze?userId=` | Analysis history |
+| `POST /api/payments/create` | Create YooKassa (or mock) payment; referral balance as discount |
+| `POST /api/payments/webhook` | YooKassa webhook → subscription + referral credit |
 | `GET /api/payments/mock-complete` | Demo payment success redirect |
+| `GET/POST /api/referrals/payout` | Referral cash-out request (from 500₽) |
+| `POST /api/telegram/webhook` | Bot `/start ref_` + comment-keyword replies |
+| `POST /api/telegram/setup` | Register Telegram webhook |
+| `GET /api/health` | Postgres + Redis |
 
 ## Scripts
 

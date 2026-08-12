@@ -1,3 +1,4 @@
+import { normalizeKeyword } from "@/lib/comment-keyword";
 import type {
   FunnelKit,
   GeneratedScript,
@@ -18,16 +19,6 @@ function asStringArray(value: unknown, min = 0, fallback: string[] = []): string
     : [];
   if (arr.length >= min) return arr;
   return [...arr, ...fallback].slice(0, Math.max(min, fallback.length));
-}
-
-function normalizeKeyword(raw: string | undefined, fallback: string) {
-  const cleaned = (raw || "")
-    .replace(/[«»"']/g, "")
-    .replace(/^комментируй(те)?\s*/i, "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-ZА-ЯЁ0-9]/gi, "");
-  return cleaned.slice(0, 16) || fallback;
 }
 
 function defaultPacks(keyword: string, title: string): PlatformPack {

@@ -11,9 +11,17 @@ import {
 } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 
+function creditFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return 0;
+  const raw = (metadata as { creditApplied?: unknown }).creditApplied;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 export async function fulfillSuccessfulPayment(payment: Payment) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30);
+  const reservedCredit = creditFromMetadata(payment.metadata);
 
   const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.payment.updateMany({
@@ -39,6 +47,7 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
       },
     });
 
+    // Commission is based on money actually charged (after referral discount).
     if (user.referrerId && payment.plan !== SubscriptionPlan.FREE) {
       const priorPaid = await tx.payment.count({
         where: {
@@ -53,26 +62,38 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
         : REFERRAL_FIRST_COMMISSION_RATE;
       const credit = new Decimal(payment.amount.toString()).mul(rate);
 
-      await tx.user.update({
-        where: { id: user.referrerId },
-        data: { referralBalance: { increment: credit } },
-      });
+      if (credit.gt(0)) {
+        await tx.user.update({
+          where: { id: user.referrerId },
+          data: { referralBalance: { increment: credit } },
+        });
 
-      await tx.referral.create({
-        data: {
-          referrerId: user.referrerId,
-          referredId: user.id,
-          paymentId: payment.id,
-          creditAmount: credit,
-          commissionRate: rate,
-          isRenewal,
-          status: ReferralStatus.CREDITED,
-        },
-      });
+        await tx.referral.create({
+          data: {
+            referrerId: user.referrerId,
+            referredId: user.id,
+            paymentId: payment.id,
+            creditAmount: credit,
+            commissionRate: rate,
+            isRenewal,
+            status: ReferralStatus.CREDITED,
+          },
+        });
+      }
     }
 
+    void reservedCredit;
     return { payment: updatedPayment, alreadyFulfilled: false as const };
   });
 
   return result;
+}
+
+export async function refundReservedCredit(payment: Payment) {
+  const credit = creditFromMetadata(payment.metadata);
+  if (credit <= 0) return;
+  await prisma.user.update({
+    where: { id: payment.userId },
+    data: { referralBalance: { increment: credit } },
+  });
 }

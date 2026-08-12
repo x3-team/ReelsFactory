@@ -269,11 +269,39 @@ export function ReelsFactoryApp() {
       const data = await api<{
         confirmationUrl?: string;
         mocked?: boolean;
+        paidFromBalance?: boolean;
         payment: { providerPaymentId?: string };
       }>("/api/payments/create", {
         method: "POST",
         body: JSON.stringify({ userId: user.id, plan }),
       });
+
+      if (data.paidFromBalance) {
+        const telegramId = tgUser?.id ? String(tgUser.id) : getDevTelegramId();
+        const refreshed = await api<{
+          user: AppUser;
+          usage?: AppUsageSnapshot;
+        }>("/api/users", {
+          method: "POST",
+          body: JSON.stringify({
+            initData: rawInitData || null,
+            telegramId,
+            username: tgUser?.username ?? (isTelegram ? null : "local_dev"),
+            firstName: tgUser?.first_name ?? (isTelegram ? null : "Локальный"),
+            lastName: tgUser?.last_name ?? (isTelegram ? null : "Автор"),
+            languageCode: tgUser?.language_code ?? "ru",
+            photoUrl: tgUser?.photo_url ?? null,
+            startParam:
+              startParam ||
+              (typeof window !== "undefined"
+                ? new URLSearchParams(window.location.search).get("start")
+                : null),
+          }),
+        });
+        setUser(refreshed.user);
+        if (refreshed.usage) setUsage(refreshed.usage);
+        return;
+      }
 
       if (data.confirmationUrl) {
         window.location.href = data.confirmationUrl;
@@ -387,6 +415,12 @@ export function ReelsFactoryApp() {
                   }
                 : prev,
             );
+          }}
+          onAnalysisChange={(next) => {
+            setAnalysis(next);
+          }}
+          onUserPatch={(patch) => {
+            setUser((prev) => (prev ? { ...prev, ...patch } : prev));
           }}
         />
       </>

@@ -1,8 +1,11 @@
 import { PaymentStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { fulfillSuccessfulPayment } from "@/lib/payments/fulfill";
-import { verifyYooKassaBasicAuth } from "@/lib/payments/yookassa";
+import {
+  fulfillSuccessfulPayment,
+  refundReservedCredit,
+} from "@/lib/payments/fulfill";
+import { verifyYooKassaWebhook } from "@/lib/payments/yookassa";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
 
@@ -11,20 +14,19 @@ type YooWebhook = {
   object?: {
     id?: string;
     status?: string;
+    amount?: { value?: string; currency?: string };
     metadata?: { userId?: string; plan?: string };
   };
 };
 
 export async function POST(request: Request) {
   try {
-    if (!verifyYooKassaBasicAuth(request.headers.get("x-webhook-secret"))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const payload = (await request.json()) as YooWebhook;
     const providerPaymentId = payload.object?.id;
-    const status = payload.object?.status;
-    const event = payload.event;
+    const verified = await verifyYooKassaWebhook(request, providerPaymentId);
+    if (!verified.ok) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     if (!providerPaymentId) {
       return NextResponse.json({ error: "Missing payment id" }, { status: 400 });
@@ -36,6 +38,17 @@ export async function POST(request: Request) {
 
     if (!payment) {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+    }
+
+    const live = verified.live;
+    const status = live?.status || payload.object?.status;
+    const event = payload.event;
+    const webhookAmount = Number(live?.amount?.value ?? payload.object?.amount?.value);
+    if (
+      Number.isFinite(webhookAmount) &&
+      Math.abs(webhookAmount - Number(payment.amount)) > 0.05
+    ) {
+      return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
     }
 
     const succeeded =
@@ -53,6 +66,9 @@ export async function POST(request: Request) {
         where: { id: payment.id },
         data: { status: PaymentStatus.CANCELLED },
       });
+      if (payment.status === PaymentStatus.PENDING) {
+        await refundReservedCredit(payment);
+      }
       return NextResponse.json(serialize({ payment: updated }));
     }
 

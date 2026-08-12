@@ -2,6 +2,7 @@ import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
+import { allocateCommentKeyword } from "@/lib/comment-keyword";
 import { PLANS } from "@/lib/config";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
@@ -151,6 +152,22 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       ? strategy.scripts.slice(0, 1)
       : scriptsToSave;
     const pillars = strategy.content_pillars.slice(0, pillarsLimit(user));
+    const takenKeywords = new Set<string>();
+    const uniqueScripts: GeneratedScript[] = [];
+    for (const script of finalScripts) {
+      const keyword = await allocateCommentKeyword(
+        script.comment_keyword ?? script.funnel?.comment_keyword,
+        user.id,
+        takenKeywords,
+      );
+      uniqueScripts.push({
+        ...script,
+        comment_keyword: keyword,
+        funnel: script.funnel
+          ? { ...script.funnel, comment_keyword: keyword }
+          : script.funnel,
+      });
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.script.deleteMany({ where: { analysisId } });
@@ -178,7 +195,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         },
       });
 
-      for (const script of finalScripts) {
+      for (const script of uniqueScripts) {
         await tx.script.create({
           data: scriptCreateData(user.id, analysisId, script, paid, "core"),
         });

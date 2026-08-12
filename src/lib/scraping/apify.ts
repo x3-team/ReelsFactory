@@ -36,7 +36,9 @@ export function hasApifyCredentials() {
   return Boolean(apifyToken());
 }
 
-function actorId() {
+const DEFAULT_TT_PROFILE_ACTOR = "clockworks/tiktok-profile-scraper";
+
+function igActorId() {
   return (
     process.env.APIFY_INSTAGRAM_ACTOR ||
     process.env.APIFY_IG_ACTOR ||
@@ -44,9 +46,50 @@ function actorId() {
   );
 }
 
+function ttActorId() {
+  return process.env.APIFY_TIKTOK_ACTOR || DEFAULT_TT_PROFILE_ACTOR;
+}
+
 /** apify/instagram-profile-scraper → apify~instagram-profile-scraper */
 function actorPath(id: string) {
   return id.replace("/", "~");
+}
+
+async function runApifyActor<T>(actor: string, input: unknown): Promise<T[]> {
+  const token = apifyToken();
+  if (!token) {
+    throw new Error("APIFY_TOKEN не задан");
+  }
+
+  const url = new URL(
+    `https://api.apify.com/v2/acts/${actorPath(actor)}/run-sync-get-dataset-items`,
+  );
+  url.searchParams.set("timeout", process.env.APIFY_TIMEOUT_SECS || "120");
+
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(
+      Number(process.env.APIFY_FETCH_TIMEOUT_MS || 130_000),
+    ),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `Apify ${actor} failed (${res.status}): ${body.slice(0, 300)}`,
+    );
+  }
+
+  const items = (await res.json()) as T[];
+  if (!Array.isArray(items)) {
+    throw new Error(`Apify ${actor}: неожиданный ответ`);
+  }
+  return items;
 }
 
 function isVideoPost(post: ApifyIgPost) {
@@ -82,42 +125,11 @@ function mapPosts(posts: ApifyIgPost[]): ScrapedVideo[] {
 export async function fetchInstagramViaApify(
   handle: string,
 ): Promise<ScrapedProfile> {
-  const token = apifyToken();
-  if (!token) {
-    throw new Error("APIFY_TOKEN не задан");
-  }
-
-  const path = actorPath(actorId());
-  const url = new URL(
-    `https://api.apify.com/v2/acts/${path}/run-sync-get-dataset-items`,
-  );
-  url.searchParams.set("timeout", process.env.APIFY_TIMEOUT_SECS || "120");
-
-  const res = await fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      usernames: [handle],
-      resultsLimit: 12,
-    }),
-    // Apify sync can take ~20–60s
-    signal: AbortSignal.timeout(
-      Number(process.env.APIFY_FETCH_TIMEOUT_MS || 130_000),
-    ),
+  const items = await runApifyActor<ApifyIgProfile>(igActorId(), {
+    usernames: [handle],
+    resultsLimit: 12,
   });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(
-      `Apify Instagram scraper failed (${res.status}): ${body.slice(0, 300)}`,
-    );
-  }
-
-  const items = (await res.json()) as ApifyIgProfile[];
-  if (!Array.isArray(items) || items.length === 0) {
+  if (items.length === 0) {
     throw new Error(`Apify: пустой ответ для @${handle}`);
   }
 
@@ -138,6 +150,94 @@ export async function fetchInstagramViaApify(
     followers: profile.followersCount || 0,
     following: profile.followsCount,
     postsCount: profile.postsCount,
+    topVideos,
+  };
+}
+
+type ApifyTtItem = {
+  id?: string;
+  text?: string;
+  webVideoUrl?: string;
+  playCount?: number;
+  diggCount?: number;
+  videoUrl?: string;
+  videoMeta?: { duration?: number };
+  authorMeta?: {
+    name?: string;
+    nickName?: string;
+    signature?: string;
+    fans?: number;
+    following?: number;
+    video?: number;
+  };
+  author?: {
+    uniqueId?: string;
+    nickname?: string;
+    signature?: string;
+  };
+  stats?: { playCount?: number; diggCount?: number };
+};
+
+/**
+ * TikTok profile + latest videos via Apify.
+ * Default actor `clockworks/tiktok-profile-scraper` (override with APIFY_TIKTOK_ACTOR).
+ */
+export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfile> {
+  const items = await runApifyActor<ApifyTtItem>(ttActorId(), {
+    profiles: [handle],
+    resultsPerPage: 12,
+    shouldDownloadVideos: false,
+    shouldDownloadCovers: false,
+    shouldDownloadSubtitles: false,
+    shouldDownloadSlideshowImages: false,
+  });
+  if (items.length === 0) {
+    throw new Error(`Apify TikTok: пустой ответ для @${handle}`);
+  }
+
+  const author = items[0]?.authorMeta || items[0]?.author;
+  const topVideos = items
+    .map((item, index) => {
+      const views = item.playCount || item.stats?.playCount || 0;
+      return {
+        id: String(item.id || `tt-${index}`),
+        url:
+          item.webVideoUrl ||
+          `https://www.tiktok.com/@${handle}/video/${item.id || index}`,
+        caption: item.text || "",
+        views,
+        likes: item.diggCount || item.stats?.diggCount,
+        audioUrl: item.videoUrl,
+        durationSec: item.videoMeta?.duration,
+      } satisfies ScrapedVideo;
+    })
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 5);
+
+  const name =
+    (author && "name" in author ? author.name : undefined) ||
+    (author && "uniqueId" in author ? author.uniqueId : undefined) ||
+    handle;
+  const displayName =
+    (author && "nickName" in author ? author.nickName : undefined) ||
+    (author && "nickname" in author ? author.nickname : undefined);
+  const bio =
+    (author && "signature" in author ? author.signature : undefined) || "";
+  const followers =
+    (author && "fans" in author ? author.fans : undefined) || 0;
+  const following =
+    (author && "following" in author ? author.following : undefined);
+  const postsCount =
+    (author && "video" in author ? author.video : undefined) || items.length;
+
+  return {
+    handle: name || handle,
+    platform: "tiktok",
+    displayName,
+    bio,
+    followers,
+    following,
+    postsCount,
     topVideos,
   };
 }

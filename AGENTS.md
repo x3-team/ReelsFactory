@@ -22,7 +22,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
   - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`, ~20/1200 ₽ за 1M)
   - Whisper: `whisper-1` (основной AI-COGS)
 - Scraping Instagram: **`APIFY_TOKEN`** (актор `apify/instagram-profile-scraper`) → fallback `RAPIDAPI_KEY` → mock
-- Очередь анализа: BullMQ при `REDIS_URL`, иначе in-process memory queue + polling `GET /api/analyze?id=`
+- Очередь анализа: BullMQ при `REDIS_URL` (**обязателен в production**, иначе `ALLOW_MEMORY_QUEUE=true`); polling `GET /api/analyze?id=`
 - Ключи только в `.env` / секретах Cursor — **не** в `.env.example`
 - Сценарии: длины **15 / 30 / 45** сек, жёсткий каркас хук→проблема→демо→CTA; цену не копировать в каждый ролик
 
@@ -32,7 +32,7 @@ ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
 | --- | --- | --- |
 | PostgreSQL | Yes | `sudo pg_ctlcluster 16 main start`; `DATABASE_URL` in `.env` |
 | Next.js | Yes | `pnpm dev` → http://localhost:3000 |
-| Redis | Optional | Set `REDIS_URL` for BullMQ; иначе memory queue |
+| Redis | Prod | Set `REDIS_URL` for BullMQ; `docker compose up -d redis`. Dev: memory queue |
 | AITunnel / scrape / YooKassa | Optional in dev | Без ключей — `MOCK_EXTERNAL_APIS` |
 
 ### Commands
