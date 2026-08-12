@@ -38,6 +38,18 @@ assert(
   }),
   "skeleton",
 );
+assert(
+  isSkeletonScript({
+    title: "Бенто-торт до и после",
+    format: "до/после",
+    hook_options: ["А", "Бенто-торт до и после", "Бенто-торт до и после"],
+    teleprompter_script:
+      "0–3с: Крупный план продукта. Текст на экране — хук без приветствия.",
+    caption: "",
+    cta: "",
+  }),
+  "fallback skeleton",
+);
 
 const profile: ScrapedProfile = {
   handle: "desertmsk",

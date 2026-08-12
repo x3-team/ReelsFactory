@@ -4,10 +4,16 @@ import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 
 const SKELETON_TITLE = /^сценарий\s*\d+/i;
 const PADDED_TELEPROMPTER = /смотрите в камеру[\s\S]*ошибка аудитории/i;
+const FALLBACK_TELEPROMPTER = /крупный план продукта[\s\S]*хук без приветствия/i;
 
 export function isSkeletonScript(script: GeneratedScript): boolean {
   if (SKELETON_TITLE.test(script.title || "")) return true;
   if (PADDED_TELEPROMPTER.test(script.teleprompter_script || "")) return true;
+  if (FALLBACK_TELEPROMPTER.test(script.teleprompter_script || "")) return true;
+  const hooks = script.hook_options || [];
+  if (hooks.length >= 2 && hooks.filter((h) => h === hooks[1]).length >= 2) {
+    return true;
+  }
   return false;
 }
 
