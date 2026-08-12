@@ -231,11 +231,58 @@ export async function generateStrategy(input: {
     return { completion, parsed: parseStrategyJson(content) };
   }
 
+  async function attemptScriptsOnly() {
+    const compact = JSON.stringify({
+      bio: input.insights?.bioExcerpt || input.profile.bio,
+      fact_card: input.insights?.factCard
+        ? {
+            allowed: input.insights.factCard.allowed.slice(0, 12),
+            without: input.insights.factCard.withoutClaims.slice(0, 6),
+          }
+        : null,
+      caption_angles: (input.insights?.captionAngles || [])
+        .slice(0, 8)
+        .map((a) => ({ hook: a.hookLine, caption: sliceChars(a.caption, 140) })),
+      keyword: sharedKeyword,
+      durations_sec: [15, 30, 45],
+    });
+    const completion = await openai.chat.completions.create(
+      {
+        model,
+        response_format: { type: "json_object" },
+        max_tokens: 4500,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Верни ТОЛЬКО JSON {\"scripts\":[...]} — ровно 3 сценария на русском, 15/30/45 сек. Каждый: title, format, duration_sec, hook_options[3], teleprompter_script с таймкодами 0–3с, caption, cta, source_angle из caption_angles, shot_list[4]. Не выдумывай ингредиенты вне fact_card. Одно слово-CTA: " +
+              sharedKeyword +
+              ".",
+          },
+          { role: "user", content: compact },
+        ],
+        temperature: 0.55,
+      },
+      { timeout: 180_000, maxRetries: 0 },
+    );
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error(
+        `Пустой ответ LLM (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
+      );
+    }
+    return { completion, parsed: parseStrategyJson(content) };
+  }
+
   let result: Awaited<ReturnType<typeof attempt>>;
   try {
     result = await attempt(6000);
   } catch {
-    result = await attempt(7000);
+    try {
+      result = await attempt(7000);
+    } catch {
+      result = await attemptScriptsOnly();
+    }
   }
   await recordCostEvent("llm", input.userId, "strategy");
   return {
