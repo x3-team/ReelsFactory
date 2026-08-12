@@ -34,10 +34,17 @@ log() { printf '\n[real-run] %s\n' "$*"; }
 
 log "сервер: $BASE · аккаунт: $HANDLE · тариф: $PLAN · telegramId: $TG_ID"
 
+# Ключ может прийти двумя путями: переменной окружения (секреты Cursor) или из .env.
+has_key() {
+  local name="$1"
+  [ -n "${!name:-}" ] && return 0
+  grep -qE "^${name}=.+" .env 2>/dev/null
+}
+
 # Без ключа скрейпинга профиль берётся из демо-данных. Если при этом есть ключ AI,
 # модель отработает по-настоящему — и отчёт будет выглядеть настоящим, хотя факты
 # в нём выдуманы. Предупреждаем громко, чтобы такой прогон не приняли за живой.
-if ! grep -qE '^(APIFY_TOKEN|RAPIDAPI_KEY)=.+' .env; then
+if ! has_key APIFY_TOKEN && ! has_key RAPIDAPI_KEY; then
   cat >&2 <<'WARN'
 
   ВНИМАНИЕ: в .env нет ни APIFY_TOKEN, ни RAPIDAPI_KEY.
@@ -117,14 +124,14 @@ fi
 result="$(curl -sf "$BASE/api/analyze?id=$ANALYSIS_ID&userId=$USER_ID")"
 log "готово за ${elapsed}с — отчёт: $OUT"
 
-has_key() { grep -qE "^$1=.+" .env && echo да || echo нет; }
+key_label() { has_key "$1" && echo да || echo нет; }
 
 {
   echo "# Прогон на реальных данных: $HANDLE"
   echo
   echo "- тариф: **$PLAN**, время анализа: **${elapsed}с**, версия: $(echo "$health" | jq -r .version)"
-  echo "- живой скрейп (APIFY_TOKEN): **$(has_key APIFY_TOKEN)**"
-  echo "- живой AI (AITUNNEL_API_KEY): **$(has_key AITUNNEL_API_KEY)**"
+  echo "- живой скрейп (APIFY_TOKEN / RAPIDAPI_KEY): **$(key_label APIFY_TOKEN) / $(key_label RAPIDAPI_KEY)**"
+  echo "- живой AI (AITUNNEL_API_KEY): **$(key_label AITUNNEL_API_KEY)**"
   echo
   echo "## Стратегия"
   echo
