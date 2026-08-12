@@ -219,17 +219,19 @@ export async function generateStrategy(input: {
   );
 
   const openai = getAiTunnelClient();
-  const completion = await openai.chat.completions.create({
-    model,
-    response_format: { type: "json_object" },
-    // Flash: держим потолок ниже — нормализатор добьёт структуру без второго вызова
-    max_tokens: 8000,
-    messages: [
-      { role: "system", content: STRATEGY_SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.75,
-  });
+  const completion = await openai.chat.completions.create(
+    {
+      model,
+      response_format: { type: "json_object" },
+      max_tokens: 5500,
+      messages: [
+        { role: "system", content: STRATEGY_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.75,
+    },
+    { timeout: 90_000, maxRetries: 0 },
+  );
 
   const content = completion.choices[0]?.message?.content;
   if (!content) {

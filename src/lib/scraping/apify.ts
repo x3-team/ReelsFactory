@@ -122,6 +122,23 @@ function mapPosts(posts: ApifyIgPost[]): ScrapedVideo[] {
     .slice(0, CAPTION_VIDEOS_LIMIT);
 }
 
+function collectIgPosts(items: Array<ApifyIgProfile & ApifyIgPost>): ApifyIgPost[] {
+  const posts: ApifyIgPost[] = [];
+  const seen = new Set<string>();
+  const push = (post: ApifyIgPost) => {
+    const id = String(post.id || post.shortCode || "");
+    if (!id || seen.has(id)) return;
+    if (!post.caption && !post.videoUrl && !post.shortCode) return;
+    seen.add(id);
+    posts.push(post);
+  };
+  for (const item of items) {
+    for (const nested of item.latestPosts || []) push(nested);
+    push(item);
+  }
+  return posts;
+}
+
 function collectCaptions(posts: ApifyIgPost[]) {
   return posts
     .map((post) => (post.caption || "").trim())
@@ -136,22 +153,33 @@ function collectCaptions(posts: ApifyIgPost[]) {
 export async function fetchInstagramViaApify(
   handle: string,
 ): Promise<ScrapedProfile> {
-  const items = await runApifyActor<ApifyIgProfile>(igActorId(), {
-    usernames: [handle],
-    resultsLimit: SCRAPE_POSTS_LIMIT,
-  });
+  let items: Array<ApifyIgProfile & ApifyIgPost> = [];
+  try {
+    items = await runApifyActor<ApifyIgProfile & ApifyIgPost>(igActorId(), {
+      usernames: [handle],
+      resultsLimit: SCRAPE_POSTS_LIMIT,
+      resultsType: "details_and_posts",
+    });
+  } catch {
+    items = await runApifyActor<ApifyIgProfile & ApifyIgPost>(igActorId(), {
+      usernames: [handle],
+      resultsLimit: SCRAPE_POSTS_LIMIT,
+    });
+  }
   if (items.length === 0) {
     throw new Error(`Apify: пустой ответ для @${handle}`);
   }
 
-  const profile = items[0];
+  const profile =
+    items.find((item) => item.username || item.biography || item.followersCount) ||
+    items[0];
   if (profile.error || profile.errorDescription) {
     throw new Error(
       `Apify: ${profile.error || profile.errorDescription || "ошибка профиля"}`,
     );
   }
 
-  const latest = profile.latestPosts || [];
+  const latest = collectIgPosts(items);
   const topVideos = mapPosts(latest);
 
   return {
