@@ -98,12 +98,23 @@ function normalizePlatformPacks(
 
 function ensureTeleprompter(raw: string, duration: number, keyword: string) {
   const text = asString(raw);
-  if (text.includes("0–3") || text.includes("0-3")) return text;
+  if (text.includes("0–3") || text.includes("0-3")) {
+    if (/смотрите в камеру/i.test(text) && /ошибка аудитории/i.test(text)) {
+      return processFallback(duration, keyword);
+    }
+    return text;
+  }
+  return processFallback(duration, keyword);
+}
+
+function processFallback(duration: number, keyword: string) {
+  const mid = Math.max(8, Math.round(duration * 0.55));
+  const preCta = Math.max(12, duration - 4);
   return [
-    `0–3с: Хук — смотрите в камеру, без приветствия.`,
-    `3–${Math.max(8, Math.round(duration * 0.55))}с: Проблема / ошибка аудитории.`,
-    `${Math.max(8, Math.round(duration * 0.55))}–${Math.max(12, duration - 4)}с: Демо / конкретный приём.`,
-    `${Math.max(12, duration - 4)}–${duration}с: CTA — комментируйте «${keyword}».`,
+    `0–3с: Крупный план продукта. Текст на экране — хук без приветствия.`,
+    `3–${mid}с: Процесс или ошибка крупно, без речи в камеру.`,
+    `${mid}–${preCta}с: Результат — текстура, разлом, готовый кадр.`,
+    `${preCta}–${duration}с: Надпись: напиши «${keyword}» в комментарии.`,
   ].join("\n");
 }
 
@@ -115,14 +126,16 @@ function normalizeScript(
   const duration = DURATIONS[index] || script.duration_sec || 30;
   const keyword = sharedKeyword;
 
-  const hooks = asStringArray(script.hook_options, 3, [
-    "Остановитесь, если ролик умирает на 3-й секунде",
-    "Одна ошибка убивает удержание — проверьте её",
-    "Не алгоритм виноват. Виновата первая фраза.",
-  ])
-    .slice(0, 3)
-    .map((h) => h.slice(0, 90));
-  const ranked = rankHooks(hooks);
+  const hooks = asStringArray(script.hook_options, 0, []).slice(0, 3);
+  const ranked = rankHooks(
+    hooks.length >= 3
+      ? hooks
+      : [
+          ...hooks,
+          script.source_angle || script.title,
+          `Один кадр — и видно, получилось ли`,
+        ].filter(Boolean).slice(0, 3),
+  );
 
   const title = asString(script.title, `Сценарий ${duration} сек`);
   const funnel = normalizeFunnel(script.funnel, keyword, "бесплатный гайд");

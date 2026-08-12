@@ -77,6 +77,7 @@ export async function allocateSharedKeyword(
       where: {
         commentKeyword: { equals: key, mode: "insensitive" },
         NOT: { userId },
+        user: { username: { not: "real_run" } },
       },
       select: { id: true },
     });

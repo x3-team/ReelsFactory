@@ -2,13 +2,11 @@ import type { ProfileInsights } from "@/lib/content/profile-insights";
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 
 const SKELETON_TITLE = /^сценарий\s*\d+/i;
-const TALKING_HEAD = /смотрите в камеру/i;
-const GENERIC_HOOK = /ролик умирает|не алгоритм виноват/i;
+const PADDED_TELEPROMPTER = /смотрите в камеру[\s\S]*ошибка аудитории/i;
 
 export function isSkeletonScript(script: GeneratedScript): boolean {
   if (SKELETON_TITLE.test(script.title || "")) return true;
-  if (TALKING_HEAD.test(script.teleprompter_script || "")) return true;
-  if ((script.hook_options || []).some((h) => GENERIC_HOOK.test(h))) return true;
+  if (PADDED_TELEPROMPTER.test(script.teleprompter_script || "")) return true;
   return false;
 }
 
@@ -46,28 +44,36 @@ function scriptFromAngle(
   duration: number,
   keyword: string,
 ): GeneratedScript {
-  const hook = angle.hookLine.slice(0, 90);
-  const title = hook.replace(/[!.?…]+$/g, "").slice(0, 70);
+  const hook = angle.hookLine.slice(0, 72);
+  const variants = [
+    hook,
+    `Как это выглядит крупным планом`,
+    `Один разлом — и сразу видно, получилось ли`,
+  ];
+  if (index === 1) {
+    variants[1] = `Повтори этот кадр — текстура скажет всё`;
+    variants[2] = `Смотри, чем домашний десерт отличается от магазинного`;
+  }
+  if (index === 2) {
+    variants[1] = `Секрет в одном движении, не в дорогих формах`;
+    variants[2] = `Сохрани, если собираешься снимать процесс`;
+  }
   return {
-    title: title || `Ролик ${duration}с`,
+    title: hook.replace(/[!.?…🔥💔💚]+$/g, "").slice(0, 56) || `Ролик ${duration}с`,
     format: "процесс",
     duration_sec: duration,
     shoot_order: index + 1,
     comment_keyword: keyword,
-    hook_options: [
-      hook,
-      `Посмотрите, как это выглядит вблизи`,
-      `Один кадр — и сразу понятно, получилось или нет`,
-    ].map((h) => h.slice(0, 90)),
+    hook_options: variants.map((h) => h.slice(0, 90)),
     teleprompter_script: processTeleprompter(hook, duration, keyword),
     caption: `${hook} Напиши «${keyword}» в комментариях — пришлю материал.`,
     cta: `Напиши ${keyword} в комментариях`,
     source_angle: hook,
     shot_list: [
-      `Крупный план: ${hook.slice(0, 60)}`,
-      "Руки / процесс / текстура",
+      `Крупный план: ${hook.slice(0, 50)}`,
+      "Руки и текстура без лица в кадре",
       "Результат в разломе или в готовом виде",
-      `Текст на экране: «${keyword}» в комментарии`,
+      `Текст на экране: напиши «${keyword}»`,
     ],
     props_checklist: ["штатив", "готовая деталь для крупного плана"],
   };

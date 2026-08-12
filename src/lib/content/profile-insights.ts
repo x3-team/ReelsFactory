@@ -76,7 +76,10 @@ function hookLine(caption: string) {
     .split(/\n+/)
     .map((l) => stripDecor(l))
     .find((l) => l.length >= 12);
-  return (first || stripDecor(caption)).slice(0, 140);
+  const line = first || stripDecor(caption);
+  const stop = line.search(/[.!?…]|💔|🔥|💚/);
+  const sentence = stop >= 12 ? line.slice(0, stop + 1) : line;
+  return sentence.replace(/[«»]/g, "").trim().slice(0, 72);
 }
 
 function extractHashtagProducts(captions: string[]) {
