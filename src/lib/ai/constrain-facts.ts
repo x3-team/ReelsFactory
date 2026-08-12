@@ -50,6 +50,7 @@ export function scrubInvented(text: string, facts: FactCard): string {
     .replace(/до,\s*/gi, "")
     .replace(/при,\s*/gi, "")
     .replace(/до\s+тогда/gi, "тогда")
+    .replace(/при\s+\d+[-–]?\s*\.?/gi, "")
     .replace(/(^|[.!?]\s+|«)\s*из\s+/gi, "$1")
     .replace(/ {2,}/g, " ")
     .trim();
