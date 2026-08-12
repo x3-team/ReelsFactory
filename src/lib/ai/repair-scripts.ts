@@ -13,11 +13,18 @@ export function isSkeletonScript(script: GeneratedScript): boolean {
   if (SKELETON_TITLE.test(script.title || "")) return true;
   if (PADDED_TELEPROMPTER.test(script.teleprompter_script || "")) return true;
   if (FALLBACK_TELEPROMPTER.test(script.teleprompter_script || "")) return true;
+  if (isTruncatedCopy(script.title || "")) return true;
   const hooks = script.hook_options || [];
   if (hooks.length >= 2 && hooks.filter((h) => h === hooks[1]).length >= 2) {
     return true;
   }
   return false;
+}
+
+function isTruncatedCopy(text: string) {
+  const t = (text || "").trim();
+  if (!t) return true;
+  return /\b(и|в|на|с|из|до|от|по|для|без|при|од|моих)$/i.test(t);
 }
 
 export function processTeleprompter(
@@ -118,27 +125,36 @@ export function repairStrategy(
   }
 
   const filled = scripts.slice(0, 3).map((script, i) => {
+    let next: GeneratedScript;
     if (!isSkeletonScript(script)) {
-      return {
+      next = {
         ...script,
         duration_sec: durations[i],
         comment_keyword: keyword,
         source_angle: script.source_angle || angles[i]?.hookLine || script.title,
       };
+    } else {
+      const plannedTitle = planned[i];
+      const angle =
+        angles.find((a) =>
+          plannedTitle
+            ? a.hookLine.toLowerCase().includes(plannedTitle.toLowerCase().slice(0, 12))
+            : false,
+        ) ||
+        angles[i] ||
+        insights.captionAngles[i] || {
+          hookLine: plannedTitle || script.title,
+          views: 0,
+        };
+      next = scriptFromAngle(angle, i, durations[i], keyword);
     }
-    const plannedTitle = planned[i];
-    const angle =
-      angles.find((a) =>
-        plannedTitle
-          ? a.hookLine.toLowerCase().includes(plannedTitle.toLowerCase().slice(0, 12))
-          : false,
-      ) ||
-      angles[i] ||
-      insights.captionAngles[i] || {
-        hookLine: plannedTitle || script.title,
-        views: 0,
+    if (isTruncatedCopy(next.caption) || (next.caption || "").length < 28) {
+      next = {
+        ...next,
+        caption: `${next.title}. Напиши «${keyword}» в комментариях.`,
       };
-    return scriptFromAngle(angle, i, durations[i], keyword);
+    }
+    return next;
   });
 
   return polishCatalog({ ...strategy, scripts: filled }, insights);
@@ -197,6 +213,17 @@ function polishCatalog(
   return {
     ...strategy,
     scripts,
-    shoot_day: { ...shoot, extra_ideas: merged },
+    shoot_day: {
+      ...shoot,
+      extra_ideas: merged,
+      order: scripts.map((script, i) => ({
+        shoot_order: i + 1,
+        script_title: script.title,
+        duration_sec: script.duration_sec || [15, 30, 45][i],
+        note:
+          shoot.order?.[i]?.note ||
+          (i === 0 ? "Снимай первым — разогрев" : "Тот же образ"),
+      })),
+    },
   };
 }

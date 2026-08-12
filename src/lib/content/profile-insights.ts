@@ -98,7 +98,9 @@ export function isWeakAngle(text: string) {
   if (isReactionHook(t)) return true;
   if (/^[-–—•]\s*/.test(t)) return true;
   if (
-    /технологическ|обучение можно|купить на сайте|ссылк\w* в шапк/i.test(t)
+    /технологическ|обучение можно|купить на сайте|ссылк\w* в шапк|урок по |бонусом от меня|в тк добавлен/i.test(
+      t,
+    )
   ) {
     return true;
   }
@@ -128,7 +130,16 @@ export function hookLine(caption: string) {
   const line = best?.s || stripDecor(caption).replace(/[«»]/g, "").trim();
   const stop = line.search(/[.!?…]|💔|🔥|💚/);
   const sentence = stop >= 12 ? line.slice(0, stop + 1) : line;
-  return sliceWords(sentence.trim(), 72);
+  return tidyHook(sliceWords(sentence.trim(), 72));
+}
+
+function tidyHook(text: string) {
+  return text
+    .replace(/[.,!?…]+$/g, "")
+    .replace(/,?\s*одно из моих\w*$/i, "")
+    .replace(/,?\s*и бонусом.*$/i, "")
+    .replace(/\s+(од|с|и|в|на|из|до|от|по|для|без|при)$/i, "")
+    .trim();
 }
 
 function extractHashtagProducts(captions: string[]) {
