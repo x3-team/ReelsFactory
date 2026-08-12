@@ -219,7 +219,7 @@ export async function generateStrategy(input: {
         ],
         temperature: 0.75,
       },
-      { timeout: 120_000, maxRetries: 0 },
+      { timeout: 180_000, maxRetries: 0 },
     );
 
   let completion = await request(6000);
