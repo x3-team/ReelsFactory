@@ -207,6 +207,15 @@ function polishCatalog(
         .filter((idea, idx, arr) => {
           const k = angleKey(idea.title || idea.hook || "");
           if (!k || usedKeys.has(k)) return false;
+          if (
+            scripts.some((s) => {
+              const sk = angleKey(s.title || s.source_angle || "").split(" ");
+              const ik = k.split(" ");
+              return ik.filter((w) => sk.includes(w)).length >= 2;
+            })
+          ) {
+            return false;
+          }
           return arr.findIndex((x) => angleKey(x.title || x.hook || "") === k) === idx;
         })
         .slice(0, 4)

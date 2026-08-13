@@ -54,8 +54,8 @@ export function scrubInvented(text: string, facts: FactCard): string {
   next = next.replace(/(\d+)\s+минут\w*/gi, (full, n: string) => {
     return new RegExp(`${n}\\s*минут`, "i").test(facts.blob) ? full : "";
   });
-  next = next.replace(/за\s+(\d+)\s+секунд\w*/gi, (full, n: string) => {
-    return new RegExp(`${n}\\s*секунд`, "i").test(facts.blob) ? full : "";
+  next = next.replace(/за\s+(\d+)\s+сек\w*/gi, (full, n: string) => {
+    return new RegExp(`${n}\\s*сек`, "i").test(facts.blob) ? full : "";
   });
   if (!/\d+\s*г/.test(facts.blob)) {
     next = next.replace(/\d+\s*г(?:рамм[а-яё]*)?/gi, "");
@@ -75,6 +75,7 @@ export function scrubInvented(text: string, facts: FactCard): string {
     .replace(/\s+и\s+и\s+/g, " и ")
     .replace(/,\s*,+/g, ",")
     .replace(/:\s*,/g, ":")
+    .replace(/,\s*\./g, ".")
     .replace(/ {2,}/g, " ")
     .trim();
 }
@@ -154,6 +155,17 @@ export function alignAngles(
 
   return scripts.map((script) => {
     const blob = scriptBlob(script);
+    const title = (script.title || "").toLowerCase();
+    const quotedHit = angles.find((angle) => {
+      const names = `${angle.hookLine} ${angle.caption}`.match(
+        /[«"]([^»"]{3,40})[»"]/g,
+      ) || [];
+      return names.some((raw) => {
+        const q = raw.replace(/[«»"]/g, "").toLowerCase();
+        return q.length >= 4 && (blob.includes(q) || title.includes(q));
+      });
+    });
+    if (quotedHit) return { ...script, source_angle: quotedHit.hookLine };
     const currentScore = overlapScore(blob, script.source_angle || "");
     const ranked = angles
       .map((angle) => ({
