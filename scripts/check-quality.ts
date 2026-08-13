@@ -254,7 +254,7 @@ assert(
   "fitness angle kept",
 );
 assert(
-  !fitScripts.some((s) => /десерт/i.test(`${s.title} ${s.teleprompter_script} ${s.caption}`)),
+  !fitScripts.some((s) => /десерт|разлом/i.test(`${s.title} ${s.teleprompter_script} ${s.caption} ${(s.shot_list || []).join(" ")}`)),
   "no dessert leak into other niche",
 );
 
