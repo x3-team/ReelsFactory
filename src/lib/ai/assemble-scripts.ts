@@ -18,7 +18,7 @@ const TRAILING_PREP =
 export type ContentMode = "talking_head" | "process_no_speech";
 
 export function tidyCut(text: string) {
-  let next = (text || "").trim().replace(/[!.?…🔥💔💚]+$/g, "").trim();
+  let next = (text || "").trim().replace(/[!,.?…🔥💔💚]+$/g, "").trim();
   next = next.replace(TRAILING_PREP, "").trim();
   return next;
 }
