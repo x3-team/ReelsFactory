@@ -1,4 +1,4 @@
-import { sliceChars, sliceWords } from "@/lib/ai/safe-json";
+import { sliceWords } from "@/lib/ai/safe-json";
 import {
   isWeakAngle,
   type ProfileInsights,
@@ -35,9 +35,9 @@ export function processTeleprompter(
   const mid = Math.max(8, Math.round(duration * 0.55));
   const preCta = Math.max(12, duration - 4);
   return [
-    `0–3с: Крупный план. Текст на экране: «${sliceChars(hook, 70)}»`,
-    `3–${mid}с: Показываем процесс / ошибку крупно, без речи в камеру.`,
-    `${mid}–${preCta}с: Результат — текстура, разлом или готовый десерт.`,
+    `0–3с: Крупный план. Текст на экране: «${sliceWords(hook, 70)}»`,
+    `3–${mid}с: Крупно процесс: ${sliceWords(hook, 48)}. Без речи в камеру.`,
+    `${mid}–${preCta}с: Результат — разлом или готовый кадр.`,
     `${preCta}–${duration}с: Надпись: «Напиши ${keyword} в комментарии».`,
   ].join("\n");
 }
@@ -61,33 +61,25 @@ function scriptFromAngle(
   duration: number,
   keyword: string,
 ): GeneratedScript {
-  const hook = sliceChars(angle.hookLine, 72);
+  const hook = sliceWords(angle.hookLine, 72);
   const variants = [
     hook,
-    `Как это выглядит крупным планом`,
-    `Один разлом — и сразу видно, получилось ли`,
+    `Крупный план: ${sliceWords(hook, 42)}`,
+    `Сохрани, если будешь повторять этот десерт`,
   ];
-  if (index === 1) {
-    variants[1] = `Повтори этот кадр — текстура скажет всё`;
-    variants[2] = `Смотри, чем домашний десерт отличается от магазинного`;
-  }
-  if (index === 2) {
-    variants[1] = `Секрет в одном движении, не в дорогих формах`;
-    variants[2] = `Сохрани, если собираешься снимать процесс`;
-  }
   return {
-    title: sliceChars(hook.replace(/[!.?…🔥💔💚]+$/g, ""), 56) || `Ролик ${duration}с`,
+    title: sliceWords(hook.replace(/[!.?…🔥💔💚]+$/g, ""), 56) || `Ролик ${duration}с`,
     format: "процесс",
     duration_sec: duration,
     shoot_order: index + 1,
     comment_keyword: keyword,
-    hook_options: variants.map((h) => sliceChars(h, 90)),
+    hook_options: variants.map((h) => sliceWords(h, 72)),
     teleprompter_script: processTeleprompter(hook, duration, keyword),
     caption: `${hook} Напиши «${keyword}» в комментариях — пришлю материал.`,
     cta: `Напиши ${keyword} в комментариях`,
     source_angle: hook,
     shot_list: [
-      `Крупный план: ${sliceChars(hook, 50)}`,
+      `Крупный план: ${sliceWords(hook, 48)}`,
       "Руки и текстура без лица в кадре",
       "Результат в разломе или в готовом виде",
       `Текст на экране: напиши «${keyword}»`,
