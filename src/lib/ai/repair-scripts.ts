@@ -1,9 +1,12 @@
+import { scriptFromFact } from "@/lib/ai/assemble-scripts";
 import { sliceWords } from "@/lib/ai/safe-json";
 import {
   isWeakAngle,
   type ProfileInsights,
 } from "@/lib/content/profile-insights";
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
+
+export { processTeleprompter } from "@/lib/ai/assemble-scripts";
 
 const SKELETON_TITLE = /^сценарий\s*\d+/i;
 const PADDED_TELEPROMPTER = /смотрите в камеру[\s\S]*ошибка аудитории/i;
@@ -27,21 +30,6 @@ function isTruncatedCopy(text: string) {
   return /\b(и|в|на|с|из|до|от|по|для|без|при|од|моих)$/i.test(t);
 }
 
-export function processTeleprompter(
-  hook: string,
-  duration: number,
-  keyword: string,
-): string {
-  const mid = Math.max(8, Math.round(duration * 0.55));
-  const preCta = Math.max(12, duration - 4);
-  return [
-    `0–3с: Крупный план. Текст на экране: «${sliceWords(hook, 70)}»`,
-    `3–${mid}с: Крупно процесс: ${sliceWords(hook, 48)}. Без речи в камеру.`,
-    `${mid}–${preCta}с: Результат — разлом или готовый кадр.`,
-    `${preCta}–${duration}с: Надпись: «Напиши ${keyword} в комментарии».`,
-  ].join("\n");
-}
-
 function unusedAngles(strategy: StrategyPayload, insights: ProfileInsights) {
   const used = (strategy.scripts || [])
     .filter((s) => !isSkeletonScript(s))
@@ -61,31 +49,13 @@ function scriptFromAngle(
   duration: number,
   keyword: string,
 ): GeneratedScript {
-  const hook = sliceWords(angle.hookLine, 72);
-  const variants = [
-    hook,
-    `Крупный план: ${sliceWords(hook, 42)}`,
-    `Сохрани, если будешь повторять этот десерт`,
-  ];
-  return {
-    title: sliceWords(hook.replace(/[!.?…🔥💔💚]+$/g, ""), 56) || `Ролик ${duration}с`,
-    format: "процесс",
-    duration_sec: duration,
-    shoot_order: index + 1,
-    comment_keyword: keyword,
-    hook_options: variants.map((h) => sliceWords(h, 72)),
-    teleprompter_script: processTeleprompter(hook, duration, keyword),
-    caption: `${hook} Напиши «${keyword}» в комментариях — пришлю материал.`,
-    cta: `Напиши ${keyword} в комментариях`,
-    source_angle: hook,
-    shot_list: [
-      `Крупный план: ${sliceWords(hook, 48)}`,
-      "Руки и текстура без лица в кадре",
-      "Результат в разломе или в готовом виде",
-      `Текст на экране: напиши «${keyword}»`,
-    ],
-    props_checklist: ["штатив", "готовая деталь для крупного плана"],
-  };
+  return scriptFromFact({
+    angle,
+    index,
+    duration,
+    keyword,
+    contentMode: "process_no_speech",
+  });
 }
 
 /**

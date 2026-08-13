@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { monthWindow } from "@/lib/usage";
 
-export type CostKind = "apify" | "whisper" | "llm";
+export type CostKind = "apify" | "whisper" | "llm" | "vision";
 
 export async function recordCostEvent(
   kind: CostKind,

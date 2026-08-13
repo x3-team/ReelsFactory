@@ -77,3 +77,8 @@ export function llmModelForPlan(plan?: string | null) {
 export function whisperModel() {
   return process.env.AITUNNEL_WHISPER_MODEL || "whisper-1";
 }
+
+/** OCR / frame read for silent process reels. Cheap vision via AITunnel. */
+export function visionModel() {
+  return process.env.AITUNNEL_VISION_MODEL || "gpt-4o-mini";
+}

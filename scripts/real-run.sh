@@ -212,7 +212,8 @@ DB="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/reelsfactory}"
     SELECT
       '- роликов в скрейпе: ' || coalesce(jsonb_array_length(\"rawProfileData\"->'topVideos'), 0) || E'\n' ||
       '- подписей в пуле: ' || coalesce(jsonb_array_length(\"rawProfileData\"->'recentCaptions'), 0) || E'\n' ||
-      '- живых транскриптов: ' || coalesce(jsonb_array_length(\"transcriptions\"::jsonb), 0)
+      '- живых транскриптов: ' || coalesce(jsonb_array_length(\"transcriptions\"::jsonb), 0) || E'\n' ||
+      '- OCR-заметок: ' || coalesce(jsonb_array_length(\"rawProfileData\"->'visualNotes'), 0)
     FROM \"ProfileAnalysis\" WHERE id = '$ANALYSIS_ID';
   "
   echo

@@ -1,19 +1,28 @@
 import { sanitizeForJson } from "@/lib/ai/safe-json";
 import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
+import { assembleScriptsFromFacts } from "@/lib/ai/assemble-scripts";
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
-import { isUsableTranscript } from "@/lib/ai/speech-signal";
+import {
+  contentModeFromTranscripts,
+  isUsableTranscript,
+} from "@/lib/ai/speech-signal";
 import {
   dropGenericTelegramTips,
   sanitizeStrategy,
 } from "@/lib/ai/sanitize-scripts";
 import { constrainFacts } from "@/lib/ai/constrain-facts";
 import { repairStrategy } from "@/lib/ai/repair-scripts";
+import { formatVisualLine, inspectSilentVideos } from "@/lib/ai/vision-frames";
 import { allocateSharedKeyword } from "@/lib/comment-keyword";
 import { PLANS } from "@/lib/config";
-import { buildProfileInsights } from "@/lib/content/profile-insights";
 import {
+  buildProfileInsights,
+  mergeVisualNotes,
+} from "@/lib/content/profile-insights";
+import {
+  VISION_MAX_VIDEOS,
   WHISPER_GARBAGE_STREAK_STOP,
   WHISPER_MAX_VIDEOS,
 } from "@/lib/content/scrape-limits";
@@ -102,8 +111,6 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
-    const insights = buildProfileInsights(profile);
-
     const transcriptions: string[] = [];
     let garbageStreak = 0;
     for (const video of profile.topVideos.slice(0, WHISPER_MAX_VIDEOS)) {
@@ -126,11 +133,29 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       }
     }
 
+    const contentMode = contentModeFromTranscripts(transcriptions);
+    const visualNotes =
+      contentMode === "process_no_speech"
+        ? await inspectSilentVideos({
+            videos: profile.topVideos.slice(0, VISION_MAX_VIDEOS),
+            cachePrefix: `${user.platform}:${user.socialHandle}`,
+            userId: user.id,
+          })
+        : [];
+    const insights = mergeVisualNotes(buildProfileInsights(profile), visualNotes);
+
     await prisma.profileAnalysis.update({
       where: { id: analysisId },
       data: {
         status: AnalysisStatus.GENERATING,
-        transcriptions: sanitizeForJson(transcriptions),
+        transcriptions: sanitizeForJson([
+          ...transcriptions,
+          ...visualNotes.map(formatVisualLine),
+        ]),
+        rawProfileData: sanitizeForJson({
+          ...profile,
+          visualNotes,
+        }) as object,
       },
     });
 
@@ -178,9 +203,14 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       insights.suggestedKeyword || rawStrategy.funnel_kit?.comment_keyword,
       user.id,
     );
+    const assembled = assembleScriptsFromFacts(insights, keyword, contentMode);
     const strategy = constrainFacts(
       sanitizeStrategy(
-        repairStrategy(sanitizeStrategy(rawStrategy, keyword), insights, keyword),
+        repairStrategy(
+          sanitizeStrategy({ ...rawStrategy, scripts: assembled }, keyword),
+          insights,
+          keyword,
+        ),
         keyword,
       ),
       insights,

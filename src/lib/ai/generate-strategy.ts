@@ -15,24 +15,12 @@ import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
 const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для рынка РФ/СНГ (Instagram Reels, VK Клипы, YouTube Shorts, Telegram).
 Пиши ВСЕ строки JSON на русском. Верни ТОЛЬКО валидный JSON без markdown.
-СНАЧАЛА заполни массив scripts (ровно 3 штуки). Потом остальное. Если место кончается — лучше 3 полных сценария без календаря, чем календарь без сценариев.
+Сценарии НЕ пиши — сервер соберёт их из fact_card (продукт + 4 кадра + шаблон суфлёра).
+Заполни нишу, аудиторию, столпы, аудит, воронку и идеи дос съёмки.
 
 Схема:
 {
-  "scripts": [{
-    "title": string,
-    "format": string,
-    "duration_sec": number,
-    "shoot_order": number,
-    "comment_keyword": string,
-    "props_checklist": string[],
-    "hook_options": string[],
-    "teleprompter_script": string,
-    "caption": string,
-    "cta": string,
-    "source_angle": string,
-    "shot_list": string[]
-  }],
+  "scripts": [],
   "niche": string,
   "target_audience": string,
   "content_pillars": [{"title": string, "description": string}],
@@ -55,33 +43,22 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
     "outfit": string,
     "location": string,
     "props": string[],
-    "order": [{"shoot_order": number, "script_title": string, "duration_sec": number, "note": string}],
     "extra_ideas": [{"title": string, "hook": string, "pillar": string, "duration_sec": number}]
   }
 }
 
 ЖЁСТКИЕ ПРАВИЛА:
-1) Ровно 3 сценария с РАЗНОЙ длительностью: 15, 30 и 45 секунд (duration_sec).
-2) teleprompter_script — построчно с таймкодами. Каркас: хук 0–3с → проблема → демо → мягкий CTA.
-3) hook_options: 3 варианта ≤ 12 слов (боль / любопытство / результат).
-4) Цену/оффер — максимум в 1 из 3 сценариев.
-5) Разные форматы (ошибка, процесс, до/после, миф, чеклист). Без «привет друзья».
-6) Опирайся на captions/transcriptions, niche_preset и voice_draft если есть.
-7) platform_packs и funnel можно опустить — сервер допишет Reels/VK/Shorts/Telegram и воронку.
-8) funnel_kit: одно ключевое слово-коммент на все сценарии.
-9) pillars_calendar можно опустить — сервер соберёт неделю из столпов. Не пиши календарь, пока не готовы 3 сценария.
-10) shoot_day: один образ/фон, props, order для 3 сценариев + 4 extra_ideas для досъёма.
-11) Юридически спокойный тон: без гарантий дохода и серых схем.
-12) Рынок RU/СНГ: VK Клипы — мягче «реклама», Telegram — ценность в тексте, Reels — жёстче хук.
-13) Каждый сценарий обязан взять source_angle из caption_angles — конкретный продукт автора. Текст сценария про ТОТ ЖЕ продукт (если угол «мятный зефир в шоколаде» — в кадре мята и шоколад, не общие «3 ошибки»).
-14) shot_list: 4–6 кадров «что в кадре». Если content_mode = process_no_speech, суфлёр = закадр или текст на экране, НЕ «смотри в камеру».
-15) Одно comment_keyword на funnel_kit и ВСЕ сценарии. Без суффиксов 2/3.
-16) Цену не произносить в суфлёре. В подписи — максимум в 1 ролике.
-17) Аудит профиля: каждый совет цитирует био или подпись. Не предлагай Telegram, если has_website_cta. Не предлагай «добавь CTA», если подписи уже продают.
-18) Голос копируй с voice_samples (я/мы, плотность эмодзи, тепло vs эксперт).
-19) Не повторяй названия из avoid_titles. winning_hooks — паттерны, которые уже залетели у автора: усиливай этот угол, не копируй дословно.
-20) fact_card.allowed и without — единственные продукты/ингредиенты. НЕ выдумывай йогурт, бисквит, глютен, кокос, желатин, пектин, если их нет в allowed.
-21) Не пиши «за N минут» и температуры °C, если их нет в подписях. Не подменяй продукт (птичье молоко ≠ бисквит).`;
+1) scripts оставь пустым массивом.
+2) Ниша и аудитория — из bio / caption_angles / visual_notes, не «короткий контент».
+3) Столпы 3–5 из реальных продуктов и тем автора.
+4) Аудит: каждый совет цитирует био или подпись. Не предлагай Telegram, если has_website_cta. Не предлагай «добавь CTA», если подписи уже продают.
+5) funnel_kit: одно ключевое слово-коммент на все ролики, без суффиксов 2/3.
+6) shoot_day: один образ/фон, props, 4 extra_ideas из caption_angles (не дублируй топ-3 углов).
+7) fact_card.allowed и without — единственные продукты/ингредиенты. НЕ выдумывай то, чего нет в allowed и visual_notes.
+8) Не пиши «за N минут» и температуры °C, если их нет в подписях.
+9) Голос копируй с voice_samples (я/мы, плотность эмодзи, тепло vs эксперт).
+10) Юридически спокойный тон: без гарантий дохода и серых схем.
+11) Рынок RU/СНГ. pillars_calendar можно опустить — сервер соберёт неделю из столпов.`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
@@ -171,6 +148,11 @@ export async function generateStrategy(input: {
                 "температура °C",
               ],
             },
+            visual_notes: (input.insights.visualNotes || []).slice(0, 4).map((n) => ({
+              product: n.product,
+              process: n.process,
+              on_screen_text: n.onScreenText.slice(0, 4),
+            })),
           }
         : null,
       goal: input.goal,
@@ -194,9 +176,9 @@ export async function generateStrategy(input: {
         require_platform_packs: false,
         require_shoot_day: true,
         require_pillars_calendar: false,
-        require_scripts_first: true,
-        require_source_angle: true,
-        require_shot_list: true,
+        require_scripts: false,
+        require_source_angle: false,
+        require_shot_list: false,
         market: "RU_CIS",
       },
     },
@@ -215,9 +197,9 @@ export async function generateStrategy(input: {
           { role: "system", content: STRATEGY_SYSTEM_PROMPT },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.75,
+        temperature: 0.55,
       },
-      { timeout: 240_000, maxRetries: 0 },
+      { timeout: 90_000, maxRetries: 0 },
     );
 
   async function attempt(maxTokens: number) {
@@ -231,57 +213,30 @@ export async function generateStrategy(input: {
     return { completion, parsed: parseStrategyJson(content) };
   }
 
-  async function attemptScriptsOnly() {
-    const compact = JSON.stringify({
-      bio: input.insights?.bioExcerpt || input.profile.bio,
-      fact_card: input.insights?.factCard
-        ? {
-            allowed: input.insights.factCard.allowed.slice(0, 12),
-            without: input.insights.factCard.withoutClaims.slice(0, 6),
-          }
-        : null,
-      caption_angles: (input.insights?.captionAngles || [])
-        .slice(0, 8)
-        .map((a) => ({ hook: a.hookLine, caption: sliceChars(a.caption, 140) })),
-      keyword: sharedKeyword,
-      durations_sec: [15, 30, 45],
-    });
-    const completion = await openai.chat.completions.create(
-      {
-        model,
-        response_format: { type: "json_object" },
-        max_tokens: 4500,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Верни ТОЛЬКО JSON {\"scripts\":[...]} — ровно 3 сценария на русском, 15/30/45 сек. Каждый: title, format, duration_sec, hook_options[3], teleprompter_script с таймкодами 0–3с, caption, cta, source_angle из caption_angles, shot_list[4]. Не выдумывай ингредиенты вне fact_card. Одно слово-CTA: " +
-              sharedKeyword +
-              ".",
-          },
-          { role: "user", content: compact },
-        ],
-        temperature: 0.55,
-      },
-      { timeout: 180_000, maxRetries: 0 },
-    );
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error(
-        `Пустой ответ LLM (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
-      );
-    }
-    return { completion, parsed: parseStrategyJson(content) };
-  }
-
   let result: Awaited<ReturnType<typeof attempt>>;
   try {
-    result = await attempt(6000);
+    result = await attempt(2800);
   } catch {
     try {
-      result = await attempt(7000);
-    } catch {
-      result = await attemptScriptsOnly();
+      result = await attempt(4000);
+    } catch (error) {
+      console.warn(
+        "LLM strategy failed, using local shell",
+        error instanceof Error ? error.message : error,
+      );
+      await recordCostEvent("llm", input.userId, "strategy-fallback");
+      return {
+        strategy: sanitizeStrategy(
+          normalizeStrategy(
+            localStrategyShell(input, sharedKeyword),
+            input.previousTitles,
+            { sharedKeyword },
+          ),
+          sharedKeyword,
+        ),
+        mocked: false,
+        model: "local-shell",
+      };
     }
   }
   await recordCostEvent("llm", input.userId, "strategy");
@@ -297,6 +252,61 @@ export async function generateStrategy(input: {
   };
 }
 
+function localStrategyShell(
+  input: {
+    insights?: ProfileInsights;
+    profile: ScrapedProfile;
+  },
+  sharedKeyword: string,
+): StrategyPayload {
+  const products = (input.insights?.products || []).slice(0, 4);
+  const angles = (input.insights?.captionAngles || []).slice(0, 4);
+  return {
+    niche: products.length ? products.slice(0, 3).join(", ") : "Контент автора",
+    target_audience: "Подписчики автора в РФ/СНГ",
+    content_pillars: [
+      {
+        title: "Процесс",
+        description: "Показать, как делается то, что уже есть в профиле",
+      },
+      {
+        title: "Результат",
+        description: "Крупный план готового кадра из залетевших роликов",
+      },
+      {
+        title: "Оффер",
+        description: "Мягкий CTA одним словом в комментарии",
+      },
+    ],
+    profile_audit_tips: [
+      input.insights?.bioExcerpt
+        ? `Био: «${sliceChars(input.insights.bioExcerpt, 80)}» — оставь обещание, не размывай.`
+        : "Сформулируй в био, что получит человек после подписки.",
+    ],
+    scripts: [],
+    funnel_kit: {
+      comment_keyword: sharedKeyword,
+      bot_reply: "Лови материал. Сохрани сообщение.",
+      lead_magnet: "материал по комментарию",
+      telegram_cta: `Напиши боту слово ${sharedKeyword}`,
+    },
+    shoot_day: {
+      title: "Съёмочный день · 1 образ",
+      duration_min: 90,
+      outfit: "Один нейтральный верх",
+      location: "Один спокойный фон",
+      props: ["штатив", "готовая деталь для крупного плана"],
+      order: [],
+      extra_ideas: angles.map((a, i) => ({
+        title: sliceChars(a.hookLine, 56),
+        hook: a.hookLine,
+        pillar: "ассортимент",
+        duration_sec: i % 2 === 0 ? 15 : 30,
+      })),
+    },
+  };
+}
+
 function parseStrategyJson(raw: string): StrategyPayload {
   const cleaned = raw
     .trim()
@@ -309,9 +319,8 @@ function parseStrategyJson(raw: string): StrategyPayload {
   } catch {
     throw new Error("LLM JSON не разбирается");
   }
-  if (!Array.isArray(parsed.scripts) || parsed.scripts.length === 0) {
-    const keys = Object.keys(parsed as object).join(",");
-    throw new Error(`LLM JSON без сценариев (${keys || "empty"})`);
+  if (!Array.isArray(parsed.scripts)) {
+    parsed.scripts = [];
   }
   return parsed;
 }

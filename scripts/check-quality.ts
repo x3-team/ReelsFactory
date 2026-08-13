@@ -2,8 +2,15 @@ import { sanitizeForJson, sliceChars, sliceWords, stripLoneSurrogates } from "@/
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
+import { assembleScriptsFromFacts } from "@/lib/ai/assemble-scripts";
+import { parseVisionPayload } from "@/lib/ai/vision-frames";
 import { alignAngles, scrubInvented } from "@/lib/ai/constrain-facts";
-import { buildFactCard, buildProfileInsights, hookLine } from "@/lib/content/profile-insights";
+import {
+  buildFactCard,
+  buildProfileInsights,
+  hookLine,
+  mergeVisualNotes,
+} from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 
 function assert(cond: unknown, msg: string) {
@@ -159,6 +166,91 @@ assert(/фисташк/i.test(aligned[0].source_angle || ""), `angle retag ${ali
 const lone = "пышное \uD83D и нежное";
 assert(!/[\uD800-\uDFFF]/.test(stripLoneSurrogates(lone)), "strip lone surrogate");
 JSON.stringify(sanitizeForJson({ title: lone, nested: { t: lone } }));
+
+const vision = parseVisionPayload(
+  {
+    on_screen_text: ["Мятный зефир"],
+    product: "зефир в шоколаде",
+    process: "обмакивают в шоколад",
+    talking_head: false,
+    shot_ideas: ["крупно зефир", "руки в шоколаде"],
+  },
+  "v1",
+);
+assert(vision.product.includes("зефир"), "vision product");
+assert(vision.onScreenText[0] === "Мятный зефир", "vision ocr");
+
+const withVision = mergeVisualNotes(insights, [vision]);
+assert(
+  withVision.factCard.blob.includes("мятный зефир") ||
+    withVision.factCard.allowed.some((t) => /зефир/.test(t)),
+  "ocr folded into facts",
+);
+
+const assembled = assembleScriptsFromFacts(withVision, "РЕЦЕПТ", "process_no_speech");
+assert(assembled.length === 3, "three scripts");
+assert(
+  assembled.map((s) => s.duration_sec).join(",") === "15,30,45",
+  "durations",
+);
+for (const script of assembled) {
+  assert(!isSkeletonScript(script), `not skeleton: ${script.title}`);
+  assert((script.shot_list || []).length === 4, `4 shots: ${script.title}`);
+  assert(/текст на экране/i.test(script.teleprompter_script), "screen text sufler");
+  assert(!/смотрите в камеру/i.test(script.teleprompter_script), "no talking-head");
+  assert(
+    /напиши рецепт/i.test(script.teleprompter_script),
+    "cta in sufler",
+  );
+}
+assert(
+  assembled.some((s) => /фисташк|клубник|мятн|зефир|птичь/i.test(s.title)),
+  "product in assembled title",
+);
+assert(
+  assembled.some((s) => /фисташк|клубник|мятн|зефир|птичь/i.test(s.teleprompter_script)),
+  "product in sufler",
+);
+
+const fitness: ScrapedProfile = {
+  handle: "fitcoach",
+  platform: "instagram",
+  bio: "Тренировки дома. Программа в шапке.",
+  followers: 10000,
+  topVideos: [
+    {
+      id: "a",
+      url: "https://instagram.com/p/a",
+      views: 5000,
+      caption: "Планка 30 секунд: локти под плечами, таз не падает.",
+    },
+    {
+      id: "b",
+      url: "https://instagram.com/p/b",
+      views: 4000,
+      caption: "Ягодичный мост: пятки ближе к тазу, жми вверх на выдохе.",
+    },
+    {
+      id: "c",
+      url: "https://instagram.com/p/c",
+      views: 3000,
+      caption: "Разминка плеч перед жимом: круги руками 20 раз.",
+    },
+  ],
+};
+const fitScripts = assembleScriptsFromFacts(
+  buildProfileInsights(fitness),
+  "ПЛАН",
+  "process_no_speech",
+);
+assert(
+  fitScripts.some((s) => /планка|ягодичн|плеч/i.test(`${s.title} ${s.teleprompter_script}`)),
+  "fitness angle kept",
+);
+assert(
+  !fitScripts.some((s) => /десерт/i.test(`${s.title} ${s.teleprompter_script} ${s.caption}`)),
+  "no dessert leak into other niche",
+);
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,

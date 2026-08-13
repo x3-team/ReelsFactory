@@ -41,6 +41,15 @@ export type FactCard = {
   blob: string;
 };
 
+export type VisualNote = {
+  videoId: string;
+  onScreenText: string[];
+  product: string;
+  process: string;
+  talkingHead: boolean;
+  shotIdeas: string[];
+};
+
 export type ProfileInsights = {
   products: string[];
   prices: string[];
@@ -52,6 +61,7 @@ export type ProfileInsights = {
   bioExcerpt: string;
   avgCaptionChars: number;
   factCard: FactCard;
+  visualNotes: VisualNote[];
 };
 
 function allCaptions(profile: ScrapedProfile): string[] {
@@ -310,7 +320,92 @@ export function buildProfileInsights(profile: ScrapedProfile): ProfileInsights {
             captions.reduce((sum, c) => sum + c.length, 0) / captions.length,
           ),
     factCard: buildFactCard(bio, captions),
+    visualNotes: [],
   };
+}
+
+const GENERIC_OCR =
+  /подпис|лайк|save|follow|reels|ссылк|шапк|обучен|купить на сайте/i;
+
+/**
+ * Fold ffmpeg+vision OCR into the fact card and caption angles so silent
+ * process accounts still get on-screen product names.
+ */
+export function mergeVisualNotes(
+  insights: ProfileInsights,
+  notes: VisualNote[],
+): ProfileInsights {
+  const usable = (notes || []).filter(
+    (n) =>
+      n &&
+      (n.product.trim() ||
+        n.process.trim() ||
+        n.onScreenText.some((t) => t.trim().length >= 3)),
+  );
+  if (!usable.length) {
+    return { ...insights, visualNotes: notes || [] };
+  }
+
+  const extraAllowed = usable
+    .flatMap((n) => [n.product, ...n.onScreenText])
+    .map((s) => s.replace(/\s+/g, " ").trim().toLowerCase())
+    .filter((s) => s.length >= 4 && s.length <= 48 && !GENERIC_OCR.test(s));
+
+  const blobExtra = usable
+    .map((n) =>
+      [n.product, n.process, ...n.onScreenText].filter(Boolean).join(" "),
+    )
+    .join("\n")
+    .toLowerCase();
+
+  const visualAngles: CaptionAngle[] = [];
+  for (const note of usable) {
+    const caption = [note.product, note.process, ...note.onScreenText]
+      .filter((s) => s && s.trim().length >= 4)
+      .join(". ");
+    if (caption.length < 12) continue;
+    const line = hookLine(caption);
+    if (!line || isWeakAngle(line)) continue;
+    visualAngles.push({
+      id: note.videoId,
+      views: 0,
+      hookLine: line,
+      caption: sliceChars(caption, 400),
+    });
+  }
+
+  return {
+    ...insights,
+    visualNotes: usable,
+    captionAngles: uniqueAngles([...insights.captionAngles, ...visualAngles]),
+    products: uniqueKeepOrder([
+      ...insights.products,
+      ...usable.map((n) => n.product).filter((s) => s.length >= 4),
+    ]).slice(0, 12),
+    factCard: {
+      allowed: uniqueKeepOrder([
+        ...insights.factCard.allowed,
+        ...extraAllowed,
+      ]),
+      withoutClaims: insights.factCard.withoutClaims,
+      blob: `${insights.factCard.blob}\n${blobExtra}`.trim(),
+    },
+  };
+}
+
+function uniqueAngles(items: CaptionAngle[]) {
+  const seenId = new Set<string>();
+  const seenHook = new Set<string>();
+  const out: CaptionAngle[] = [];
+  for (const item of items) {
+    const hook = (item.hookLine || "").toLowerCase();
+    if (item.id && seenId.has(item.id)) continue;
+    if (hook && seenHook.has(hook)) continue;
+    if (item.id) seenId.add(item.id);
+    if (hook) seenHook.add(hook);
+    out.push(item);
+  }
+  return out;
 }
 
 function uniqueKeepOrder(items: string[]) {
