@@ -77,7 +77,23 @@ async function readCache(videoKey: string): Promise<VisualNote | null> {
   try {
     const hit = await prisma.whisperCache.findUnique({ where: { videoKey } });
     if (!hit?.text || hit.source !== "vision") return null;
-    return parseVisionPayload(JSON.parse(hit.text), videoKey.replace(/^vision:v1:[^:]+:/, ""));
+    const parsed = JSON.parse(hit.text) as Record<string, unknown>;
+    if (Array.isArray(parsed.onScreenText) || typeof parsed.product === "string") {
+      return {
+        videoId:
+          typeof parsed.videoId === "string" ? parsed.videoId : videoKey,
+        onScreenText: Array.isArray(parsed.onScreenText)
+          ? parsed.onScreenText.filter((t): t is string => typeof t === "string")
+          : [],
+        product: typeof parsed.product === "string" ? parsed.product : "",
+        process: typeof parsed.process === "string" ? parsed.process : "",
+        talkingHead: parsed.talkingHead === true,
+        shotIdeas: Array.isArray(parsed.shotIdeas)
+          ? parsed.shotIdeas.filter((t): t is string => typeof t === "string")
+          : [],
+      };
+    }
+    return parseVisionPayload(parsed, videoKey);
   } catch {
     return null;
   }
