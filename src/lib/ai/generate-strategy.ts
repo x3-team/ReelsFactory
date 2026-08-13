@@ -10,7 +10,11 @@ import { contentModeFromTranscripts } from "@/lib/ai/speech-signal";
 import { getNichePreset } from "@/lib/niche-presets";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import { sliceChars } from "@/lib/ai/safe-json";
-import type { ProfileInsights } from "@/lib/content/profile-insights";
+import {
+  isWeakAngle,
+  nicheFromInsights,
+  type ProfileInsights,
+} from "@/lib/content/profile-insights";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
 const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для рынка РФ/СНГ (Instagram Reels, VK Клипы, YouTube Shorts, Telegram).
@@ -259,10 +263,11 @@ function localStrategyShell(
   },
   sharedKeyword: string,
 ): StrategyPayload {
-  const products = (input.insights?.products || []).slice(0, 4);
-  const angles = (input.insights?.captionAngles || []).slice(0, 4);
+  const angles = (input.insights?.captionAngles || [])
+    .filter((a) => !isWeakAngle(a.hookLine))
+    .slice(0, 4);
   return {
-    niche: products.length ? products.slice(0, 3).join(", ") : "Контент автора",
+    niche: input.insights ? nicheFromInsights(input.insights) : "Контент автора",
     target_audience: "Подписчики автора в РФ/СНГ",
     content_pillars: [
       {

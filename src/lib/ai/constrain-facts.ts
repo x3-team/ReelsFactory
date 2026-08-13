@@ -1,7 +1,9 @@
 import { sliceWords } from "@/lib/ai/safe-json";
 import {
   buildFactCard,
+  isBrokenNiche,
   isWeakAngle,
+  nicheFromInsights,
   type FactCard,
   type ProfileInsights,
 } from "@/lib/content/profile-insights";
@@ -218,21 +220,18 @@ export function constrainFacts(
   const scripts = aligned.map((script) =>
     scrubScript(script, factsForScript(script, insights)),
   );
-  const products = (insights.products || [])
-    .filter((p) => p.length >= 8 && p.length <= 48)
-    .slice(0, 3);
-  const genericNiche = !strategy.niche || /короткий контент/i.test(strategy.niche);
   const genericAudience =
-    !strategy.target_audience || /авторы и эксперты/i.test(strategy.target_audience);
+    !strategy.target_audience ||
+    /авторы и эксперты|домашние кондитеры/i.test(strategy.target_audience);
+  const niche = isBrokenNiche(strategy.niche)
+    ? nicheFromInsights(insights)
+    : strategy.niche;
   return cleanExtras({
     ...strategy,
     scripts,
-    niche:
-      genericNiche && products.length
-        ? `Десерты: ${products.join(", ")}`
-        : strategy.niche,
+    niche,
     target_audience: genericAudience
-      ? "Домашние кондитеры и любители десертов в РФ/СНГ"
+      ? "Подписчики автора в РФ/СНГ"
       : strategy.target_audience,
   });
 }

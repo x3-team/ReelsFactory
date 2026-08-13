@@ -103,9 +103,24 @@ export function isReactionHook(text: string) {
   return REACTION_ONLY.test(t) || Array.from(t).length < 18;
 }
 
+export function isTruncatedAngle(text: string) {
+  const t = (text || "").trim();
+  if (!t) return true;
+  return /\s+(и|в|на|с|из|до|от|по|для|без|при|од|моих|что|как|не|но)$/i.test(t);
+}
+
+export function isMostlyLatin(text: string) {
+  const t = stripDecor(text || "");
+  const cyr = (t.match(/[А-Яа-яЁё]/g) || []).length;
+  const lat = (t.match(/[A-Za-z]/g) || []).length;
+  if (lat < 8) return false;
+  return cyr < 8 && lat >= Math.max(8, cyr * 2);
+}
+
 export function isWeakAngle(text: string) {
   const t = (text || "").trim();
   if (isReactionHook(t)) return true;
+  if (isTruncatedAngle(t)) return true;
   if (/^[-–—•]\s*/.test(t)) return true;
   if (
     /технологическ|обучение можно|купить на сайте|ссылк\w* в шапк|урок по |бонусом от меня|в тк добавлен/i.test(
@@ -115,6 +130,78 @@ export function isWeakAngle(text: string) {
     return true;
   }
   return false;
+}
+
+export function hasProfileMedia(profile: ScrapedProfile) {
+  return (profile.topVideos || []).length > 0;
+}
+
+export function scoreCaptionAngle(angle: CaptionAngle, notes: VisualNote[] = []) {
+  const hook = angle.hookLine || "";
+  let score = Math.log10((angle.views || 0) + 10);
+  if (isWeakAngle(hook)) score -= 25;
+  if (isMostlyLatin(hook)) score -= 18;
+  else if ((hook.match(/[А-Яа-яЁё]/g) || []).length >= 8) score += 10;
+  const note = notes.find((n) => n.videoId === angle.id);
+  if (note && (note.product || note.process || note.onScreenText.length)) {
+    score += 12;
+  }
+  return score;
+}
+
+export function rankCaptionAngles(
+  angles: CaptionAngle[],
+  notes: VisualNote[] = [],
+) {
+  return [...(angles || [])].sort(
+    (a, b) => scoreCaptionAngle(b, notes) - scoreCaptionAngle(a, notes),
+  );
+}
+
+export function hasScriptSignal(insights: ProfileInsights) {
+  return (insights.captionAngles || []).length > 0;
+}
+
+export function nicheFromInsights(insights: ProfileInsights) {
+  const ranked = rankCaptionAngles(
+    insights.captionAngles || [],
+    insights.visualNotes || [],
+  );
+  const bits: string[] = [];
+  const seen = new Set<string>();
+  for (const angle of ranked) {
+    const line = (angle.hookLine || "").replace(/[!.?…🔥💔💚]+$/g, "").trim();
+    if (line.length < 12) continue;
+    if (isWeakAngle(line) || isMostlyLatin(line)) continue;
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    bits.push(line);
+    if (bits.length >= 3) break;
+  }
+  if (bits.length) return bits.join("; ");
+  const bio = (insights.bioExcerpt || "").replace(/\s+/g, " ").trim();
+  if (bio.length >= 20) return sliceChars(bio, 100);
+  if (ranked[0]?.hookLine) return ranked[0].hookLine;
+  return "Контент автора";
+}
+
+export function isBrokenNiche(niche: string | null | undefined) {
+  const t = (niche || "").trim();
+  if (!t) return true;
+  if (/короткий контент|^контент автора$/i.test(t)) return true;
+  const parts = t
+    .split(/[;,]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (!parts.length) return true;
+  if (isWeakAngle(parts[0]) || isTruncatedAngle(parts[0]) || parts[0].length < 12) {
+    return true;
+  }
+  const bad = parts.filter(
+    (p) => isWeakAngle(p) || isTruncatedAngle(p) || p.length < 12,
+  );
+  return bad.length >= Math.ceil(parts.length / 2);
 }
 
 export function hookLine(caption: string) {
@@ -393,16 +480,39 @@ export function mergeVisualNotes(
   };
 }
 
+function betterHook(current: string, candidate: string) {
+  const curWeak =
+    isWeakAngle(current) || isMostlyLatin(current) || isTruncatedAngle(current);
+  const candWeak =
+    isWeakAngle(candidate) || isMostlyLatin(candidate) || isTruncatedAngle(candidate);
+  if (curWeak && !candWeak) return true;
+  if (!curWeak && candWeak) return false;
+  if (isMostlyLatin(current) && !isMostlyLatin(candidate)) return true;
+  return false;
+}
+
 function uniqueAngles(items: CaptionAngle[]) {
-  const seenId = new Set<string>();
-  const seenHook = new Set<string>();
+  const byId = new Map<string, CaptionAngle>();
   const out: CaptionAngle[] = [];
   for (const item of items) {
+    if (item.id && byId.has(item.id)) {
+      const prev = byId.get(item.id)!;
+      if (betterHook(prev.hookLine, item.hookLine)) {
+        const next = {
+          ...prev,
+          hookLine: item.hookLine,
+          caption: item.caption || prev.caption,
+          views: Math.max(prev.views || 0, item.views || 0),
+        };
+        byId.set(item.id, next);
+        const idx = out.findIndex((x) => x.id === item.id);
+        if (idx >= 0) out[idx] = next;
+      }
+      continue;
+    }
     const hook = (item.hookLine || "").toLowerCase();
-    if (item.id && seenId.has(item.id)) continue;
-    if (hook && seenHook.has(hook)) continue;
-    if (item.id) seenId.add(item.id);
-    if (hook) seenHook.add(hook);
+    if (hook && out.some((x) => x.hookLine.toLowerCase() === hook)) continue;
+    if (item.id) byId.set(item.id, item);
     out.push(item);
   }
   return out;

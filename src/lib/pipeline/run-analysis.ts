@@ -19,6 +19,8 @@ import { allocateSharedKeyword } from "@/lib/comment-keyword";
 import { PLANS } from "@/lib/config";
 import {
   buildProfileInsights,
+  hasProfileMedia,
+  hasScriptSignal,
   mergeVisualNotes,
 } from "@/lib/content/profile-insights";
 import {
@@ -103,6 +105,12 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       userId: user.id,
     });
 
+    if (!hasProfileMedia(profile)) {
+      throw new Error(
+        "Не удалось разобрать ролики этого аккаунта. Проверьте, что профиль открытый и в нём есть Reels.",
+      );
+    }
+
     await prisma.profileAnalysis.update({
       where: { id: analysisId },
       data: {
@@ -143,6 +151,11 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
           })
         : [];
     const insights = mergeVisualNotes(buildProfileInsights(profile), visualNotes);
+    if (!hasScriptSignal(insights)) {
+      throw new Error(
+        "В профиле слишком мало понятных роликов для сценариев. Нужны Reels с подписями или текстом на экране.",
+      );
+    }
 
     await prisma.profileAnalysis.update({
       where: { id: analysisId },
@@ -203,7 +216,14 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       insights.suggestedKeyword || rawStrategy.funnel_kit?.comment_keyword,
       user.id,
     );
-    const assembled = assembleScriptsFromFacts(insights, keyword, contentMode);
+    const assembled = assembleScriptsFromFacts(insights, keyword, contentMode, {
+      transcriptions,
+    });
+    if (!assembled.length) {
+      throw new Error(
+        "В профиле слишком мало понятных роликов для сценариев. Нужны Reels с подписями или текстом на экране.",
+      );
+    }
     const strategy = constrainFacts(
       sanitizeStrategy(
         repairStrategy(

@@ -1,6 +1,9 @@
 import { sliceWords } from "@/lib/ai/safe-json";
+import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import {
-  isWeakAngle,
+  hasScriptSignal,
+  isMostlyLatin,
+  rankCaptionAngles,
   type CaptionAngle,
   type ProfileInsights,
   type VisualNote,
@@ -10,7 +13,7 @@ import type { GeneratedScript } from "@/lib/types";
 const DURATIONS = [15, 30, 45] as const;
 const FORMATS = ["процесс", "результат", "чеклист"] as const;
 const TRAILING_PREP =
-  /\s+(и|в|на|с|из|до|от|по|для|без|при|од|моих)$/i;
+  /\s+(и|в|на|с|из|до|от|по|для|без|при|од|моих|что|как|не|но)$/i;
 
 export type ContentMode = "talking_head" | "process_no_speech";
 
@@ -20,6 +23,19 @@ export function tidyCut(text: string) {
   return next;
 }
 
+function spokenBeat(transcriptions: string[] = []) {
+  for (const raw of transcriptions) {
+    if (!isUsableTranscript(raw)) continue;
+    const sentence = raw
+      .split(/[.!?…]/)
+      .map((s) => s.replace(/\s+/g, " ").trim())
+      .find((s) => Array.from(s).length >= 16 && !isMostlyLatin(s));
+    if (!sentence) continue;
+    return sliceWords(sentence.replace(/^хук:\s*/i, ""), 90);
+  }
+  return "";
+}
+
 export function processTeleprompter(
   hook: string,
   duration: number,
@@ -27,21 +43,27 @@ export function processTeleprompter(
   options?: {
     contentMode?: ContentMode;
     processHint?: string;
+    spokenBeat?: string;
   },
 ): string {
   const mid = Math.max(8, Math.round(duration * 0.55));
   const preCta = Math.max(12, duration - 4);
   const product = sliceWords(hook, 70);
-  const process = sliceWords(options?.processHint || hook, 48);
+  const process = sliceWords(
+    options?.spokenBeat || options?.processHint || hook,
+    48,
+  );
   const talking = options?.contentMode === "talking_head";
   return [
     talking
-      ? `0–3с: В кадр: «${product}»`
+      ? `0–3с: В камеру, без приветствия: «${product}»`
       : `0–3с: Крупный план. Текст на экране: «${product}»`,
     talking
-      ? `3–${mid}с: Покажи процесс: ${process}. Коротко, без приветствия.`
+      ? `3–${mid}с: ${process}. Коротко, без «привет друзья».`
       : `3–${mid}с: Крупно процесс: ${process}. Без речи в камеру.`,
-    `${mid}–${preCta}с: Результат — крупный план того, что зритель должен запомнить.`,
+    talking
+      ? `${mid}–${preCta}с: Покажи результат, о котором говоришь.`
+      : `${mid}–${preCta}с: Результат — крупный план того, что зритель должен запомнить.`,
     `${preCta}–${duration}с: Надпись: «Напиши ${keyword} в комментарии».`,
   ].join("\n");
 }
@@ -73,17 +95,25 @@ function shotsFromFact(
   hook: string,
   keyword: string,
   visual?: VisualNote | null,
+  contentMode: ContentMode = "process_no_speech",
 ): string[] {
+  const talking = contentMode === "talking_head";
   const fallback = [
-    `Крупный план: ${sliceWords(hook, 48)}`,
+    talking
+      ? `В камеру: ${sliceWords(hook, 48)}`
+      : `Крупный план: ${sliceWords(hook, 48)}`,
     visual?.process
       ? `Процесс: ${sliceWords(visual.process, 56)}`
-      : "Процесс крупным планом, без приветствия в камеру",
-    "Результат крупным планом",
+      : talking
+        ? "Покажи действие, о котором говоришь"
+        : "Процесс крупным планом, без приветствия в камеру",
+    talking
+      ? "Крупный план результата"
+      : "Результат крупным планом",
     `Текст на экране: напиши «${keyword}»`,
   ];
   if (!visual?.shotIdeas?.length) {
-    if (visual?.onScreenText?.[0]) {
+    if (visual?.onScreenText?.[0] && !talking) {
       fallback[0] = `Крупный план: ${sliceWords(visual.onScreenText[0], 48)}`;
     }
     return fallback;
@@ -115,6 +145,7 @@ export function scriptFromFact(input: {
   duration: number;
   keyword: string;
   contentMode?: ContentMode;
+  spokenBeat?: string;
 }): GeneratedScript {
   const hook = tidyCut(sliceWords(input.angle.hookLine, 72));
   const duration = input.duration;
@@ -123,9 +154,12 @@ export function scriptFromFact(input: {
     input.visual?.process ||
     input.visual?.onScreenText?.[0] ||
     hook;
+  const talking = input.contentMode === "talking_head";
   const variants = [
     hook,
-    tidyCut(`Крупный план: ${sliceWords(hook, 48)}`),
+    talking
+      ? tidyCut(`Скажи в камеру: ${sliceWords(hook, 42)}`)
+      : tidyCut(`Крупный план: ${sliceWords(hook, 48)}`),
     "Сохрани, если будешь повторять",
   ];
   return {
@@ -138,27 +172,28 @@ export function scriptFromFact(input: {
     teleprompter_script: processTeleprompter(hook, duration, keyword, {
       contentMode: input.contentMode,
       processHint,
+      spokenBeat: input.spokenBeat,
     }),
     caption: `${hook}. Напиши «${keyword}» в комментариях — пришлю материал.`,
     cta: `Напиши ${keyword} в комментариях`,
     source_angle: hook,
-    shot_list: shotsFromFact(hook, keyword, input.visual),
+    shot_list: shotsFromFact(hook, keyword, input.visual, input.contentMode),
     props_checklist: uniqueKeepOrder([
       "штатив",
       input.visual?.product
         ? sliceWords(input.visual.product, 40)
-        : "готовая деталь для крупного плана",
+        : talking
+          ? "готовая мысль на 3 секунды"
+          : "готовая деталь для крупного плана",
     ]),
   };
 }
 
-function pickAngles(insights: ProfileInsights): CaptionAngle[] {
-  const ranked = [...(insights.captionAngles || [])].sort((a, b) => {
-    const weakA = isWeakAngle(a.hookLine) ? 1 : 0;
-    const weakB = isWeakAngle(b.hookLine) ? 1 : 0;
-    if (weakA !== weakB) return weakA - weakB;
-    return (b.views || 0) - (a.views || 0);
-  });
+export function pickAngles(insights: ProfileInsights): CaptionAngle[] {
+  const ranked = rankCaptionAngles(
+    insights.captionAngles || [],
+    insights.visualNotes || [],
+  );
   const picked: CaptionAngle[] = [];
   const seen = new Set<string>();
   for (const angle of ranked) {
@@ -179,24 +214,23 @@ export function assembleScriptsFromFacts(
   insights: ProfileInsights,
   keyword: string,
   contentMode: ContentMode = "process_no_speech",
+  options?: { transcriptions?: string[] },
 ): GeneratedScript[] {
   const angles = pickAngles(insights);
+  if (!angles.length || !hasScriptSignal(insights)) return [];
   const notes = insights.visualNotes || [];
-  const fallback: CaptionAngle = {
-    id: "fallback",
-    views: 0,
-    hookLine: insights.products[0] || "Процесс из профиля",
-    caption: insights.bioExcerpt || "",
-  };
+  const beat = spokenBeat(options?.transcriptions || []);
 
-  return DURATIONS.map((duration, index) =>
-    scriptFromFact({
-      angle: angles[index] || fallback,
-      visual: angles[index] ? noteForAngle(angles[index], notes) : notes[0],
+  return DURATIONS.map((duration, index) => {
+    const angle = angles[index] || angles[index % angles.length];
+    return scriptFromFact({
+      angle,
+      visual: noteForAngle(angle, notes) || (index === 0 ? notes[0] : undefined),
       index,
       duration,
       keyword,
       contentMode,
-    }),
-  );
+      spokenBeat: beat,
+    });
+  });
 }

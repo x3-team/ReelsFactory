@@ -4,12 +4,18 @@ import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanit
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
 import { assembleScriptsFromFacts, tidyCut } from "@/lib/ai/assemble-scripts";
 import { parseVisionPayload } from "@/lib/ai/vision-frames";
-import { alignAngles, scrubInvented } from "@/lib/ai/constrain-facts";
+import { alignAngles, constrainFacts, scrubInvented } from "@/lib/ai/constrain-facts";
 import {
   buildFactCard,
   buildProfileInsights,
+  hasProfileMedia,
+  hasScriptSignal,
   hookLine,
+  isBrokenNiche,
+  isMostlyLatin,
+  isTruncatedAngle,
   mergeVisualNotes,
+  nicheFromInsights,
 } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 
@@ -257,6 +263,79 @@ assert(
   !fitScripts.some((s) => /десерт|разлом/i.test(`${s.title} ${s.teleprompter_script} ${s.caption} ${(s.shot_list || []).join(" ")}`)),
   "no dessert leak into other niche",
 );
+
+assert(isTruncatedAngle("Отправь подруге, пусть знает, что"), "truncated что");
+assert(isMostlyLatin("Come to train my abs, ended up training my fall"), "latin hook");
+assert(!hasProfileMedia({ handle: "x", platform: "instagram", bio: "", followers: 0, topVideos: [] }), "empty scrape");
+
+const talking = assembleScriptsFromFacts(
+  insights,
+  "РЕЦЕПТ",
+  "talking_head",
+  {
+    transcriptions: [
+      "Смотрите, если зефир отламывается кусочками — значит сироп добит правильно.",
+    ],
+  },
+);
+assert(/в камеру/i.test(talking[0].teleprompter_script), "talking-head sufler");
+assert(!/без речи в камеру/i.test(talking[0].teleprompter_script), "no silent scaffold");
+assert(/зефир отламывается/i.test(talking[0].teleprompter_script), "spoken beat");
+
+const fitEn: ScrapedProfile = {
+  handle: "fiten",
+  platform: "instagram",
+  bio: "Everyday training",
+  followers: 1000,
+  topVideos: [
+    {
+      id: "a",
+      url: "https://instagram.com/p/a",
+      views: 9000,
+      caption: "Come to train my abs, ended up training my fall lol",
+    },
+  ],
+};
+const fitEnInsights = mergeVisualNotes(buildProfileInsights(fitEn), [
+  {
+    videoId: "a",
+    onScreenText: ["жгут"],
+    product: "тренировочный резиновый жгут",
+    process: "девушка выполняет упражнения с жгутом",
+    talkingHead: false,
+    shotIdeas: ["жгут на перекладине", "упражнение на спину"],
+  },
+]);
+const fitEnScripts = assembleScriptsFromFacts(fitEnInsights, "ГАЙД", "process_no_speech");
+assert(
+  /жгут|упражнен/i.test(`${fitEnScripts[0].title} ${fitEnScripts[0].teleprompter_script} ${(fitEnScripts[0].shot_list || []).join(" ")}`),
+  "ocr beats english caption",
+);
+assert(!/come to train/i.test(fitEnScripts[0].title), "english caption not title");
+assert(hasScriptSignal(fitEnInsights), "ocr gives signal");
+
+assert(
+  isBrokenNiche("убитой, Я не дизайнер, яркая ванная"),
+  "broken niche fragments",
+);
+assert(
+  /ванн|жгут|планка/i.test(nicheFromInsights(fitEnInsights)) ||
+    /жгут/i.test(nicheFromInsights(fitEnInsights)),
+  "niche from strong angle",
+);
+
+const constrained = constrainFacts(
+  {
+    niche: "убитой, Я не дизайнер",
+    target_audience: "Домашние кондитеры и любители десертов в РФ/СНГ",
+    content_pillars: [{ title: "Процесс", description: "x" }],
+    profile_audit_tips: ["a", "b", "c"],
+    scripts: fitEnScripts,
+  },
+  fitEnInsights,
+);
+assert(!/убитой/i.test(constrained.niche), "replace broken niche");
+assert(!/кондитеры/i.test(constrained.target_audience), "no dessert audience leak");
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,
