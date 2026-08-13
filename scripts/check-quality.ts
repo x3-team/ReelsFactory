@@ -14,6 +14,8 @@ import {
   isBrokenNiche,
   isMostlyLatin,
   isNonRussianCopy,
+  isOfftopicAngle,
+  isPromoAngle,
   isTruncatedAngle,
   mergeVisualNotes,
   nicheFromInsights,
@@ -268,6 +270,17 @@ assert(
 
 assert(isTruncatedAngle("Отправь подруге, пусть знает, что"), "truncated что");
 assert(isMostlyLatin("Come to train my abs, ended up training my fall"), "latin hook");
+assert(
+  isPromoAngle("Кстати, в моем Телеграм-канале вас ждут другие рецепты и советы"),
+  "telegram promo",
+);
+assert(
+  isPromoAngle("подписывайтесь котики мои сладкие на мой пиздатенький тик ток"),
+  "tiktok promo",
+);
+assert(isPromoAngle("Поздравляем нашего победителя"), "contest promo");
+assert(!isPromoAngle("Мятный зефир в горьком бельгийском шоколаде"), "product not promo");
+assert(isMostlyLatin("Come to train my abs, ended up training my fall"), "latin hook");
 assert(!hasProfileMedia({ handle: "x", platform: "instagram", bio: "", followers: 0, topVideos: [] }), "empty scrape");
 
 const talking = assembleScriptsFromFacts(
@@ -317,8 +330,95 @@ assert(!/come to train/i.test(fitEnScripts[0].title), "english caption not title
 assert(hasScriptSignal(fitEnInsights), "ocr gives signal");
 
 assert(
+  isBrokenNiche("тренировочный резиновый жгут; объятия. 9:00"),
+  "concatenated hooks are broken niche",
+);
+assert(
   isBrokenNiche("убитой, Я не дизайнер, яркая ванная"),
   "broken niche fragments",
+);
+assert(
+  /десерт|обуча/.test(nicheFromInsights(insights).toLowerCase()),
+  "niche from bio not hook dump",
+);
+
+const psych: ScrapedProfile = {
+  handle: "zoyaniki",
+  platform: "instagram",
+  bio: "Школа макияжа и психология женственности. Запись в шапке.",
+  followers: 80000,
+  topVideos: [
+    {
+      id: "cake",
+      url: "https://instagram.com/p/cake",
+      views: 900000,
+      caption: "А вы можете заказать самые вкусные и красивые тортики у моей мамули",
+    },
+    {
+      id: "p1",
+      url: "https://instagram.com/p/p1",
+      views: 40000,
+      caption: "То что доставляет нам дискомфорт на самом деле наша граница",
+    },
+    {
+      id: "p2",
+      url: "https://instagram.com/p/p2",
+      views: 35000,
+      caption: "Сколько пунктов отозвалось тебе лично по этой психологии",
+    },
+  ],
+};
+const psychInsights = buildProfileInsights(psych);
+assert(isOfftopicAngle(psychInsights.captionAngles[0], psychInsights), "cakes offtopic");
+const psychScripts = assembleScriptsFromFacts(psychInsights, "УРОК", "talking_head");
+assert(
+  !psychScripts.some((s) => /торт/i.test(`${s.title} ${s.source_angle}`)),
+  "offtopic cakes not a script",
+);
+assert(
+  psychScripts.some((s) => /дискомфорт|отозвалось|психолог/i.test(`${s.title} ${s.source_angle}`)),
+  "psych angle kept",
+);
+assert(/макияж|психолог/.test(nicheFromInsights(psychInsights).toLowerCase()), "psych niche from bio");
+
+const chefPromo: ScrapedProfile = {
+  handle: "ivlevchef",
+  platform: "instagram",
+  bio: "Шеф-повар. Рецепты и советы с кухни.",
+  followers: 1000000,
+  topVideos: [
+    {
+      id: "m",
+      url: "https://instagram.com/p/m",
+      views: 20000,
+      caption: "Праздники-то продолжаются. Ловите рецепт мимозы с кухни.",
+    },
+    {
+      id: "tg",
+      url: "https://instagram.com/p/tg",
+      views: 18000,
+      caption: "Кстати, в моем Телеграм-канале вас ждут другие рецепты и советы, а ещё разборы",
+    },
+    {
+      id: "yt",
+      url: "https://instagram.com/p/yt",
+      views: 15000,
+      caption: "Новый выпуск Еда и Деньги с @ivlevchef смотрите на YouTube и VK Видео",
+    },
+  ],
+};
+const chefScripts = assembleScriptsFromFacts(
+  buildProfileInsights(chefPromo),
+  "РЕЦЕПТ",
+  "talking_head",
+);
+assert(
+  !chefScripts.some((s) => /телеграм-канал|youtube и vk/i.test(`${s.title} ${s.source_angle}`)),
+  "promo not a script",
+);
+assert(
+  chefScripts.some((s) => /мимоз|праздник/i.test(`${s.title} ${s.source_angle}`)),
+  "recipe angle kept",
 );
 assert(
   /ванн|жгут|планка/i.test(nicheFromInsights(fitEnInsights)) ||

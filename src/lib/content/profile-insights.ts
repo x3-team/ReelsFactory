@@ -130,11 +130,119 @@ export function isNonRussianCopy(text: string) {
   return isMostlyLatin(text);
 }
 
+const THEME_BAGS: { id: string; re: RegExp }[] = [
+  {
+    id: "food",
+    re: /торт|десерт|рецепт|зефир|мармелад|маршмеллоу|шоколад|кондитер|выпечк|готовить|кухня|еда\b|гастроном/i,
+  },
+  {
+    id: "beauty",
+    re: /макияж|косметик|бров|помад|кожа|уход за|причёск|ресниц|бьюти|визаж/i,
+  },
+  {
+    id: "psych",
+    re: /психолог|отношен|принят|дискомфорт|травм|женственност|самоцен|тревог|границ|отозвалось/i,
+  },
+  {
+    id: "fitness",
+    re: /тренир|фитнес|жгут|планка|ягодиц|пресс|качалк|растяжк|упражнен/i,
+  },
+  {
+    id: "fashion",
+    re: /пальто|кимоно|парка|гардероб|стилист|ателье|кашемир/i,
+  },
+  {
+    id: "interior",
+    re: /интерьер|ремонт|квартир|ванная|двушк|румтур/i,
+  },
+];
+
+function bagsIn(text: string) {
+  const t = text || "";
+  return THEME_BAGS.filter((b) => b.re.test(t)).map((b) => b.id);
+}
+
+function videoThemeBags(insights: ProfileInsights) {
+  return (insights.captionAngles || []).map((a) =>
+    bagsIn(`${a.hookLine} ${a.caption}`),
+  );
+}
+
+export function preferredTheme(insights: ProfileInsights): string | null {
+  const bioBags = bagsIn(insights.bioExcerpt || "");
+  const perVideo = videoThemeBags(insights);
+  const videoCounts = new Map<string, number>();
+  for (const bags of perVideo) {
+    for (const id of new Set(bags)) {
+      videoCounts.set(id, (videoCounts.get(id) || 0) + 1);
+    }
+  }
+  const bioInVideos = bioBags
+    .map((id) => ({ id, n: videoCounts.get(id) || 0 }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n);
+  if (bioInVideos[0]) return bioInVideos[0].id;
+
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [id, n] of videoCounts) {
+    if (n > bestN) {
+      best = id;
+      bestN = n;
+    }
+  }
+  if (bestN >= 2) return best;
+  return bioBags[0] || best;
+}
+
+export function isOfftopicAngle(
+  angle: CaptionAngle,
+  insights: ProfileInsights,
+) {
+  const theme = preferredTheme(insights);
+  if (!theme) return false;
+  const bags = bagsIn(`${angle.hookLine} ${angle.caption}`);
+  if (!bags.length) return false;
+  return !bags.includes(theme);
+}
+
+export function isPromoAngle(text: string) {
+  const t = (text || "").replace(/\s+/g, " ").trim();
+  if (!t) return false;
+  if (
+    /подписыва\w*/i.test(t) &&
+    /(тик\s*ток|tiktok|ютуб|youtube|\bтгк\b|телеграм|канал)/i.test(t)
+  ) {
+    return true;
+  }
+  if (
+    /в мо[её]м телеграм|телеграм-канал вас ждут|ждут другие рецепты|другие рецепты и советы/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /смотрите на youtube|youtube и vk|новый выпуск .*(youtube|ютуб|vk видео)/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/поздравляем нашего победителя/i.test(t)) return true;
+  if (/сотрудничество:|ссылка в шапк|мой тгк/i.test(t)) return true;
+  return false;
+}
+
 export function isWeakAngle(text: string) {
   const t = (text || "").trim();
   if (isReactionHook(t)) return true;
   if (isTruncatedAngle(t)) return true;
+  if (isPromoAngle(t)) return true;
   if (/^[-–—•]\s*/.test(t)) return true;
+  if (/\d{1,2}:\d{2}/.test(t) && (t.match(/[А-Яа-яЁё]{4,}/g) || []).length <= 1) {
+    return true;
+  }
   if (
     /технологическ|обучение можно|купить на сайте|ссылк\w* в шапк|урок по |бонусом от меня|в тк добавлен/i.test(
       t,
@@ -149,12 +257,21 @@ export function hasProfileMedia(profile: ScrapedProfile) {
   return (profile.topVideos || []).length > 0;
 }
 
-export function scoreCaptionAngle(angle: CaptionAngle, notes: VisualNote[] = []) {
+export function scoreCaptionAngle(
+  angle: CaptionAngle,
+  notes: VisualNote[] = [],
+  insights?: ProfileInsights,
+) {
   const hook = angle.hookLine || "";
   let score = Math.log10((angle.views || 0) + 10);
   if (isWeakAngle(hook)) score -= 25;
   if (isNonRussianCopy(hook)) score -= 18;
   else if ((hook.match(/[А-Яа-яЁё]/g) || []).length >= 8) score += 10;
+  if (insights && isOfftopicAngle(angle, insights)) score -= 24;
+  else if (insights) {
+    const theme = preferredTheme(insights);
+    if (theme && bagsIn(`${hook} ${angle.caption}`).includes(theme)) score += 8;
+  }
   const note = notes.find((n) => n.videoId === angle.id);
   if (note && (note.product || note.process || note.onScreenText.length)) {
     score += 12;
@@ -165,9 +282,11 @@ export function scoreCaptionAngle(angle: CaptionAngle, notes: VisualNote[] = [])
 export function rankCaptionAngles(
   angles: CaptionAngle[],
   notes: VisualNote[] = [],
+  insights?: ProfileInsights,
 ) {
   return [...(angles || [])].sort(
-    (a, b) => scoreCaptionAngle(b, notes) - scoreCaptionAngle(a, notes),
+    (a, b) =>
+      scoreCaptionAngle(b, notes, insights) - scoreCaptionAngle(a, notes, insights),
   );
 }
 
@@ -185,28 +304,31 @@ export function hasScriptSignal(insights: ProfileInsights) {
   );
 }
 
+function tidyBioNiche(bio: string) {
+  let t = (bio || "").replace(/\s+/g, " ").trim();
+  if (!t || isNonRussianCopy(t) || t.length < 20) return "";
+  t = t.replace(/^привет[,!.]?\s*(я\s+)?[^\s.]{2,40}[.!]?\s*/i, "");
+  t = t.replace(/https?:\/\/\S+/gi, " ").replace(/\s+/g, " ").trim();
+  if (t.length < 20) return "";
+  return sliceChars(t, 90);
+}
+
 export function nicheFromInsights(insights: ProfileInsights) {
+  const bio = tidyBioNiche(insights.bioExcerpt || "");
+  if (bio) return bio;
   const ranked = rankCaptionAngles(
     insights.captionAngles || [],
     insights.visualNotes || [],
+    insights,
   );
-  const bits: string[] = [];
-  const seen = new Set<string>();
-  for (const angle of ranked) {
-    const line = (angle.hookLine || "").replace(/[!.?…🔥💔💚]+$/g, "").trim();
-    if (line.length < 12) continue;
-    if (isWeakAngle(line) || isNonRussianCopy(line)) continue;
-    const key = line.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    bits.push(line);
-    if (bits.length >= 3) break;
-  }
-  if (bits.length) return bits.join("; ");
-  const bio = (insights.bioExcerpt || "").replace(/\s+/g, " ").trim();
-  if (bio.length >= 20 && !isNonRussianCopy(bio)) return sliceChars(bio, 100);
-  const russian = ranked.find((a) => hasRussianLine(a.hookLine));
-  if (russian?.hookLine) return russian.hookLine;
+  const best = ranked.find((angle) => {
+    const line = (angle.hookLine || "").trim();
+    if (line.length < 12) return false;
+    if (isWeakAngle(line) || isNonRussianCopy(line)) return false;
+    if (isOfftopicAngle(angle, insights)) return false;
+    return true;
+  });
+  if (best?.hookLine) return sliceChars(best.hookLine.replace(/[!.?…🔥💔💚]+$/g, "").trim(), 80);
   return "Контент автора";
 }
 
@@ -215,18 +337,17 @@ export function isBrokenNiche(niche: string | null | undefined) {
   if (!t) return true;
   if (isNonRussianCopy(t)) return true;
   if (/короткий контент|^контент автора$/i.test(t)) return true;
-  const parts = t
-    .split(/[;,]/)
+  const semi = t
+    .split(";")
     .map((p) => p.trim())
     .filter(Boolean);
-  if (!parts.length) return true;
-  if (isWeakAngle(parts[0]) || isTruncatedAngle(parts[0]) || parts[0].length < 12) {
-    return true;
-  }
-  const bad = parts.filter(
-    (p) => isWeakAngle(p) || isTruncatedAngle(p) || p.length < 12,
-  );
-  return bad.length >= Math.ceil(parts.length / 2);
+  if (semi.length >= 2) return true;
+  if (isWeakAngle(t) || isTruncatedAngle(t) || t.length < 12) return true;
+  const commaParts = t
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return commaParts.length >= 2 && commaParts[0].length < 12;
 }
 
 export function hookLine(caption: string) {

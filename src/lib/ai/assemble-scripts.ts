@@ -3,6 +3,8 @@ import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import {
   hasScriptSignal,
   isNonRussianCopy,
+  isOfftopicAngle,
+  isWeakAngle,
   rankCaptionAngles,
   type CaptionAngle,
   type ProfileInsights,
@@ -224,11 +226,14 @@ export function pickAngles(insights: ProfileInsights): CaptionAngle[] {
   const ranked = rankCaptionAngles(
     insights.captionAngles || [],
     insights.visualNotes || [],
+    insights,
   );
   const picked: CaptionAngle[] = [];
   const seen = new Set<string>();
   for (const angle of ranked) {
     if (isNonRussianCopy(angle.hookLine)) continue;
+    if (isWeakAngle(angle.hookLine)) continue;
+    if (isOfftopicAngle(angle, insights)) continue;
     const key = angleKey(angle.hookLine);
     if (key && seen.has(key)) continue;
     if (key) seen.add(key);
