@@ -209,5 +209,21 @@ export function constrainFacts(
   const scripts = aligned.map((script) =>
     scrubScript(script, factsForScript(script, insights)),
   );
-  return cleanExtras({ ...strategy, scripts });
+  const products = (insights.products || [])
+    .filter((p) => p.length >= 8 && p.length <= 48)
+    .slice(0, 3);
+  const genericNiche = !strategy.niche || /короткий контент/i.test(strategy.niche);
+  const genericAudience =
+    !strategy.target_audience || /авторы и эксперты/i.test(strategy.target_audience);
+  return cleanExtras({
+    ...strategy,
+    scripts,
+    niche:
+      genericNiche && products.length
+        ? `Десерты: ${products.join(", ")}`
+        : strategy.niche,
+    target_audience: genericAudience
+      ? "Домашние кондитеры и любители десертов в РФ/СНГ"
+      : strategy.target_audience,
+  });
 }

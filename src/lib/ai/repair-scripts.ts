@@ -161,14 +161,15 @@ export function repairStrategy(
 }
 
 function angleKey(text: string) {
-  return text
+  const words = text
     .toLowerCase()
     .replace(/[^a-zа-яё0-9]+/gi, " ")
     .trim()
     .split(/\s+/)
-    .filter((w) => w.length > 4)
-    .slice(0, 4)
-    .join(" ");
+    .filter((w) => w.length > 4);
+  const head = words.slice(0, 3);
+  const tail = words.slice(-3);
+  return [...new Set([...head, ...tail])].join(" ");
 }
 
 function polishCatalog(

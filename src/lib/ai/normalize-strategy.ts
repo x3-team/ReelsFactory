@@ -99,8 +99,10 @@ function normalizePlatformPacks(
 
 function ensureTeleprompter(raw: string, duration: number, keyword: string) {
   const text = asString(raw);
+  const lastLine = text.trim().split("\n").pop() || "";
   const tooShort = Array.from(text).length < 48;
-  const cutOff = /[а-яёa-z]$/i.test(text.trim());
+  const cutOff =
+    /[а-яёa-z]$/i.test(text.trim()) || /^[\d:.\s–—-]+$/.test(lastLine.trim());
   const hasClock = /0\s*[–—-]\s*3/.test(text) || /\[0/.test(text);
   if (hasClock && !tooShort && !cutOff) {
     if (/смотрите в камеру/i.test(text) && /ошибка аудитории/i.test(text)) {

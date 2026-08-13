@@ -173,6 +173,13 @@ export function dropGenericTelegramTips(
     if (opts.hasWebsiteCta && /добавь(те)? в шапку.*кнопк/i.test(tip)) {
       return false;
     }
+    if (
+      /сделайте обещание в био явным|закрепите ролик с лучшим удержанием|добавьте ключевое слово-cta/i.test(
+        tip,
+      )
+    ) {
+      return false;
+    }
     return true;
   });
 
