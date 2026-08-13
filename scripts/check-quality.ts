@@ -130,7 +130,15 @@ assert(
     /птичьего молока/.test(scrubInvented("бисквит из птичьего молока", insights.factCard)),
   "scrub leftover iz",
 );
-assert(!/до,/.test(scrubInvented("вари до 180°C, тогда гладко", insights.factCard)), "scrub dangling do");
+assert(
+  /меньшим сахаром/.test(
+    scrubInvented(
+      "мармелад без сахара",
+      buildFactCard("", ["мармелад с уменьшенным содержанием сахара"]),
+    ),
+  ),
+  "no sugar-free overclaim",
+);
 
 const aligned = alignAngles(
   [

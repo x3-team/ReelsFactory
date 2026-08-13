@@ -26,6 +26,7 @@ const INVENTED = [
   { re: /альбумин[а-яё]*/gi, key: "альбумин" },
   { re: /темперинг|темперирован[а-яё]*/gi, key: "темперир" },
   { re: /лимонн[а-яё]*\s+кислот[а-яё]*/gi, key: "лимонн" },
+  { re: /сахарозаменител[а-яё]*/gi, key: "сахарозаменит" },
 ];
 
 const TEMPERATURE = /\d+\s*°\s*[cс]|\d+\s*градус\w*/gi;
@@ -57,6 +58,10 @@ export function scrubInvented(text: string, facts: FactCard): string {
   next = next.replace(/за\s+(\d+)\s+сек\w*/gi, (full, n: string) => {
     return new RegExp(`${n}\\s*сек`, "i").test(facts.blob) ? full : "";
   });
+  if (/уменьшенн/.test(facts.blob) && !/без сахара/.test(facts.blob)) {
+    next = next.replace(/без сахара/gi, "с меньшим сахаром");
+  }
+  next = next.replace(/худейте[^.!?]*/gi, "").replace(/следит[е]?\s+за фигурой/gi, "");
   if (!/\d+\s*г/.test(facts.blob)) {
     next = next.replace(/\d+\s*г(?:рамм[а-яё]*)?/gi, "");
   }
@@ -76,6 +81,8 @@ export function scrubInvented(text: string, facts: FactCard): string {
     .replace(/,\s*,+/g, ",")
     .replace(/:\s*,/g, ":")
     .replace(/,\s*\./g, ".")
+    .replace(/\s+:/g, ":")
+    .replace(/:\s*$/g, "")
     .replace(/ {2,}/g, " ")
     .trim();
 }
@@ -141,7 +148,9 @@ function scrubScript(script: GeneratedScript, facts: FactCard): GeneratedScript 
     teleprompter_script: run(script.teleprompter_script),
     caption: run(script.caption),
     cta: run(script.cta),
-    shot_list: (script.shot_list || []).map(run),
+    shot_list: (script.shot_list || []).map((item) =>
+      run(item.replace(/^\d+\.\s*/, "").replace(/^\d+\.\s*/, "")),
+    ),
     props_checklist: (script.props_checklist || []).map(run),
   };
 }
