@@ -117,6 +117,19 @@ export function isMostlyLatin(text: string) {
   return cyr < 8 && lat >= Math.max(8, cyr * 2);
 }
 
+/** Thai / CJK / Arabic / Hangul / Latin-only copy. Product is RU/CIS-only. */
+const FOREIGN_SCRIPTS =
+  /[\u3040-\u30ff\u3400-\u9fff\u0E00-\u0E7F\u0600-\u06FF\u0590-\u05FF\u0900-\u097F\u1100-\u11FF\uAC00-\uD7AF]/g;
+
+export function isNonRussianCopy(text: string) {
+  const t = stripDecor(text || "");
+  if (!t) return false;
+  const cyr = (t.match(/[А-Яа-яЁё]/g) || []).length;
+  const foreign = (t.match(FOREIGN_SCRIPTS) || []).length;
+  if (foreign >= 4 && cyr < 10) return true;
+  return isMostlyLatin(text);
+}
+
 export function isWeakAngle(text: string) {
   const t = (text || "").trim();
   if (isReactionHook(t)) return true;
@@ -140,7 +153,7 @@ export function scoreCaptionAngle(angle: CaptionAngle, notes: VisualNote[] = [])
   const hook = angle.hookLine || "";
   let score = Math.log10((angle.views || 0) + 10);
   if (isWeakAngle(hook)) score -= 25;
-  if (isMostlyLatin(hook)) score -= 18;
+  if (isNonRussianCopy(hook)) score -= 18;
   else if ((hook.match(/[А-Яа-яЁё]/g) || []).length >= 8) score += 10;
   const note = notes.find((n) => n.videoId === angle.id);
   if (note && (note.product || note.process || note.onScreenText.length)) {
@@ -158,8 +171,18 @@ export function rankCaptionAngles(
   );
 }
 
+function hasRussianLine(text: string) {
+  const t = (text || "").replace(/\s+/g, " ").trim();
+  return t.length >= 8 && !isNonRussianCopy(t);
+}
+
 export function hasScriptSignal(insights: ProfileInsights) {
-  return (insights.captionAngles || []).length > 0;
+  if ((insights.captionAngles || []).some((a) => hasRussianLine(a.hookLine))) {
+    return true;
+  }
+  return (insights.visualNotes || []).some((n) =>
+    [n.product, n.process, ...(n.onScreenText || [])].some(hasRussianLine),
+  );
 }
 
 export function nicheFromInsights(insights: ProfileInsights) {
@@ -172,7 +195,7 @@ export function nicheFromInsights(insights: ProfileInsights) {
   for (const angle of ranked) {
     const line = (angle.hookLine || "").replace(/[!.?…🔥💔💚]+$/g, "").trim();
     if (line.length < 12) continue;
-    if (isWeakAngle(line) || isMostlyLatin(line)) continue;
+    if (isWeakAngle(line) || isNonRussianCopy(line)) continue;
     const key = line.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -181,14 +204,16 @@ export function nicheFromInsights(insights: ProfileInsights) {
   }
   if (bits.length) return bits.join("; ");
   const bio = (insights.bioExcerpt || "").replace(/\s+/g, " ").trim();
-  if (bio.length >= 20) return sliceChars(bio, 100);
-  if (ranked[0]?.hookLine) return ranked[0].hookLine;
+  if (bio.length >= 20 && !isNonRussianCopy(bio)) return sliceChars(bio, 100);
+  const russian = ranked.find((a) => hasRussianLine(a.hookLine));
+  if (russian?.hookLine) return russian.hookLine;
   return "Контент автора";
 }
 
 export function isBrokenNiche(niche: string | null | undefined) {
   const t = (niche || "").trim();
   if (!t) return true;
+  if (isNonRussianCopy(t)) return true;
   if (/короткий контент|^контент автора$/i.test(t)) return true;
   const parts = t
     .split(/[;,]/)
@@ -422,21 +447,29 @@ export function mergeVisualNotes(
   insights: ProfileInsights,
   notes: VisualNote[],
 ): ProfileInsights {
-  const usable = (notes || []).filter(
-    (n) =>
-      n &&
-      (n.product.trim() ||
-        n.process.trim() ||
-        n.onScreenText.some((t) => t.trim().length >= 3)),
-  );
+  const usable = (notes || [])
+    .map(scrubVisualNote)
+    .filter(
+      (n) =>
+        n &&
+        (n.product.trim() ||
+          n.process.trim() ||
+          n.onScreenText.some((t) => t.trim().length >= 3)),
+    );
   if (!usable.length) {
-    return { ...insights, visualNotes: notes || [] };
+    return { ...insights, visualNotes: [] };
   }
 
   const extraAllowed = usable
     .flatMap((n) => [n.product, ...n.onScreenText])
     .map((s) => s.replace(/\s+/g, " ").trim().toLowerCase())
-    .filter((s) => s.length >= 4 && s.length <= 48 && !GENERIC_OCR.test(s));
+    .filter(
+      (s) =>
+        s.length >= 4 &&
+        s.length <= 48 &&
+        !GENERIC_OCR.test(s) &&
+        !isNonRussianCopy(s),
+    );
 
   const blobExtra = usable
     .map((n) =>
@@ -452,7 +485,7 @@ export function mergeVisualNotes(
       .join(". ");
     if (caption.length < 12) continue;
     const line = hookLine(caption);
-    if (!line || isWeakAngle(line)) continue;
+    if (!line || isWeakAngle(line) || isNonRussianCopy(line)) continue;
     visualAngles.push({
       id: note.videoId,
       views: 0,
@@ -480,14 +513,32 @@ export function mergeVisualNotes(
   };
 }
 
+function scrubVisualNote(note: VisualNote): VisualNote {
+  return {
+    ...note,
+    onScreenText: (note.onScreenText || []).filter(
+      (t) => t.trim().length >= 3 && !isNonRussianCopy(t),
+    ),
+    product: isNonRussianCopy(note.product) ? "" : note.product,
+    process: isNonRussianCopy(note.process) ? "" : note.process,
+    shotIdeas: (note.shotIdeas || []).filter(
+      (t) => t.trim().length >= 4 && !isNonRussianCopy(t),
+    ),
+  };
+}
+
 function betterHook(current: string, candidate: string) {
   const curWeak =
-    isWeakAngle(current) || isMostlyLatin(current) || isTruncatedAngle(current);
+    isWeakAngle(current) ||
+    isNonRussianCopy(current) ||
+    isTruncatedAngle(current);
   const candWeak =
-    isWeakAngle(candidate) || isMostlyLatin(candidate) || isTruncatedAngle(candidate);
+    isWeakAngle(candidate) ||
+    isNonRussianCopy(candidate) ||
+    isTruncatedAngle(candidate);
   if (curWeak && !candWeak) return true;
   if (!curWeak && candWeak) return false;
-  if (isMostlyLatin(current) && !isMostlyLatin(candidate)) return true;
+  if (isNonRussianCopy(current) && !isNonRussianCopy(candidate)) return true;
   return false;
 }
 

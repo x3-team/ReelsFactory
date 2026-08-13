@@ -13,6 +13,7 @@ import {
   hookLine,
   isBrokenNiche,
   isMostlyLatin,
+  isNonRussianCopy,
   isTruncatedAngle,
   mergeVisualNotes,
   nicheFromInsights,
@@ -26,6 +27,7 @@ function assert(cond: unknown, msg: string) {
 assert(!isUsableTranscript("Thank you for watching!"), "stock en");
 assert(!isUsableTranscript("チャンネル登録をお願いいたします。"), "stock jp");
 assert(!isUsableTranscript("200°C-392°F 10-15分"), "cjk recipe");
+assert(!isUsableTranscript("ลูกนึกว่าถ่ายภาพนิ่ง สานสัมพันธ์พี่น้อง"), "thai speech");
 assert(!isUsableTranscript("ok"), "too short");
 assert(
   isUsableTranscript(
@@ -336,6 +338,103 @@ const constrained = constrainFacts(
 );
 assert(!/убитой/i.test(constrained.niche), "replace broken niche");
 assert(!/кондитеры/i.test(constrained.target_audience), "no dessert audience leak");
+
+assert(isNonRussianCopy("ลูกนึกว่าถ่ายภาพนิ่ง สานสัมพันธ์พี่น้อง"), "thai copy");
+assert(isNonRussianCopy("何気ない道をのんびり歩く。"), "japanese copy");
+assert(!isNonRussianCopy("тренировочный резиновый жгут"), "russian product");
+
+const thaiOcr = mergeVisualNotes(
+  buildProfileInsights({
+    handle: "media",
+    platform: "instagram",
+    bio: "медиа",
+    followers: 1000,
+    topVideos: [
+      {
+        id: "th",
+        url: "https://instagram.com/p/th",
+        views: 8000,
+        caption: "танцуют и показывают жесты на семейном празднике",
+      },
+    ],
+  }),
+  [
+    {
+      videoId: "th",
+      onScreenText: ["ลูกนึกว่าถ่ายภาพนิ่ง", "танцуют и показывают жесты"],
+      product: "ลูกนึกว่าถ่ายภาพนิ่ง",
+      process: "танцуют",
+      talkingHead: false,
+      shotIdeas: ["ลูกนึกว่าถ่ายภาพนิ่ง"],
+    },
+  ],
+);
+assert(
+  !thaiOcr.captionAngles.some((a) => /[\u0E00-\u0E7F]/.test(a.hookLine)),
+  "thai ocr not a hook",
+);
+assert(
+  !thaiOcr.visualNotes.some((n) => n.onScreenText.some((t) => /[\u0E00-\u0E7F]/.test(t))),
+  "thai ocr stripped",
+);
+
+const jpOnly = buildProfileInsights({
+  handle: "livemaster",
+  platform: "instagram",
+  bio: "ワンダーサーイ",
+  followers: 10,
+  topVideos: [
+    {
+      id: "jp",
+      url: "https://instagram.com/p/jp",
+      views: 8,
+      caption: "何気ない道をのんびり歩く。",
+    },
+  ],
+});
+assert(!hasScriptSignal(jpOnly), "japanese-only profile has no signal");
+assert(
+  assembleScriptsFromFacts(jpOnly, "ГАЙД", "process_no_speech").length === 0,
+  "no scripts from japanese-only",
+);
+
+const talkingBeats = assembleScriptsFromFacts(
+  insights,
+  "РЕЦЕПТ",
+  "talking_head",
+  {
+    clips: [
+      {
+        videoId: "1",
+        text: "Смотрите, если зефир отламывается кусочками — значит сироп добит правильно.",
+      },
+      {
+        videoId: "2",
+        text: "Мятный зефир лучше обмакивать в горький шоколад, так вкуснее и стабильнее.",
+      },
+      {
+        videoId: "3",
+        text: "Фисташка и малина в бенто работают, если крем не слишком жидкий.",
+      },
+    ],
+  },
+);
+assert(
+  talkingBeats.some((s) => /зефир отламывается/.test(s.teleprompter_script)),
+  "beat video 1",
+);
+assert(
+  talkingBeats.some((s) => /обмакивать|мятный зефир лучше/.test(s.teleprompter_script)),
+  "beat video 2",
+);
+assert(
+  talkingBeats.some((s) => /фисташка и малина/i.test(s.teleprompter_script.toLowerCase())),
+  "beat video 3",
+);
+assert(
+  new Set(talkingBeats.map((s) => s.teleprompter_script)).size === 3,
+  "three different spoken beats",
+);
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,

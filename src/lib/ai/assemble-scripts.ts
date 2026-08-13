@@ -2,7 +2,7 @@ import { sliceWords } from "@/lib/ai/safe-json";
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import {
   hasScriptSignal,
-  isMostlyLatin,
+  isNonRussianCopy,
   rankCaptionAngles,
   type CaptionAngle,
   type ProfileInsights,
@@ -17,21 +17,52 @@ const TRAILING_PREP =
 
 export type ContentMode = "talking_head" | "process_no_speech";
 
+export type SpokenClip = { videoId?: string; text: string };
+
 export function tidyCut(text: string) {
   let next = (text || "").trim().replace(/[!,.?…🔥💔💚]+$/g, "").trim();
   next = next.replace(TRAILING_PREP, "").trim();
   return next;
 }
 
-function spokenBeat(transcriptions: string[] = []) {
-  for (const raw of transcriptions) {
-    if (!isUsableTranscript(raw)) continue;
-    const sentence = raw
-      .split(/[.!?…]/)
-      .map((s) => s.replace(/\s+/g, " ").trim())
-      .find((s) => Array.from(s).length >= 16 && !isMostlyLatin(s));
-    if (!sentence) continue;
-    return sliceWords(sentence.replace(/^хук:\s*/i, ""), 90);
+function beatFromText(raw: string) {
+  if (!isUsableTranscript(raw)) return "";
+  const sentence = raw
+    .split(/[.!?…]/)
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .find((s) => Array.from(s).length >= 16 && !isNonRussianCopy(s));
+  if (!sentence) return "";
+  return sliceWords(sentence.replace(/^хук:\s*/i, ""), 90);
+}
+
+function asClips(options?: {
+  transcriptions?: string[];
+  clips?: SpokenClip[];
+}): SpokenClip[] {
+  if (options?.clips?.length) return options.clips;
+  return (options?.transcriptions || []).map((text) => ({ text }));
+}
+
+function spokenBeatForAngle(
+  angle: CaptionAngle,
+  clips: SpokenClip[],
+  used: Set<string>,
+) {
+  const byId = clips.find((c) => c.videoId && c.videoId === angle.id);
+  if (byId) {
+    const beat = beatFromText(byId.text);
+    if (beat) {
+      used.add(byId.videoId || byId.text);
+      return beat;
+    }
+  }
+  for (const clip of clips) {
+    const key = clip.videoId || clip.text;
+    if (used.has(key)) continue;
+    const beat = beatFromText(clip.text);
+    if (!beat) continue;
+    used.add(key);
+    return beat;
   }
   return "";
 }
@@ -197,6 +228,7 @@ export function pickAngles(insights: ProfileInsights): CaptionAngle[] {
   const picked: CaptionAngle[] = [];
   const seen = new Set<string>();
   for (const angle of ranked) {
+    if (isNonRussianCopy(angle.hookLine)) continue;
     const key = angleKey(angle.hookLine);
     if (key && seen.has(key)) continue;
     if (key) seen.add(key);
@@ -214,12 +246,13 @@ export function assembleScriptsFromFacts(
   insights: ProfileInsights,
   keyword: string,
   contentMode: ContentMode = "process_no_speech",
-  options?: { transcriptions?: string[] },
+  options?: { transcriptions?: string[]; clips?: SpokenClip[] },
 ): GeneratedScript[] {
   const angles = pickAngles(insights);
   if (!angles.length || !hasScriptSignal(insights)) return [];
   const notes = insights.visualNotes || [];
-  const beat = spokenBeat(options?.transcriptions || []);
+  const clips = asClips(options);
+  const usedBeats = new Set<string>();
 
   return DURATIONS.map((duration, index) => {
     const angle = angles[index] || angles[index % angles.length];
@@ -230,7 +263,7 @@ export function assembleScriptsFromFacts(
       duration,
       keyword,
       contentMode,
-      spokenBeat: beat,
+      spokenBeat: spokenBeatForAngle(angle, clips, usedBeats),
     });
   });
 }

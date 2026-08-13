@@ -21,11 +21,14 @@ export function isUsableTranscript(text: string | null | undefined): boolean {
 
   const cyr = (t.match(/[А-Яа-яЁё]/g) || []).length;
   const lat = (t.match(/[A-Za-z]/g) || []).length;
-  const cjk = (t.match(/[\u3040-\u30ff\u3400-\u9fff]/g) || []).length;
+  const foreign =
+    (t.match(
+      /[\u3040-\u30ff\u3400-\u9fff\u0E00-\u0E7F\u0600-\u06FF\u0590-\u05FF\u0900-\u097F\u1100-\u11FF\uAC00-\uD7AF]/g,
+    ) || []).length;
   const letters = cyr + lat;
 
   if (letters < 12) return false;
-  if (cjk >= 4 && cyr < 10) return false;
+  if (foreign >= 4 && cyr < 10) return false;
   if (cyr < 10 && lat >= cyr * 2) return false;
   return true;
 }

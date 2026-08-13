@@ -14,7 +14,7 @@ import {
   VISION_FRAMES_PER_VIDEO,
   VISION_MAX_VIDEOS,
 } from "@/lib/content/scrape-limits";
-import type { VisualNote } from "@/lib/content/profile-insights";
+import { isNonRussianCopy, type VisualNote } from "@/lib/content/profile-insights";
 import { prisma } from "@/lib/prisma";
 import type { ScrapedVideo } from "@/lib/types";
 
@@ -38,21 +38,25 @@ export function parseVisionPayload(raw: unknown, videoId: string): VisualNote {
     ? obj.on_screen_text
         .filter((t): t is string => typeof t === "string")
         .map((t) => t.replace(/\s+/g, " ").trim())
-        .filter((t) => t.length >= 2)
+        .filter((t) => t.length >= 2 && !isNonRussianCopy(t))
         .slice(0, 8)
     : [];
   const shots = Array.isArray(obj.shot_ideas)
     ? obj.shot_ideas
         .filter((t): t is string => typeof t === "string")
         .map((t) => t.replace(/\s+/g, " ").trim())
-        .filter((t) => t.length >= 4)
+        .filter((t) => t.length >= 4 && !isNonRussianCopy(t))
         .slice(0, 6)
     : [];
+  const product =
+    typeof obj.product === "string" ? obj.product.replace(/\s+/g, " ").trim() : "";
+  const process =
+    typeof obj.process === "string" ? obj.process.replace(/\s+/g, " ").trim() : "";
   return {
     videoId,
     onScreenText: texts,
-    product: typeof obj.product === "string" ? obj.product.replace(/\s+/g, " ").trim() : "",
-    process: typeof obj.process === "string" ? obj.process.replace(/\s+/g, " ").trim() : "",
+    product: isNonRussianCopy(product) ? "" : product,
+    process: isNonRussianCopy(process) ? "" : process,
     talkingHead: obj.talking_head === true,
     shotIdeas: shots,
   };

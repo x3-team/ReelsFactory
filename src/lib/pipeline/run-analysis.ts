@@ -1,7 +1,7 @@
 import { sanitizeForJson } from "@/lib/ai/safe-json";
 import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
-import { assembleScriptsFromFacts } from "@/lib/ai/assemble-scripts";
+import { assembleScriptsFromFacts, type SpokenClip } from "@/lib/ai/assemble-scripts";
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
 import {
@@ -119,7 +119,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
-    const transcriptions: string[] = [];
+    const clips: SpokenClip[] = [];
     let garbageStreak = 0;
     for (const video of profile.topVideos.slice(0, WHISPER_MAX_VIDEOS)) {
       if (garbageStreak >= WHISPER_GARBAGE_STREAK_STOP) break;
@@ -134,13 +134,14 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         userId: user.id,
       });
       if (isUsableTranscript(text)) {
-        transcriptions.push(text);
+        clips.push({ videoId: video.id, text });
         garbageStreak = 0;
       } else {
         garbageStreak += 1;
       }
     }
 
+    const transcriptions = clips.map((c) => c.text);
     const contentMode = contentModeFromTranscripts(transcriptions);
     const visualNotes =
       contentMode === "process_no_speech"
@@ -217,7 +218,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       user.id,
     );
     const assembled = assembleScriptsFromFacts(insights, keyword, contentMode, {
-      transcriptions,
+      clips,
     });
     if (!assembled.length) {
       throw new Error(
