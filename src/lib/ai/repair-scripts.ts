@@ -201,11 +201,13 @@ function polishCatalog(
   const shoot = strategy.shoot_day;
   if (!shoot) return { ...strategy, scripts };
   const current = Array.isArray(shoot.extra_ideas) ? shoot.extra_ideas : [];
+  const usedKeys = new Set(scripts.map((s) => angleKey(s.title || s.source_angle || "")));
   const merged = extras.length
     ? [...extras, ...current]
         .filter((idea, idx, arr) => {
           const k = angleKey(idea.title || idea.hook || "");
-          return k && arr.findIndex((x) => angleKey(x.title || x.hook || "") === k) === idx;
+          if (!k || usedKeys.has(k)) return false;
+          return arr.findIndex((x) => angleKey(x.title || x.hook || "") === k) === idx;
         })
         .slice(0, 4)
     : current;

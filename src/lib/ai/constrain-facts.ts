@@ -57,6 +57,9 @@ export function scrubInvented(text: string, facts: FactCard): string {
   next = next.replace(/за\s+(\d+)\s+секунд\w*/gi, (full, n: string) => {
     return new RegExp(`${n}\\s*секунд`, "i").test(facts.blob) ? full : "";
   });
+  if (!/\d+\s*г/.test(facts.blob)) {
+    next = next.replace(/\d+\s*г(?:рамм[а-яё]*)?/gi, "");
+  }
   return next
     .replace(/\s+([.,!?])/g, "$1")
     .replace(/[—–-]\s*[—–-]/g, "—")
@@ -67,6 +70,11 @@ export function scrubInvented(text: string, facts: FactCard): string {
     .replace(/до\s+тогда/gi, "тогда")
     .replace(/при\s+\d+[-–]?\s*\.?/gi, "")
     .replace(/(^|[.!?]\s+|«)\s*из\s+/gi, "$1")
+    .replace(/\(\s*[,;]?\s*\)/g, "")
+    .replace(/\bс\s+и\s+/gi, "")
+    .replace(/\s+и\s+и\s+/g, " и ")
+    .replace(/,\s*,+/g, ",")
+    .replace(/:\s*,/g, ":")
     .replace(/ {2,}/g, " ")
     .trim();
 }
