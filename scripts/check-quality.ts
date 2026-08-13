@@ -2,7 +2,7 @@ import { sanitizeForJson, sliceChars, sliceWords, stripLoneSurrogates } from "@/
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
-import { assembleScriptsFromFacts } from "@/lib/ai/assemble-scripts";
+import { assembleScriptsFromFacts, tidyCut } from "@/lib/ai/assemble-scripts";
 import { parseVisionPayload } from "@/lib/ai/vision-frames";
 import { alignAngles, scrubInvented } from "@/lib/ai/constrain-facts";
 import {
@@ -202,7 +202,13 @@ for (const script of assembled) {
     /напиши рецепт/i.test(script.teleprompter_script),
     "cta in sufler",
   );
+  assert(!/\s+(и|в|на|с)$/i.test(script.title), `no trailing prep: ${script.title}`);
 }
+assert(
+  tidyCut("Малиновый мармелад с уменьшенным содержанием сахара в") ===
+    "Малиновый мармелад с уменьшенным содержанием сахара",
+  "tidy trailing prep",
+);
 assert(
   assembled.some((s) => /фисташк|клубник|мятн|зефир|птичь/i.test(s.title)),
   "product in assembled title",

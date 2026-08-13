@@ -1,4 +1,4 @@
-import { scriptFromFact } from "@/lib/ai/assemble-scripts";
+import { scriptFromFact, tidyCut } from "@/lib/ai/assemble-scripts";
 import { sliceWords } from "@/lib/ai/safe-json";
 import {
   isWeakAngle,
@@ -156,11 +156,12 @@ function polishCatalog(
     .filter((angle) => !isWeakAngle(angle.hookLine))
     .slice(0, 4)
     .map((angle, i) => ({
-    title: sliceWords(angle.hookLine, 56),
-    hook: sliceWords(angle.hookLine, 72),
-    pillar: "ассортимент",
-    duration_sec: i % 2 === 0 ? 15 : 30,
-  }));
+      title: tidyCut(sliceWords(angle.hookLine, 56)),
+      hook: tidyCut(sliceWords(angle.hookLine, 72)),
+      pillar: "ассортимент",
+      duration_sec: i % 2 === 0 ? 15 : 30,
+    }))
+    .filter((idea) => idea.title.length >= 12 && !/\s+(и|в|на|с)$/i.test(idea.title));
   const shoot = strategy.shoot_day;
   if (!shoot) return { ...strategy, scripts };
   const current = Array.isArray(shoot.extra_ideas) ? shoot.extra_ideas : [];

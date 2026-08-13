@@ -9,8 +9,16 @@ import type { GeneratedScript } from "@/lib/types";
 
 const DURATIONS = [15, 30, 45] as const;
 const FORMATS = ["процесс", "результат", "чеклист"] as const;
+const TRAILING_PREP =
+  /\s+(и|в|на|с|из|до|от|по|для|без|при|од|моих)$/i;
 
 export type ContentMode = "talking_head" | "process_no_speech";
+
+export function tidyCut(text: string) {
+  let next = (text || "").trim().replace(/[!.?…🔥💔💚]+$/g, "").trim();
+  next = next.replace(TRAILING_PREP, "").trim();
+  return next;
+}
 
 export function processTeleprompter(
   hook: string,
@@ -108,7 +116,7 @@ export function scriptFromFact(input: {
   keyword: string;
   contentMode?: ContentMode;
 }): GeneratedScript {
-  const hook = sliceWords(input.angle.hookLine, 72);
+  const hook = tidyCut(sliceWords(input.angle.hookLine, 72));
   const duration = input.duration;
   const keyword = input.keyword;
   const processHint =
@@ -117,11 +125,11 @@ export function scriptFromFact(input: {
     hook;
   const variants = [
     hook,
-    `Крупный план: ${sliceWords(hook, 42)}`,
+    tidyCut(`Крупный план: ${sliceWords(hook, 48)}`),
     "Сохрани, если будешь повторять",
   ];
   return {
-    title: sliceWords(hook.replace(/[!.?…🔥💔💚]+$/g, ""), 56) || `Ролик ${duration}с`,
+    title: tidyCut(sliceWords(hook, 56)) || `Ролик ${duration}с`,
     format: FORMATS[input.index % FORMATS.length],
     duration_sec: duration,
     shoot_order: input.index + 1,
