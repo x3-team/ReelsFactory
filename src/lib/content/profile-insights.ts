@@ -135,6 +135,7 @@ export function hookLine(caption: string) {
 
 function tidyHook(text: string) {
   return text
+    .replace(/^[-–—•]\s*/, "")
     .replace(/[.,!?…]+$/g, "")
     .replace(/,?\s*одно из моих\w*$/i, "")
     .replace(/,?\s*и бонусом.*$/i, "")

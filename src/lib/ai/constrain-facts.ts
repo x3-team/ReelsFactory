@@ -9,22 +9,23 @@ import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 
 const INVENTED_PHRASES = [
   { re: /крем на (основе )?йогурта|на основе йогурта|йогуртов\w* крем/gi, key: "йогурт" },
-  { re: /нарезки бисквита|бисквит\w*/gi, key: "бисквит" },
+  { re: /нарезки бисквита|бисквит[а-яё]*/gi, key: "бисквит" },
   { re: /без глютена/gi, key: "глютен" },
 ];
 
 const INVENTED = [
-  { re: /йогурт\w*/gi, key: "йогурт" },
-  { re: /бисквит\w*/gi, key: "бисквит" },
+  { re: /йогурт[а-яё]*/gi, key: "йогурт" },
+  { re: /бисквит[а-яё]*/gi, key: "бисквит" },
   { re: /маскарпоне/gi, key: "маскарпоне" },
   { re: /крем-?чиз|сливочный сыр/gi, key: "крем-чиз" },
-  { re: /глютен\w*/gi, key: "глютен" },
-  { re: /кокос\w*/gi, key: "кокос" },
-  { re: /желатин\w*/gi, key: "желатин" },
-  { re: /пектин\w*/gi, key: "пектин" },
-  { re: /яблочн\w*(?:\s+пюре)?/gi, key: "яблочн" },
-  { re: /альбумин\w*/gi, key: "альбумин" },
-  { re: /темперинг|темперирован\w*/gi, key: "темперир" },
+  { re: /глютен[а-яё]*/gi, key: "глютен" },
+  { re: /кокос[а-яё]*/gi, key: "кокос" },
+  { re: /желатин[а-яё]*/gi, key: "желатин" },
+  { re: /пектин[а-яё]*/gi, key: "пектин" },
+  { re: /яблочн[а-яё]*(?:\s+пюре)?/gi, key: "яблочн" },
+  { re: /альбумин[а-яё]*/gi, key: "альбумин" },
+  { re: /темперинг|темперирован[а-яё]*/gi, key: "темперир" },
+  { re: /лимонн[а-яё]*\s+кислот[а-яё]*/gi, key: "лимонн" },
 ];
 
 const TEMPERATURE = /\d+\s*°\s*[cс]|\d+\s*градус\w*/gi;
@@ -95,7 +96,13 @@ function significantWords(text: string) {
 function overlapScore(scriptText: string, angleText: string) {
   const words = significantWords(angleText);
   if (!words.length) return 0;
-  return words.filter((w) => scriptText.includes(w)).length;
+  let score = words.filter((w) => scriptText.includes(w)).length;
+  const quoted = angleText.match(/[«"]([^»"]{3,40})[»"]/g) || [];
+  for (const raw of quoted) {
+    const q = raw.replace(/[«»"]/g, "").toLowerCase();
+    if (q.length >= 4 && scriptText.includes(q)) score += 3;
+  }
+  return score;
 }
 
 function factsForScript(

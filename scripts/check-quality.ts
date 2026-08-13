@@ -123,6 +123,7 @@ const mintFacts = buildFactCard("", [
 ]);
 assert(!/яблочн/.test(scrubInvented("меренга с яблочным пюре и альбумином", mintFacts)), "per-caption apple");
 assert(!/10 минут/.test(scrubInvented("готовится 10 минут", mintFacts)), "per-caption minutes");
+assert(!/лимонн/.test(scrubInvented("варим с лимонной кислотой", mintFacts)), "per-caption lemon");
 assert(
   !/^\s*из /.test(scrubInvented("бисквит из птичьего молока", insights.factCard)) &&
     /птичьего молока/.test(scrubInvented("бисквит из птичьего молока", insights.factCard)),
