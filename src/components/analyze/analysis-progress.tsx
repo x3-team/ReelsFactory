@@ -74,7 +74,7 @@ function percentForStatus(
 }
 
 function scrapeDetail(platform?: string | null, fromLinks?: boolean) {
-  if (fromLinks) return "Только вставленные URL · аккаунт не открывали";
+  if (fromLinks) return "Только вставленные URL и подписи";
   const name = formatPlatform(platform);
   return `Био и топ‑видео · ${name}`;
 }

@@ -53,6 +53,20 @@ export async function parseProfile(input: {
   const hasUserReels = hasEnoughSubmittedReels(submitted);
   const cacheKey = `${input.platform}:${handle.toLowerCase()}:${PROFILE_CACHE_VERSION}`;
 
+  // Pasted links always win. Do not revive a live scrape cache or call Apify
+  // and then pretend we opened @handle.
+  if (hasUserReels) {
+    assertCanAnalyzeProfile(input.platform, process.env, {
+      hasUserReels: true,
+      handle,
+    });
+    return profileFromSubmittedReels({
+      handle,
+      platform: input.platform,
+      reels: submitted,
+    });
+  }
+
   const cached = await prisma.scrapeCache.findUnique({
     where: { cacheKey },
   });
@@ -80,13 +94,6 @@ export async function parseProfile(input: {
   }
 
   if (!hasScrapingCredentials()) {
-    if (hasUserReels) {
-      return profileFromSubmittedReels({
-        handle,
-        platform: input.platform,
-        reels: submitted,
-      });
-    }
     if (allowMockProfile()) {
       return mockScrapedProfile(handle, input.platform);
     }

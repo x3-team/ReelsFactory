@@ -100,11 +100,13 @@ function SourceVideosCard({
 }) {
   if (hidden || videos.length === 0) return null;
   const modelLine = [
-    scrapeMode === "apify-reuse"
-      ? "скрейп: датасет Apify (новый run закрыт лимитом)"
-      : scrapeMode === "live-run"
-        ? "скрейп: новый run Apify"
-        : null,
+    fromLinks
+      ? null
+      : scrapeMode === "apify-reuse"
+        ? "скрейп: датасет Apify (новый run закрыт лимитом)"
+        : scrapeMode === "live-run"
+          ? "скрейп: новый run Apify"
+          : null,
     strategyModel ? `стратегия: ${strategyModel}` : null,
     whisperModel ? `речь: ${whisperModel}` : null,
     typeof spokenClipCount === "number" ? `транскриптов: ${spokenClipCount}` : null,
@@ -262,7 +264,7 @@ export function ResultsDashboard({
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">
             {analysis.profileSource === "user"
-              ? `@${analysis.socialHandle} — подпись разбора, аккаунт не открывали`
+              ? `@${analysis.socialHandle} — подпись, не источник скрейпа`
               : `@${analysis.socialHandle} · ${formatPlatform(analysis.platform)}`}
           </p>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
@@ -276,7 +278,7 @@ export function ResultsDashboard({
             {analysis.profileSource === "mock"
               ? "Профиль не скрейпили — это каркас, не разбор этого аккаунта"
               : analysis.profileSource === "user"
-                ? "Суфлёр в этом сеансе · не «открыли @username»"
+                ? "Суфлёр в этом сеансе · только ваши ссылки"
                 : "Из роликов ниже · суфлёр в этом же сеансе"}
           </p>
           {usage && <div className="mt-2"><UsageQuotaCard usage={usage} /></div>}
@@ -299,8 +301,8 @@ export function ResultsDashboard({
 
       {analysis.profileSource === "user" && (
         <div className="rounded-2xl border border-border/80 bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-          Аккаунт @{analysis.socialHandle} не открывали. Разобрали только
-          ссылки ниже. Instagram ToS серый — тихий обход не используем.
+          Разобрали только ссылки ниже. @{analysis.socialHandle} — подпись
+          сценариев. Instagram ToS серый — тихий обход не используем.
         </div>
       )}
 

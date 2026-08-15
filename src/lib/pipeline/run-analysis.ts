@@ -11,6 +11,7 @@ import {
 } from "@/lib/ai/speech-signal";
 import {
   dropGenericTelegramTips,
+  dropOpenedAccountTips,
   sanitizeStrategy,
 } from "@/lib/ai/sanitize-scripts";
 import { constrainFacts } from "@/lib/ai/constrain-facts";
@@ -116,7 +117,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     if (!hasProfileMedia(profile)) {
       throw new Error(
         profile.source === "user"
-          ? "Не нашли ролики в ваших ссылках. Вставьте 3–5 URL Reels или TikTok."
+          ? "Не нашли ролики в ваших ссылках. Вставьте 3–5 URL Reels, Shorts или TikTok."
           : "Не удалось взять ролики. Проверьте ссылки или что профиль открытый.",
       );
     }
@@ -253,17 +254,22 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     const strategy = constrainFacts(
       sanitizeStrategy(
         repairStrategy(
-          sanitizeStrategy({ ...rawStrategy, scripts: assembled }, keyword),
+          sanitizeStrategy(
+            { ...rawStrategy, scripts: assembled },
+            keyword,
+            profile.source,
+          ),
           insights,
           keyword,
         ),
         keyword,
+        profile.source,
       ),
       insights,
     );
-    strategy.profile_audit_tips = dropGenericTelegramTips(
-      strategy.profile_audit_tips || [],
-      insights,
+    strategy.profile_audit_tips = dropOpenedAccountTips(
+      dropGenericTelegramTips(strategy.profile_audit_tips || [], insights),
+      profile.source,
     );
 
     const paid = hasPaidAccess(user);

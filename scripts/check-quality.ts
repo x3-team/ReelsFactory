@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { sanitizeForJson, sliceChars, sliceWords, stripLoneSurrogates } from "@/lib/ai/safe-json";
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
-import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
+import {
+  dropOpenedAccountTips,
+  formatTeleprompter,
+  humanizeKeyword,
+  stripPrices,
+} from "@/lib/ai/sanitize-scripts";
 import { isSkeletonScript } from "@/lib/ai/repair-scripts";
 import { assembleScriptsFromFacts, tidyCut } from "@/lib/ai/assemble-scripts";
 import { parseVisionPayload } from "@/lib/ai/vision-frames";
@@ -25,6 +30,8 @@ import type { ScrapedProfile } from "@/lib/types";
 import {
   hasEnoughSubmittedReels,
   hasSubmittedReelSignal,
+  isYoutubeChannelUrl,
+  isYoutubeVideoUrl,
   parseRetentionHint,
   parseSubmittedReels,
   parseViewsHint,
@@ -705,6 +712,36 @@ assert(
   "two links are not enough",
 );
 assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
+assertCanAnalyzeProfile("youtube", lie, { hasUserReels: true });
+assertCanAnalyzeProfile("youtube", live, {
+  hasUserReels: true,
+  handle: "kolodets",
+});
+
+assert(isYoutubeVideoUrl("https://youtube.com/shorts/UserYtOne"), "yt shorts");
+assert(isYoutubeVideoUrl("https://www.youtube.com/watch?v=UserYtTwo"), "yt watch");
+assert(isYoutubeChannelUrl("https://youtube.com/@kolodets"), "yt channel");
+const ytPasted = parseSubmittedReels(
+  [
+    "https://youtube.com/shorts/UserYtOne  колодец под ключ, 9 тыс просмотров, 44% удержание",
+    "https://youtube.com/watch?v=UserYtTwo  кессон и обсадка, 6 тыс",
+    "https://youtu.be/UserYtThree  септик на участке",
+    "https://youtube.com/@kolodets",
+  ].join("\n"),
+);
+assert(ytPasted.length === 3, "yt videos only");
+assert(!ytPasted.some((reel) => /@kolodets/i.test(reel.url)), "no channel reel");
+assert(ytPasted[0].views === 9000 && ytPasted[0].retentionPct === 44, "yt insights");
+assert(
+  dropOpenedAccountTips(["В био слабо", "Подпись про колодец"], "user").every(
+    (tip) => !/био/i.test(tip),
+  ),
+  "drop opened-account tips",
+);
+assert(
+  !/шапк/i.test(stripPrices("стоит 1300 рублей", "не в кадре")),
+  "user price stub",
+);
 
 assert(
   resolveStrategyBackend(

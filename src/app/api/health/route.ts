@@ -37,7 +37,7 @@ export async function GET() {
         payments: honesty.payments,
         allowMockProfile: honesty.allowMockProfile,
         warning: honesty.warning,
-        needsUserReels: !honesty.scrape,
+        needsUserReels: true,
         minSubmittedReels: MIN_SUBMITTED_REELS,
       },
     },

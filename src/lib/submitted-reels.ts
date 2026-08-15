@@ -12,7 +12,24 @@ export type SubmittedReel = {
 };
 
 const REEL_URL_RE =
-  /https?:\/\/(?:www\.)?(?:instagram\.com\/(?:reel|p|tv)\/[A-Za-z0-9_-]+\/?|tiktok\.com\/@[^/\s]+\/video\/\d+\/?|vm\.tiktok\.com\/[A-Za-z0-9]+\/?)/gi;
+  /https?:\/\/(?:www\.)?(?:instagram\.com\/(?:reel|p|tv)\/[A-Za-z0-9_-]+\/?|tiktok\.com\/@[^/\s]+\/video\/\d+\/?|vm\.tiktok\.com\/[A-Za-z0-9]+\/?|youtube\.com\/(?:shorts\/[A-Za-z0-9_-]+|watch\?v=[A-Za-z0-9_-]+|embed\/[A-Za-z0-9_-]+|live\/[A-Za-z0-9_-]+)|youtu\.be\/[A-Za-z0-9_-]+)/gi;
+
+const YOUTUBE_CHANNEL_RE =
+  /https?:\/\/(?:www\.)?youtube\.com\/(?:@|channel\/|c\/|user\/|playlist\?)/i;
+
+export function isYoutubeVideoUrl(url: string) {
+  const value = (url || "").trim();
+  if (!value) return false;
+  REEL_URL_RE.lastIndex = 0;
+  if (!REEL_URL_RE.test(value)) return false;
+  return /youtube\.com\/(?:shorts\/|watch\?v=|embed\/|live\/)|youtu\.be\//i.test(
+    value,
+  );
+}
+
+export function isYoutubeChannelUrl(url: string) {
+  return YOUTUBE_CHANNEL_RE.test((url || "").trim());
+}
 
 export function parseRetentionHint(text: string): number | undefined {
   const compact = text.replace(/\u00a0/g, " ");
@@ -56,6 +73,8 @@ export function parseSubmittedReels(raw: string | null | undefined): SubmittedRe
   const seen = new Set<string>();
 
   for (const line of lines) {
+    if (isYoutubeChannelUrl(line)) continue;
+    REEL_URL_RE.lastIndex = 0;
     const matches = line.match(REEL_URL_RE) || [];
     for (const url of matches) {
       const normalized = url.replace(/[),.;]+$/, "").replace(/\/$/, "");

@@ -97,14 +97,14 @@ export function OnboardingForm({
   async function next() {
     setError(null);
     if (step === 0 && socialHandle.trim().length < 2) {
-      setError("Укажите @username — только как подпись разбора, аккаунт не откроем");
+      setError("Укажите @ник — только подпись сценариев, не адрес для скрейпа");
       return;
     }
     if (step === 0) {
       const reels = parseSubmittedReels(submittedReelsText);
       if (needsUserReels && reels.length < MIN_SUBMITTED_REELS) {
         setError(
-          `Вставьте ${MIN_SUBMITTED_REELS}–5 ссылок на свои рилсы. Без скрейпа не притворимся, что открыли аккаунт.`,
+          `Вставьте ${MIN_SUBMITTED_REELS}–5 ссылок на свои ролики. Разберём только их.`,
         );
         return;
       }
@@ -164,7 +164,7 @@ export function OnboardingForm({
           <Textarea
             id="reels"
             placeholder={
-              "https://instagram.com/reel/…  торт без сахара, 12 тыс просмотров, 41% удержание\nhttps://instagram.com/reel/…  разлом зефира, 8 тыс\nhttps://instagram.com/reel/…  фисташка и малина"
+              "https://instagram.com/reel/…  торт без сахара, 12 тыс просмотров, 41% удержание\nhttps://youtube.com/shorts/…  колодец под ключ, 8 тыс\nhttps://instagram.com/reel/…  фисташка и малина"
             }
             value={submittedReelsText}
             onChange={(e) => setSubmittedReelsText(e.target.value)}
@@ -172,22 +172,22 @@ export function OnboardingForm({
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Это основной путь: разбор ваших ссылок, не «открыли @аккаунт».
-            К URL — о чём ролик и по желанию просмотры / удержание из Insights.
+            Разбираем только эти URL и подписи. К ссылке — о чём ролик и по
+            желанию просмотры / удержание из Insights.
             {needsUserReels
-              ? " Скрейпа нет — без ссылок дальше не пойдём."
-              : " Ссылки можно не дублировать, если скрейп живой."}
+              ? " Без ссылок дальше не пойдём."
+              : " Ссылки — основной путь."}
           </p>
           <Label htmlFor="handle">@ник — только подпись</Label>
           <Input
             id="handle"
-            placeholder="@username Instagram или TikTok"
+            placeholder="@ник Instagram, TikTok или YouTube"
             value={socialHandle}
             onChange={(e) => setSocialHandle(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Нужен, чтобы подписать сценарии. YouTube пока не разбираем (честный
-            отказ, не «стратегия огонь»).
+            YouTube-канал по @ не открываем. Можно вставить 3–5 URL Shorts или
+            видео с подписью — разберём только их, не длинную аналитику.
           </p>
         </section>
       )}

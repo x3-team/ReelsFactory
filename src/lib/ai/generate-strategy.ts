@@ -63,7 +63,8 @@ const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого виде�
 8) Не пиши «за N минут» и температуры °C, если их нет в подписях.
 9) Голос копируй с voice_samples (я/мы, плотность эмодзи, тепло vs эксперт).
 10) Юридически спокойный тон: без гарантий дохода и серых схем.
-11) Рынок RU/СНГ. pillars_calendar можно опустить — сервер соберёт неделю из столпов.`;
+11) Рынок RU/СНГ. pillars_calendar можно опустить — сервер соберёт неделю из столпов.
+12) Если opened_account=false / source=user: аккаунт не открывали. Ниша и аудит только из pasted captions и offer. Не пиши про био, подписчиков, закреп и шапку профиля. Не делай Reels-стратегию из длинной аналитики канала.`;
 
 export async function generateStrategy(input: {
   profile: ScrapedProfile;
@@ -107,6 +108,7 @@ export async function generateStrategy(input: {
           { sharedKeyword },
         ),
         sharedKeyword,
+        input.profile.source,
       ),
       mocked: true,
       model: "mock",
@@ -121,26 +123,41 @@ export async function generateStrategy(input: {
           { sharedKeyword },
         ),
         sharedKeyword,
+        input.profile.source,
       ),
       mocked: false,
       model: "local-shell",
     };
   }
 
+  const fromLinks = input.profile.source === "user";
   const userPrompt = JSON.stringify(
     {
-      profile: {
-        handle: input.profile.handle,
-        platform: input.profile.platform,
-        displayName: input.profile.displayName,
-        bio: input.profile.bio,
-        followers: input.profile.followers,
-        topVideos: input.profile.topVideos.slice(0, 12).map((v) => ({
-          views: v.views,
-          durationSec: v.durationSec,
-          caption: sliceChars(v.caption || "", 180),
-        })),
-      },
+      profile: fromLinks
+        ? {
+            source: "user",
+            opened_account: false,
+            handle_is_label_only: true,
+            handle: input.profile.handle,
+            platform: input.profile.platform,
+            pasted_videos: input.profile.topVideos.slice(0, 12).map((v) => ({
+              views: v.views,
+              retentionPct: v.retentionPct,
+              caption: sliceChars(v.caption || "", 180),
+            })),
+          }
+        : {
+            handle: input.profile.handle,
+            platform: input.profile.platform,
+            displayName: input.profile.displayName,
+            bio: input.profile.bio,
+            followers: input.profile.followers,
+            topVideos: input.profile.topVideos.slice(0, 12).map((v) => ({
+              views: v.views,
+              durationSec: v.durationSec,
+              caption: sliceChars(v.caption || "", 180),
+            })),
+          },
       transcriptions: usableTranscripts,
       content_mode: contentMode,
       insights: input.insights
@@ -156,7 +173,7 @@ export async function generateStrategy(input: {
               caption: sliceChars(a.caption || "", 180),
             })),
             suggested_keyword: input.insights.suggestedKeyword,
-            bio_excerpt: input.insights.bioExcerpt,
+            bio_excerpt: fromLinks ? "" : input.insights.bioExcerpt,
             fact_card: {
               allowed: input.insights.factCard.allowed,
               without: input.insights.factCard.withoutClaims,
@@ -255,6 +272,7 @@ export async function generateStrategy(input: {
         sharedKeyword,
       }),
       sharedKeyword,
+      input.profile.source,
     ),
     mocked: false,
     model: result.completion.model || model,
@@ -268,16 +286,22 @@ function localStrategyShell(
   },
   sharedKeyword: string,
 ): StrategyPayload {
+  const fromLinks = input.profile.source === "user";
   const angles = (input.insights?.captionAngles || [])
     .filter((a) => !isWeakAngle(a.hookLine))
     .slice(0, 4);
+  const firstCaption = sliceChars(angles[0]?.hookLine || angles[0]?.caption || "", 80);
   return {
     niche: input.insights ? nicheFromInsights(input.insights) : "Контент автора",
-    target_audience: "Подписчики автора в РФ/СНГ",
+    target_audience: fromLinks
+      ? "Зрители этих роликов в РФ/СНГ"
+      : "Подписчики автора в РФ/СНГ",
     content_pillars: [
       {
         title: "Процесс",
-        description: "Показать, как делается то, что уже есть в профиле",
+        description: fromLinks
+          ? "Показать, как делается то, что уже есть в этих роликах"
+          : "Показать, как делается то, что уже есть в профиле",
       },
       {
         title: "Результат",
@@ -289,9 +313,13 @@ function localStrategyShell(
       },
     ],
     profile_audit_tips: [
-      input.insights?.bioExcerpt
-        ? `Био: «${sliceChars(input.insights.bioExcerpt, 80)}» — оставь обещание, не размывай.`
-        : "Сформулируй в био, что получит человек после подписки.",
+      fromLinks
+        ? firstCaption
+          ? `Подпись: «${firstCaption}» — следующий ролик из того же факта. Аккаунт не открывали.`
+          : "Пишите к ссылке, о чём ролик. Аккаунт не открывали."
+        : input.insights?.bioExcerpt
+          ? `Био: «${sliceChars(input.insights.bioExcerpt, 80)}» — оставь обещание, не размывай.`
+          : "Сформулируй в био, что получит человек после подписки.",
     ],
     scripts: [],
     funnel_kit: {

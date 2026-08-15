@@ -27,20 +27,27 @@ export function formatTeleprompter(text: string) {
     .trim();
 }
 
-export function stripPrices(text: string) {
+export function stripPrices(text: string, stub = "в шапке профиля") {
+  const escaped = stub.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return text
-    .replace(priceRe(), "в шапке профиля")
-    .replace(/цена\s+в шапке профиля/gi, "условия в шапке профиля")
-    .replace(/стоит\s+в шапке профиля/gi, "условия в шапке профиля")
+    .replace(priceRe(), stub)
+    .replace(new RegExp(`цена\\s+${escaped}`, "gi"), `условия ${stub}`)
+    .replace(new RegExp(`стоит\\s+${escaped}`, "gi"), `условия ${stub}`)
     .replace(/ {2,}/g, " ")
     .trim();
 }
 
-function rewritePacks(packs: PlatformPack | undefined, from: string[], to: string, keepPrice: boolean) {
+function rewritePacks(
+  packs: PlatformPack | undefined,
+  from: string[],
+  to: string,
+  keepPrice: boolean,
+  priceStub?: string,
+) {
   if (!packs) return packs;
   const run = (value: string) => {
     const swapped = replaceKeyword(value, from, to);
-    return keepPrice ? swapped : stripPrices(swapped);
+    return keepPrice ? swapped : stripPrices(swapped, priceStub);
   };
   return {
     reels: {
@@ -85,15 +92,16 @@ function applyKeywordToScript(
   keyword: string,
   from: string[],
   keepPriceInCaption: boolean,
+  priceStub?: string,
 ): GeneratedScript {
   const swap = (value: string) => replaceKeyword(value, from, keyword);
   const teleprompter = formatTeleprompter(
-    stripPrices(swap(script.teleprompter_script || "")),
+    stripPrices(swap(script.teleprompter_script || ""), priceStub),
   );
   const caption = keepPriceInCaption
     ? swap(script.caption || "")
-    : stripPrices(swap(script.caption || ""));
-  const ctaRaw = stripPrices(swap(script.cta || ""));
+    : stripPrices(swap(script.caption || ""), priceStub);
+  const ctaRaw = stripPrices(swap(script.cta || ""), priceStub);
   const cta = ctaRaw.toLowerCase().includes(keyword.toLowerCase())
     ? ctaRaw
     : `Напиши ${keyword} в комментариях`;
@@ -103,7 +111,13 @@ function applyKeywordToScript(
     teleprompter_script: teleprompter,
     caption,
     cta,
-    platform_packs: rewritePacks(script.platform_packs, from, keyword, keepPriceInCaption),
+    platform_packs: rewritePacks(
+      script.platform_packs,
+      from,
+      keyword,
+      keepPriceInCaption,
+      priceStub,
+    ),
     funnel: script.funnel
       ? {
           ...script.funnel,
@@ -122,11 +136,19 @@ function applyKeywordToScript(
 export function sanitizeStrategy(
   strategy: StrategyPayload,
   sharedKeyword: string,
+  source?: string | null,
 ): StrategyPayload {
   const keyword = humanizeKeyword(sharedKeyword, "ГАЙД");
   const from = collectOldKeywords(strategy);
+  const priceStub = source === "user" ? "не в кадре" : "в шапке профиля";
   const scripts = (strategy.scripts || []).map((script, index, arr) =>
-    applyKeywordToScript(script, keyword, from, index === arr.length - 1),
+    applyKeywordToScript(
+      script,
+      keyword,
+      from,
+      index === arr.length - 1,
+      priceStub,
+    ),
   );
 
   const tips = (strategy.profile_audit_tips || []).map((tip) =>
@@ -190,4 +212,16 @@ export function dropGenericTelegramTips(
     }
   }
   return next.slice(0, 6);
+}
+
+const OPENED_ACCOUNT_CLAIM =
+  /в био|подписчик|фолловер|шапк[аеиу]|закреплённ|закрепите ролик|открыли аккаунт|разобрали (живой )?аккаунт|аудит (этого )?аккаунта|лайфстайл огонь/i;
+
+export function dropOpenedAccountTips(tips: string[], source?: string | null) {
+  if (source !== "user") return tips;
+  const next = (tips || []).filter((tip) => !OPENED_ACCOUNT_CLAIM.test(tip));
+  if (next.length) return next.slice(0, 6);
+  return [
+    "Пишите к ссылке, о чём ролик или цифру Insights. Аккаунт не открывали.",
+  ];
 }

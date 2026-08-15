@@ -23,6 +23,8 @@ import {
   MIN_SUBMITTED_REELS,
   hasEnoughSubmittedReels,
   hasSubmittedReelSignal,
+  isYoutubeChannelUrl,
+  isYoutubeVideoUrl,
   parseRetentionHint,
   parseSubmittedReels,
 } from "../src/lib/submitted-reels.ts";
@@ -167,6 +169,10 @@ assert(resolveHonesty(forced).mode === "demo", "MOCK_EXTERNAL_APIS wins");
 
 assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
 assertCanAnalyzeProfile("youtube", lie, { hasUserReels: true });
+assertCanAnalyzeProfile("youtube", live, {
+  hasUserReels: true,
+  handle: "kolodets",
+});
 assert(
   !isMockScrapedProfile({
     source: "user",
@@ -252,5 +258,33 @@ assert(
   "tt input handle",
 );
 assert(APIFY_HARD_LIMIT_MESSAGE.includes("не мок"), "hard limit copy refuses mock");
+
+assert(isYoutubeVideoUrl("https://youtube.com/shorts/UserYtOne"), "yt shorts url");
+assert(isYoutubeVideoUrl("https://youtube.com/watch?v=UserYtTwo"), "yt watch url");
+assert(isYoutubeVideoUrl("https://youtu.be/UserYtThree"), "youtu.be url");
+assert(isYoutubeChannelUrl("https://youtube.com/@kolodets"), "yt channel url");
+assert(
+  !isYoutubeVideoUrl("https://youtube.com/@kolodets"),
+  "channel is not a video",
+);
+
+const ytPasted = parseSubmittedReels(
+  [
+    "https://youtube.com/shorts/UserYtOne  колодец под ключ, 9 тыс просмотров, 44% удержание",
+    "https://youtube.com/watch?v=UserYtTwo  кессон и обсадка, 6 тыс",
+    "https://youtu.be/UserYtThree  септик на участке",
+    "https://youtube.com/@kolodets",
+  ].join("\n"),
+);
+assert(ytPasted.length === 3, "three yt videos, channel dropped");
+assert(ytPasted[0].views === 9000, "yt insights views");
+assert(ytPasted[0].retentionPct === 44, "yt retention");
+assert(/колодец/.test(ytPasted[0].caption || ""), "yt caption kept");
+assert(
+  !ytPasted.some((reel) => /@kolodets/i.test(reel.url)),
+  "channel url never becomes a reel",
+);
+assert(hasEnoughSubmittedReels(ytPasted), "yt user reels enough");
+assert(hasSubmittedReelSignal(ytPasted), "yt captions are signal");
 
 console.log("honesty-check: ok");

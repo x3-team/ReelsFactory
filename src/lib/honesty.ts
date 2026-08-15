@@ -33,7 +33,7 @@ export const USER_REELS_WEAK_MESSAGE =
   "К ссылкам напишите, о чём ролик, или цифру из Insights (просмотры / удержание). Иначе не из чего собрать сценарий — и мы не будем притворяться, что открыли аккаунт.";
 
 export const YOUTUBE_UNSUPPORTED_MESSAGE =
-  "YouTube пока не разбираем. Укажите открытый Instagram или TikTok.";
+  "YouTube-канал не разбираем. Вставьте 3–5 URL Shorts или видео с подписью — разберём только их, не канал и не длинную аналитику.";
 
 export const TIKTOK_NEEDS_APIFY_MESSAGE =
   "TikTok нужен APIFY_TOKEN. RapidAPI умеет только Instagram.";
