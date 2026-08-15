@@ -7,17 +7,7 @@ export type ProfileSource = "live" | "mock";
 
 export type HonestyMode = "live" | "demo" | "blocked";
 
-export type HonestyEnv = {
-  AITUNNEL_API_KEY?: string;
-  OPENAI_API_KEY?: string;
-  APIFY_TOKEN?: string;
-  APIFY_API_TOKEN?: string;
-  RAPIDAPI_KEY?: string;
-  MOCK_EXTERNAL_APIS?: string;
-  ALLOW_MOCK_PROFILE?: string;
-  YOOKASSA_SHOP_ID?: string;
-  YOOKASSA_SECRET_KEY?: string;
-};
+export type HonestyEnv = Record<string, string | undefined>;
 
 export type HonestySnapshot = {
   mode: HonestyMode;

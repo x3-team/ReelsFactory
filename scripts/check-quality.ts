@@ -557,7 +557,10 @@ try {
   throw new Error("lie path must throw");
 } catch (error) {
   assert(error instanceof HonestyError, "HonestyError");
-  assert(error.message === NO_SCRAPE_LIVE_MESSAGE, "no-scrape copy");
+  assert(
+    error instanceof HonestyError && error.message === NO_SCRAPE_LIVE_MESSAGE,
+    "no-scrape copy",
+  );
 }
 
 const demo = {};
@@ -573,7 +576,11 @@ try {
   throw new Error("youtube must throw");
 } catch (error) {
   assert(error instanceof HonestyError, "youtube HonestyError");
-  assert(error.message === YOUTUBE_UNSUPPORTED_MESSAGE, "youtube copy");
+  assert(
+    error instanceof HonestyError &&
+      error.message === YOUTUBE_UNSUPPORTED_MESSAGE,
+    "youtube copy",
+  );
 }
 
 assert(
