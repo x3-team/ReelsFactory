@@ -15,7 +15,7 @@ import {
   nicheFromInsights,
   type ProfileInsights,
 } from "@/lib/content/profile-insights";
-import { isMockScrapedProfile } from "@/lib/honesty";
+import { resolveStrategyBackend } from "@/lib/honesty";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
 const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для рынка РФ/СНГ (Instagram Reels, VK Клипы, YouTube Shorts, Telegram).
@@ -90,7 +90,8 @@ export async function generateStrategy(input: {
     input.insights?.suggestedKeyword ||
     "ГАЙД";
 
-  if (shouldUseMockAi() || isMockScrapedProfile(input.profile)) {
+  const backend = resolveStrategyBackend(input.profile);
+  if (backend === "mock") {
     return {
       strategy: sanitizeStrategy(
         normalizeStrategy(
@@ -109,6 +110,20 @@ export async function generateStrategy(input: {
       ),
       mocked: true,
       model: "mock",
+    };
+  }
+  if (backend === "local-shell" || shouldUseMockAi()) {
+    return {
+      strategy: sanitizeStrategy(
+        normalizeStrategy(
+          localStrategyShell(input, sharedKeyword),
+          input.previousTitles,
+          { sharedKeyword },
+        ),
+        sharedKeyword,
+      ),
+      mocked: false,
+      model: "local-shell",
     };
   }
 

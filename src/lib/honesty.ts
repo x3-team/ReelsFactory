@@ -132,7 +132,7 @@ export function resolveHonesty(env: HonestyEnv = process.env): HonestySnapshot {
       forceMockAi: !ai,
       warning: ai
         ? null
-        : "Скрейп живой, AI нет — стратегия и суфлёр будут демо.",
+        : "Скрейп живой, AI нет — сценарии из подписей роликов, без демо-хуков и без выдуманной речи.",
     };
   }
 
@@ -214,6 +214,25 @@ export function isMockScrapedProfile(profile: {
       Boolean(video.audioUrl?.includes("example.com")) &&
       /^v\d+$/.test(video.id || ""),
   );
+}
+
+/**
+ * Live scrape without an AI key must not fall back to the 48k-hook demo.
+ * Scripts come from captions (local-shell). Mock strategy is only for a
+ * mock / explicit demo profile.
+ */
+export type StrategyBackend = "mock" | "local-shell" | "llm";
+
+export function resolveStrategyBackend(
+  profile: {
+    source?: string | null;
+    topVideos?: Array<{ id?: string; audioUrl?: string | null }>;
+  },
+  env: HonestyEnv = process.env,
+): StrategyBackend {
+  if (isMockScrapedProfile(profile)) return "mock";
+  if (envForcesAllMock(env) || !envHasAi(env)) return "local-shell";
+  return "llm";
 }
 
 export function assertNotLiveOnMock(profile: {

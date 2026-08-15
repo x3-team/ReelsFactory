@@ -11,6 +11,7 @@
 #   APIFY_TOKEN       — скрейп Instagram/TikTok
 #   AITUNNEL_API_KEY  — Whisper + LLM
 # Без скрейпа скрипт останавливается: живая модель + демо-профиль = ложь.
+# Скрейп без AI — сценарии из подписей (local-shell), не демо 48k.
 # Демо-прогон только явно: ALLOW_MOCK_PROFILE=true (AI тоже останется демо).
 set -euo pipefail
 

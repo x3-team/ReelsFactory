@@ -1,6 +1,5 @@
 import { shouldUseMockAi, getAiTunnelClient, whisperModel } from "@/lib/ai/aitunnel";
 import { recordCostEvent } from "@/lib/cost-meter";
-import { mockTranscription } from "@/lib/mocks/demo-data";
 import { prisma } from "@/lib/prisma";
 
 export async function transcribeAudio(input: {
@@ -21,8 +20,9 @@ export async function transcribeAudio(input: {
   }
 
   if (shouldUseMockAi()) {
-    const text = mockTranscription(input.hint);
-    return { text, mocked: true };
+    // Live scrape without Whisper must not invent «хуки/удержание» speech.
+    // Demo analyses skip this loop entirely.
+    return { text: "", mocked: true };
   }
 
   if (!input.audioUrl) {

@@ -162,7 +162,7 @@ PLAN=PRO bash scripts/real-run.sh @desertmsk
 | Ключ | Без него |
 | --- | --- |
 | `APIFY_TOKEN` (или `RAPIDAPI_KEY`) | `scripts/real-run.sh` и `POST /api/analyze` останавливаются |
-| `AITUNNEL_API_KEY` | стратегия и суфлёр из моков, профиль при этом может быть живым |
+| `AITUNNEL_API_KEY` | сценарии из подписей (local-shell), без демо-хуков 48k и без выдуманной речи |
 
 Самый опасный баг (починен): живой LLM + молчаливый mock-профиль = уверенный
 текст про выдуманный аккаунт. Политика в `src/lib/honesty.ts`: без скрейпа

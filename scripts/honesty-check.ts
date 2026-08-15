@@ -14,6 +14,7 @@ import {
   canScrapePlatform,
   isMockScrapedProfile,
   resolveHonesty,
+  resolveStrategyBackend,
 } from "../src/lib/honesty.ts";
 import { detectPlatform } from "../src/lib/platform.ts";
 import {
@@ -178,5 +179,30 @@ assert(three.length === 3 && three[0].retentionPct === 41, "retention parsed");
 assert(hasEnoughSubmittedReels(three) && hasSubmittedReelSignal(three), "user signal");
 assert(parseRetentionHint("удержание 38%") === 38, "retention before number");
 assert(!hasEnoughSubmittedReels(three.slice(0, 2)), "two links not enough");
+
+const liveProfile = {
+  source: "live" as const,
+  topVideos: [{ id: "1", audioUrl: "https://instagram.com/x.mp4" }],
+};
+const mockProfile = {
+  source: "mock" as const,
+  topVideos: [{ id: "v1", audioUrl: "https://example.com/audio/1.mp3" }],
+};
+assert(
+  resolveStrategyBackend(liveProfile, { APIFY_TOKEN: "apify" }) === "local-shell",
+  "live scrape without AI uses local-shell, not 48k mock",
+);
+assert(
+  resolveStrategyBackend(liveProfile, live) === "llm",
+  "live scrape + AI uses llm",
+);
+assert(
+  resolveStrategyBackend(mockProfile, live) === "mock",
+  "mock profile stays mock even with AI",
+);
+assert(
+  resolveHonesty({ APIFY_TOKEN: "apify" }).warning?.includes("без демо-хуков"),
+  "scrape-only warning is honest",
+);
 
 console.log("honesty-check: ok");

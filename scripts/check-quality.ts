@@ -37,6 +37,7 @@ import {
   assertCanAnalyzeProfile,
   isMockScrapedProfile,
   resolveHonesty,
+  resolveStrategyBackend,
 } from "@/lib/honesty";
 import { detectPlatform } from "@/lib/platform";
 
@@ -662,6 +663,21 @@ assert(
   "two links are not enough",
 );
 assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
+
+assert(
+  resolveStrategyBackend(
+    { source: "live", topVideos: [{ id: "1", audioUrl: "https://ig.com/x.mp4" }] },
+    { APIFY_TOKEN: "apify" },
+  ) === "local-shell",
+  "live + no AI = local-shell",
+);
+assert(
+  resolveStrategyBackend(
+    { source: "mock", topVideos: [{ id: "v1", audioUrl: "https://example.com/audio/1.mp3" }] },
+    live,
+  ) === "mock",
+  "mock profile = mock strategy",
+);
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,

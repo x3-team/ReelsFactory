@@ -4,7 +4,7 @@
 #
 # Secrets never live here. Real API keys (AITUNNEL_API_KEY, APIFY_TOKEN, YOOKASSA_*,
 # TELEGRAM_BOT_TOKEN) come from Cursor Cloud secrets or a local .env the developer edits.
-# Without an AI key the app auto-switches to mocks (see isMockMode in src/lib/config.ts).
+# Without an AI key a live scrape still uses captions (local-shell), not the 48k demo.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
