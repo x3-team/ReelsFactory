@@ -45,21 +45,27 @@ assert_no_opened_account() {
 poll_analysis() {
   local analysis_id="$1"
   local user_id="$2"
+  local out="$3"
   local status="QUEUED"
   local poll=""
   for _ in $(seq 1 90); do
     poll="$(curl -sf "$BASE/api/analyze?id=$analysis_id&userId=$user_id" || true)"
+    if ! echo "$poll" | jq -e '.analysis.status' >/dev/null 2>&1; then
+      printf '  poll not-json\n' >&2
+      sleep 2
+      continue
+    fi
     status="$(echo "$poll" | jq -r '.analysis.status // "UNKNOWN"')"
-    printf '  %s\n' "$status"
+    printf '  %s\n' "$status" >&2
     [ "$status" = "COMPLETED" ] && break
     if [ "$status" = "FAILED" ]; then
-      echo "$poll" | jq -r '.analysis.errorMessage'
+      echo "$poll" | jq -r '.analysis.errorMessage' >&2
       exit 1
     fi
     sleep 2
   done
   [ "$status" = "COMPLETED" ] || { echo "не завершился: $status" >&2; exit 1; }
-  printf '%s\n' "$poll"
+  printf '%s\n' "$poll" > "$out"
 }
 
 health="$(curl -sf "$BASE/api/health" || true)"
@@ -112,7 +118,8 @@ analyze="$(curl -sS -o /tmp/ul-analyze.json -w "%{http_code}" -X POST "$BASE/api
 echo "analyze IG HTTP $analyze $(jq -c '{id: .analysis.id, error, code}' /tmp/ul-analyze.json)"
 ANALYSIS_ID="$(jq -r '.analysis.id // .id' /tmp/ul-analyze.json)"
 [ -n "$ANALYSIS_ID" ] && [ "$ANALYSIS_ID" != "null" ] || exit 1
-result="$(poll_analysis "$ANALYSIS_ID" "$USER_ID")"
+poll_analysis "$ANALYSIS_ID" "$USER_ID" /tmp/ul-ig-result.json
+result="$(cat /tmp/ul-ig-result.json)"
 
 src="$(echo "$result" | jq -r '.analysis.profileSource')"
 videos="$(echo "$result" | jq -r '.analysis.sourceVideos | length')"
@@ -198,7 +205,8 @@ yt_analyze="$(curl -sS -o /tmp/ul-yt-analyze.json -w "%{http_code}" -X POST "$BA
 echo "analyze YT HTTP $yt_analyze $(jq -c '{id: .analysis.id, error, code}' /tmp/ul-yt-analyze.json)"
 YT_ID="$(jq -r '.analysis.id // .id' /tmp/ul-yt-analyze.json)"
 [ -n "$YT_ID" ] && [ "$YT_ID" != "null" ] || exit 1
-yt_result="$(poll_analysis "$YT_ID" "$YT_USER")"
+poll_analysis "$YT_ID" "$YT_USER" /tmp/ul-yt-result.json
+yt_result="$(cat /tmp/ul-yt-result.json)"
 
 yt_src="$(echo "$yt_result" | jq -r '.analysis.profileSource')"
 yt_videos="$(echo "$yt_result" | jq -r '.analysis.sourceVideos | length')"
