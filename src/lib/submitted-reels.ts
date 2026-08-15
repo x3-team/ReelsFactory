@@ -11,11 +11,11 @@ export type SubmittedReel = {
 };
 
 const REEL_URL_RE =
-  /https?:\/\/(?:www\.)?(?:instagram\.com\/(?:reel|p|tv)\/[A-Za-z0-9_-]+|tiktok\.com\/@[^/\s]+\/video\/\d+|vm\.tiktok\.com\/[A-Za-z0-9]+)/gi;
+  /https?:\/\/(?:www\.)?(?:instagram\.com\/(?:reel|p|tv)\/[A-Za-z0-9_-]+\/?|tiktok\.com\/@[^/\s]+\/video\/\d+\/?|vm\.tiktok\.com\/[A-Za-z0-9]+\/?)/gi;
 
 export function parseViewsHint(text: string): number | undefined {
   const compact = text.replace(/\u00a0/g, " ");
-  const thousands = compact.match(/(\d+(?:[.,]\d+)?)\s*(тыс\.?|k)\b/i);
+  const thousands = compact.match(/(\d+(?:[.,]\d+)?)\s*(тыс\.?|k)(?=$|[\s,.;])/i);
   if (thousands) {
     return Math.round(Number(thousands[1].replace(",", ".")) * 1000);
   }
@@ -42,13 +42,17 @@ export function parseSubmittedReels(raw: string | null | undefined): SubmittedRe
       const key = normalized.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      const rest = line.replace(url, " ").replace(/\s+/g, " ").trim();
+      const rest = line.replace(url, " ").replace(/^[\s/]+/, "").replace(/\s+/g, " ").trim();
       const views = parseViewsHint(rest);
       const caption = rest
-        .replace(/(\d+(?:[.,]\d+)?)\s*(тыс\.?|k)\b/gi, " ")
-        .replace(/(\d[\d\s]{0,10})\s*(просмотр\w*|охват\w*|views?|likes?|лайк\w*)/gi, " ")
+        .replace(/(\d+(?:[.,]\d+)?)\s*(тыс\.?|k)(?=$|[\s,.;])/gi, " ")
+        .replace(
+          /(\d[\d\s]{0,10})\s*(просмотр[а-яё]*|охват[а-яё]*|views?|likes?|лайк[а-яё]*)/gi,
+          " ",
+        )
+        .replace(/(просмотр[а-яё]*|охват[а-яё]*|views?|likes?)/gi, " ")
         .replace(/[|—–-]+/g, " ")
-        .replace(/\s+/g, " ")
+        .replace(/[,\s]+/g, " ")
         .trim();
       found.push({
         url: normalized,

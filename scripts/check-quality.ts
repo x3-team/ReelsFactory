@@ -612,6 +612,7 @@ const pasted = parseSubmittedReels(
 assert(pasted.length === 2, "two pasted reels");
 assert(pasted[0].views === 12000, "insights views");
 assert(/торт без сахара/.test(pasted[0].caption || ""), "caption kept");
+assert(!/\//.test(pasted[0].caption || ""), "no leftover slash");
 assert(hasEnoughSubmittedReels(pasted), "enough user reels");
 assert(parseViewsHint("8.4k views") === 8400, "k views");
 assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
