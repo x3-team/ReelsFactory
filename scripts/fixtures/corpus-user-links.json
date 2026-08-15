@@ -1,0 +1,67 @@
+{
+  "note": "Public reel URLs from past live scrapes on this VM (ScrapeCache / live_llm artifacts). Not invented. Not a new Apify run.",
+  "handlesWithUrls": [
+    {
+      "handle": "@karinakross",
+      "platform": "instagram",
+      "nichePreset": "custom",
+      "offerSummary": "юмор и узнаваемые бытовые ситуации",
+      "links": [
+        "https://www.instagram.com/p/Ch60OrmIcAa/  Последний день лета, 39459695 просмотров",
+        "https://www.instagram.com/p/DKl5IHhuni0/  Девочки, таким приложением будем пользоваться, 12187661 просмотров",
+        "https://www.instagram.com/p/DW8X7a8CMX9/  Дети в 90-х и дети сейчас, 3882884 просмотров",
+        "https://www.instagram.com/p/DVk7lduDtni/  Когда в магазине одна и когда с мужем, 2000953 просмотров"
+      ]
+    },
+    {
+      "handle": "@agre_daria_fit",
+      "platform": "instagram",
+      "nichePreset": "custom",
+      "offerSummary": "тренировки ягодиц дома, тренер 35+",
+      "links": [
+        "https://www.instagram.com/p/DGfJrGfyRRO/  Большой вес не гарантия мышечного роста, 1221925 просмотров",
+        "https://www.instagram.com/p/C6s1WAIIVCl/  Сочные упругие ягодицы дома, 538677 просмотров",
+        "https://www.instagram.com/p/C8sRwnhMd8x/  Огненная подборка для ягодиц, 339608 просмотров",
+        "https://www.instagram.com/p/DZyMIoxMpc-/  Даша тренер с опытом более 15 лет, 38406 просмотров"
+      ]
+    },
+    {
+      "handle": "@ksenia_makarchuk__",
+      "platform": "instagram",
+      "nichePreset": "realty",
+      "offerSummary": "новостройки СПб и ипотека",
+      "links": [
+        "https://www.instagram.com/p/DaN_UfoM-xZ/  Секрет строительства Исаакиевского собора, 208104 просмотров",
+        "https://www.instagram.com/p/DYPfaGLMVdV/  Семейная ипотека и ставка, 56597 просмотров",
+        "https://www.instagram.com/p/DaABuGdM8Pm/  Пять вузов Петербурга с IT, 25475 просмотров",
+        "https://www.instagram.com/p/DbYs0m7MgYV/  ИТМО Хайпарк и жильё вокруг, 23912 просмотров"
+      ]
+    },
+    {
+      "handle": "@homm9k",
+      "platform": "tiktok",
+      "nichePreset": "custom",
+      "offerSummary": "тревел Батуми и поездки",
+      "links": [
+        "https://www.tiktok.com/@homm9k/video/7656102873612258581  Гамарджоба, Батуми, 5700000 просмотров",
+        "https://www.tiktok.com/@homm9k/video/7640553074225941780  поездка по Малайзии, 7000000 просмотров",
+        "https://www.tiktok.com/@homm9k/video/7670129120713461013  грим человека-паука, 5700000 просмотров"
+      ]
+    }
+  ],
+  "youtubeNoVideoUrls": [
+    "@investfutureru",
+    "@linguamarina",
+    "@oskarhartmann1",
+    "@a4a4a4a4"
+  ],
+  "skippedNoKnownUrls": [
+    "@victoriabonya",
+    "@goar_avetisyan",
+    "@krava_nakormit",
+    "@prodasha_live",
+    "@tanyatgym",
+    "@eugenius_official",
+    "@botagozomarova2"
+  ]
+}
