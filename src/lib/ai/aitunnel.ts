@@ -29,29 +29,32 @@ export function shouldUseMockAi() {
 }
 
 /**
- * Базовая модель: лучший баланс цена/качество для JSON-сценариев.
- * deepseek-v4-flash ≈ 18/36 ₽ за 1M (AITunnel) — сильно дешевле gpt-4o при хорошей структуре.
+ * Free / Start (590₽): `gpt-5.6-luna` ≈ 20/120 ₽ за 1M (AITunnel).
+ * Надёжный JSON/RU для ниши и столпов, без «пустого ChatGPT».
+ * Whisper (~1.5₽/анализ) уже съедает почти весь AI-COGS — Luna не ломает маржу.
+ * Не ставить sonnet/opus на каждый ролик: при росте объёма Start уйдёт в минус.
+ * Override: AITUNNEL_LLM_MODEL / OPENAI_MODEL.
  */
 export function llmModel() {
   return (
     process.env.AITUNNEL_LLM_MODEL ||
     process.env.OPENAI_MODEL ||
-    "deepseek-v4-flash"
+    "gpt-5.6-luna"
   );
 }
 
 /**
- * Pro/Agency: сильнее креатив без «reasoning tax».
- * gpt-5.6-terra ≈ 20/1200 ₽ за 1M — заметно лучше flash, всё ещё дёшево vs gpt-4o/sol.
- * (deepseek-v4-pro тратит max_tokens на reasoning и иногда отдаёт пустой content)
+ * Pro (1990₽) / Agency: `gpt-5.6-terra` ≈ 20/1200 ₽ за 1M.
+ * Лучше длинные сценарии и студия; всё ещё далеко от gpt-4o / sol / opus.
+ * Override: AITUNNEL_LLM_MODEL_PRO.
  */
 export function llmModelPro() {
   return process.env.AITUNNEL_LLM_MODEL_PRO || "gpt-5.6-terra";
 }
 
 /**
- * Strategy / analysis JSON — всегда Flash (COGS).
- * Pro-креатив дорогой на output; жирный strategy-JSON на Terra съедает маржу.
+ * Strategy / analysis JSON — всегда Luna (COGS), даже на Pro.
+ * Жирный strategy-JSON на Terra или sonnet съедает маржу; суфлёр собирает сервер.
  */
 export function llmModelForStrategy(plan?: string | null) {
   void plan;
@@ -59,7 +62,7 @@ export function llmModelForStrategy(plan?: string | null) {
 }
 
 /**
- * Studio (remake / autopsy) — Terra на Pro/Agency, иначе Flash.
+ * Studio (remake / autopsy) — Terra на Pro/Agency, иначе Luna.
  */
 export function llmModelForStudio(plan?: string | null) {
   return llmModelForPlan(plan);

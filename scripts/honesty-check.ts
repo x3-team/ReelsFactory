@@ -2,6 +2,7 @@
  * Standalone honesty-policy checks (no path aliases).
  *   node --experimental-strip-types scripts/honesty-check.ts
  */
+import { readFileSync } from "node:fs";
 import {
   CORPUS_NO_LIVE_MESSAGE,
   CORPUS_PLATFORM_UNKNOWN_MESSAGE,
@@ -203,6 +204,15 @@ assert(
 assert(
   resolveHonesty({ APIFY_TOKEN: "apify" }).warning?.includes("без демо-хуков"),
   "scrape-only warning is honest",
+);
+
+const aitunnelSrc = readFileSync(new URL("../src/lib/ai/aitunnel.ts", import.meta.url), "utf8");
+assert(aitunnelSrc.includes('"gpt-5.6-luna"'), "default model is luna");
+assert(aitunnelSrc.includes('"gpt-5.6-terra"'), "pro model stays terra");
+assert(aitunnelSrc.includes('"whisper-1"'), "whisper stays whisper-1");
+assert(
+  !aitunnelSrc.includes('"deepseek-v4-flash"'),
+  "flash is no longer the hardcoded default",
 );
 
 console.log("honesty-check: ok");

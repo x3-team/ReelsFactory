@@ -113,10 +113,11 @@ API: `analyze`, `parse-profile`, `generate-strategy`, `transcribe`, `remake`,
 Планируется автоматически при завершении анализа, рассылается кроном:
 `curl -X POST "$APP_URL/api/reminders" -H "x-setup-secret: $TELEGRAM_WEBHOOK_SECRET"`.
 
-AI (AITunnel, `https://api.aitunnel.ru/v1/`): `deepseek-v4-flash` для стратегии
-(ниша/столпы/аудит), `gpt-5.6-terra` для студии, `whisper-1` для речи,
-`gpt-4o-mini` для OCR кадров на роликах без речи. Whisper — основной AI-расход;
-один анализ ≈ 1.0–1.7₽ без учёта Apify и редкого vision.
+AI (AITunnel, `https://api.aitunnel.ru/v1/`): `gpt-5.6-luna` для стратегии
+(Free/Start и любой strategy-JSON, ~20/120 ₽ за 1M), `gpt-5.6-terra` для
+студии Pro/Agency (~20/1200 ₽ за 1M), `whisper-1` для речи, `gpt-4o-mini`
+для OCR. Whisper — основной AI-расход; один анализ ≈ 1.0–1.7₽ без Apify.
+Sonnet/opus на каждый ролик не ставим — убьёт маржу Start 590₽.
 
 Скрейпинг: Apify (`apify/instagram-profile-scraper`,
 `clockworks/tiktok-profile-scraper`) → fallback RapidAPI. YouTube не скрейпится.
@@ -204,7 +205,7 @@ PLAN=PRO bash scripts/real-run.sh @desertmsk
 карточки фактов + 4 кадра + шаблон суфлёра 15/30/45. LLM больше не пишет
 суфлёр — только нишу, столпы, аудит и идеи дос съёмки.
 
-**Экономика и безопасность.** Flash на стратегию, Terra только в студии. Кэши
+**Экономика и безопасность.** Luna на стратегию, Terra только в студии. Кэши
 Whisper и скрейпа, месячный лимит Apify. `initData` проверяется на мутирующих
 роутах, GET анализа ограничен владельцем. Мок-платежи не могут закрыть живой
 YooKassa. В production Redis обязателен (`ALLOW_MEMORY_QUEUE=true` — только

@@ -40,6 +40,14 @@ import {
   resolveStrategyBackend,
 } from "@/lib/honesty";
 import { detectPlatform } from "@/lib/platform";
+import {
+  llmModel,
+  llmModelForPlan,
+  llmModelForStrategy,
+  llmModelForStudio,
+  llmModelPro,
+  whisperModel,
+} from "@/lib/ai/aitunnel";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -706,6 +714,37 @@ assert(
   ) === "mock",
   "mock profile = mock strategy",
 );
+
+{
+  const keep = {
+    AITUNNEL_LLM_MODEL: process.env.AITUNNEL_LLM_MODEL,
+    AITUNNEL_LLM_MODEL_PRO: process.env.AITUNNEL_LLM_MODEL_PRO,
+    OPENAI_MODEL: process.env.OPENAI_MODEL,
+    AITUNNEL_WHISPER_MODEL: process.env.AITUNNEL_WHISPER_MODEL,
+  };
+  delete process.env.AITUNNEL_LLM_MODEL;
+  delete process.env.AITUNNEL_LLM_MODEL_PRO;
+  delete process.env.OPENAI_MODEL;
+  delete process.env.AITUNNEL_WHISPER_MODEL;
+  assert(llmModel() === "gpt-5.6-luna", "default luna");
+  assert(llmModelPro() === "gpt-5.6-terra", "default terra");
+  assert(llmModelForPlan("START") === "gpt-5.6-luna", "start uses luna");
+  assert(llmModelForPlan("FREE") === "gpt-5.6-luna", "free uses luna");
+  assert(llmModelForPlan("PRO") === "gpt-5.6-terra", "pro studio terra");
+  assert(llmModelForPlan("AGENCY") === "gpt-5.6-terra", "agency studio terra");
+  assert(llmModelForStrategy("PRO") === "gpt-5.6-luna", "strategy stays luna");
+  assert(llmModelForStudio("START") === "gpt-5.6-luna", "start studio luna");
+  assert(llmModelForStudio("PRO") === "gpt-5.6-terra", "pro studio terra");
+  assert(whisperModel() === "whisper-1", "whisper unchanged");
+  process.env.AITUNNEL_LLM_MODEL = "custom-luna";
+  process.env.AITUNNEL_LLM_MODEL_PRO = "custom-terra";
+  assert(llmModel() === "custom-luna", "env override base");
+  assert(llmModelPro() === "custom-terra", "env override pro");
+  for (const [key, value] of Object.entries(keep)) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+}
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,
