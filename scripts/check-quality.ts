@@ -127,6 +127,34 @@ assert(
 );
 assert(insights.prices.some((p) => /1300/.test(p)), "price mined");
 assert(insights.captionAngles.length >= 2, "angles");
+
+const thinTt: ScrapedProfile = {
+  handle: "homm9k",
+  platform: "tiktok",
+  bio: "For business and collabs: homa@jks.kz",
+  followers: 1000,
+  topVideos: [
+    { id: "1", url: "https://tiktok.com/1", views: 16_900_000, caption: "" },
+    { id: "2", url: "https://tiktok.com/2", views: 12_900_000, caption: "🇲🇾❤️" },
+    { id: "3", url: "https://tiktok.com/3", views: 8_100_000, caption: "give me back my phone" },
+  ],
+  recentCaptions: [
+    "Астана, вы готовы? Совсем скоро здесь пройдет спортивное событие года.",
+    "Спасибо за приглашение. Искренне рекомендую добавить Батуми в список путешествий.",
+    "Тик-так. Задержка месячных — и ты уже не живёшь, а воюешь.",
+  ],
+};
+const thinInsights = buildProfileInsights(thinTt);
+assert(
+  thinInsights.captionAngles.some((a) => /астана/i.test(a.hookLine)),
+  "tiktok pool captions become angles",
+);
+const thinScripts = assembleScriptsFromFacts(thinInsights, "ГАЙД");
+assert(thinScripts.length === 3, "scripts from caption pool");
+assert(
+  new Set(thinScripts.map((s) => s.title.toLowerCase())).size >= 2,
+  "not the same empty-view line three times",
+);
 assert(
   /клубник/i.test(
     hookLine(

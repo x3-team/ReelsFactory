@@ -3,9 +3,26 @@
 16 публичных хендлов от владельца (15.08.2026). Новых `@` не выдумывали.
 Пустой Instagram в корпус не клали.
 
-Это список для прогона, не результаты скрейпа. Без `APIFY_TOKEN` /
-`RAPIDAPI_KEY` **ни один аккаунт не разобран**. Живой скрейп без
-`AITUNNEL_API_KEY` собирает сценарии из подписей (local-shell) — не демо 48k.
+Это список для прогона. Без ключа скрейпа **ни один аккаунт не разобран**.
+Живой скрейп без `AITUNNEL_API_KEY` собирает сценарии из подписей
+(local-shell) — не демо 48k.
+
+## Первая пачка (15.08.2026, эта VM)
+
+`APIFY_TOKEN` present, non-empty, prefix=other, length=46. `AITUNNEL_API_KEY`
+absent. `RAPIDAPI_KEY` absent. Мок не подставляли.
+
+| Хендл | Площадка | Результат |
+| --- | --- | --- |
+| `@karinakross` | Instagram | live, 16 роликов, 3 сценария из подписей |
+| `@agre_daria_fit` | Instagram | live, 16 роликов, 3 сценария из подписей |
+| `@ksenia_makarchuk__` | Instagram | live, 16 роликов, 3 сценария из подписей |
+| `@homm9k` | TikTok | live, 16 роликов; топ по просмотрам часто без текста — сценарии из пула подписей |
+| `@kolodets` | YouTube | HTTP 400 `YOUTUBE`, `real-run` exit 3 |
+| `@investfutureru` | YouTube | HTTP 400 `YOUTUBE`, `real-run` exit 3 |
+
+Остальные 10 из 16 не гоняли. `@hommm9k` (три m) не подставляли вместо TikTok.
+Цифры роста не утверждаем — только то, что вернул Apify.
 
 ## Как гонять
 

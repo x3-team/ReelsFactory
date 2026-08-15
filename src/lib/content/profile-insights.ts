@@ -466,6 +466,25 @@ function videoAngles(videos: ScrapedVideo[]): CaptionAngle[] {
     }));
 }
 
+/** TikTok top-view rows are often emoji-only; usable copy lives in the caption pool. */
+function poolCaptionAngles(captions: string[]): CaptionAngle[] {
+  const out: CaptionAngle[] = [];
+  for (const [index, raw] of captions.entries()) {
+    const caption = (raw || "").replace(/\s+/g, " ").trim();
+    if (caption.length < 12) continue;
+    const line = hookLine(caption);
+    if (!line || isWeakAngle(line) || isNonRussianCopy(line)) continue;
+    out.push({
+      id: `caption-pool-${index}`,
+      views: 0,
+      hookLine: line,
+      caption: sliceChars(caption, 400),
+    });
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
 const KNOWN_TERMS = [
   "зефир",
   "птичье молоко",
@@ -543,7 +562,10 @@ export function buildProfileInsights(profile: ScrapedProfile): ProfileInsights {
     hasWebsiteCta: detectWebsite(blob),
     hasTelegramCta: detectTelegram(blob),
     voiceSamples: voiceSamples(captions),
-    captionAngles: videoAngles(profile.topVideos || []),
+    captionAngles: uniqueAngles([
+      ...videoAngles(profile.topVideos || []),
+      ...poolCaptionAngles(captions),
+    ]),
     suggestedKeyword: normalizeKeyword(suggestKeyword(captions, bio), "ГАЙД"),
     bioExcerpt: sliceChars(bio.replace(/\s+/g, " ").trim(), 220),
     avgCaptionChars:
