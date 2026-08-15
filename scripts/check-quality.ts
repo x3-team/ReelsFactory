@@ -22,6 +22,11 @@ import {
 } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
 import {
+  hasEnoughSubmittedReels,
+  parseSubmittedReels,
+  parseViewsHint,
+} from "@/lib/submitted-reels";
+import {
   HonestyError,
   NO_SCRAPE_LIVE_MESSAGE,
   YOUTUBE_UNSUPPORTED_MESSAGE,
@@ -597,6 +602,19 @@ assert(
   }),
   "tagged live",
 );
+
+const pasted = parseSubmittedReels(
+  [
+    "https://www.instagram.com/reel/AbC123/ торт без сахара, 12 тыс просмотров",
+    "https://instagram.com/reel/DeF456/ разлом зефира",
+  ].join("\n"),
+);
+assert(pasted.length === 2, "two pasted reels");
+assert(pasted[0].views === 12000, "insights views");
+assert(/торт без сахара/.test(pasted[0].caption || ""), "caption kept");
+assert(hasEnoughSubmittedReels(pasted), "enough user reels");
+assert(parseViewsHint("8.4k views") === 8400, "k views");
+assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
 
 console.log("check-quality: ok", {
   keyword: insights.suggestedKeyword,

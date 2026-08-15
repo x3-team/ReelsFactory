@@ -3,7 +3,11 @@
  * fabricated profile. Live LLM + mock scrape is the most misleading failure.
  */
 
-export type ProfileSource = "live" | "mock";
+export type ProfileSource = "live" | "mock" | "user";
+
+export type AnalyzeIntent = {
+  hasUserReels?: boolean;
+};
 
 export type HonestyMode = "live" | "demo" | "blocked";
 
@@ -20,7 +24,7 @@ export type HonestySnapshot = {
 };
 
 export const NO_SCRAPE_LIVE_MESSAGE =
-  "Нет ключа скрейпинга (APIFY_TOKEN или RAPIDAPI_KEY). Живой разбор выключен: иначе модель уверенно напишет про выдуманный аккаунт. Для демо задайте ALLOW_MOCK_PROFILE=true.";
+  "Нет ключа скрейпинга (APIFY_TOKEN или RAPIDAPI_KEY). Чтобы не выдумывать аккаунт, вставьте 3–5 ссылок на свои рилсы — можно с цифрами из Insights. Для демо задайте ALLOW_MOCK_PROFILE=true.";
 
 export const YOUTUBE_UNSUPPORTED_MESSAGE =
   "YouTube пока не разбираем. Укажите открытый Instagram или TikTok.";
@@ -147,6 +151,7 @@ export function resolveHonesty(env: HonestyEnv = process.env): HonestySnapshot {
 export function assertCanAnalyzeProfile(
   platform?: string | null,
   env: HonestyEnv = process.env,
+  intent: AnalyzeIntent = {},
 ) {
   const honesty = resolveHonesty(env);
   const p = (platform || "").toLowerCase();
@@ -155,11 +160,16 @@ export function assertCanAnalyzeProfile(
     throw new HonestyError(YOUTUBE_UNSUPPORTED_MESSAGE, "YOUTUBE", 400);
   }
 
-  if (honesty.mode === "blocked") {
+  if (honesty.mode === "blocked" && !intent.hasUserReels) {
     throw new HonestyError(NO_SCRAPE_LIVE_MESSAGE, "NO_SCRAPE", 503);
   }
 
-  if (p === "tiktok" && !canScrapePlatform("tiktok", env) && !honesty.allowMockProfile) {
+  if (
+    p === "tiktok" &&
+    !canScrapePlatform("tiktok", env) &&
+    !honesty.allowMockProfile &&
+    !intent.hasUserReels
+  ) {
     throw new HonestyError(TIKTOK_NEEDS_APIFY_MESSAGE, "TIKTOK", 503);
   }
 
@@ -171,7 +181,7 @@ export function isMockScrapedProfile(profile: {
   topVideos?: Array<{ id?: string; audioUrl?: string | null }>;
 }) {
   if (profile.source === "mock") return true;
-  if (profile.source === "live") return false;
+  if (profile.source === "live" || profile.source === "user") return false;
   return (profile.topVideos || []).some(
     (video) =>
       Boolean(video.audioUrl?.includes("example.com")) &&

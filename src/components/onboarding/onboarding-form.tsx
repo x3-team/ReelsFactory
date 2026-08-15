@@ -19,13 +19,14 @@ export type OnboardingValues = {
   offerSummary?: string;
   nichePreset?: NichePresetId;
   voiceDraft?: string;
+  submittedReelsText?: string;
 };
 
 const GOALS = [
   {
     id: "GROW_AUDIENCE" as const,
     title: "Рост аудитории",
-    description: "Больше подписчиков, сохранений и охватов",
+    description: "Ролики, которые досматривают и сохраняют — не обещание подписчиков",
   },
   {
     id: "SELL_PRODUCT" as const,
@@ -70,6 +71,7 @@ export function OnboardingForm({
   const [showWebsite, setShowWebsite] = useState(false);
   const [offerSummary, setOfferSummary] = useState("");
   const [voiceDraft, setVoiceDraft] = useState("");
+  const [submittedReelsText, setSubmittedReelsText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const totalSteps = 4;
@@ -95,6 +97,7 @@ export function OnboardingForm({
         (preset && preset.id !== "custom" ? preset.defaultOffer : undefined),
       nichePreset,
       voiceDraft: voiceDraft.trim() || undefined,
+      submittedReelsText: submittedReelsText.trim() || undefined,
     });
   }
 
@@ -104,7 +107,7 @@ export function OnboardingForm({
         <BrandMark />
         <p className="mt-4 text-sm text-muted-foreground">Привет, {userName}</p>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Настроим контент‑машину
+          Разбор твоих роликов
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Шаг {step + 1} из {totalSteps}
@@ -133,8 +136,22 @@ export function OnboardingForm({
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Разберём био и топ‑видео открытого аккаунта. YouTube пока не
-            поддерживается.
+            @ник нужен, чтобы подписать разбор. YouTube пока не разбираем.
+          </p>
+          <Label htmlFor="reels">Ссылки на 3–5 своих рилсов</Label>
+          <Textarea
+            id="reels"
+            placeholder={
+              "https://instagram.com/reel/…  торт без сахара, 12 тыс просмотров\nhttps://instagram.com/reel/…  разлом зефира"
+            }
+            value={submittedReelsText}
+            onChange={(e) => setSubmittedReelsText(e.target.value)}
+            rows={5}
+          />
+          <p className="text-xs text-muted-foreground">
+            Так видно, какие ролики взяли — не «типичный фитнес». Можно добавить
+            цифры из Insights. Без ссылок живой разбор не начнём, если скрейпа
+            нет: не будем притворяться, что открыли аккаунт.
           </p>
         </section>
       )}

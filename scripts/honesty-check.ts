@@ -77,4 +77,13 @@ assert(
 const forced = { MOCK_EXTERNAL_APIS: "true", APIFY_TOKEN: "apify", AITUNNEL_API_KEY: "sk" };
 assert(resolveHonesty(forced).mode === "demo", "MOCK_EXTERNAL_APIS wins");
 
+assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
+assert(
+  !isMockScrapedProfile({
+    source: "user",
+    topVideos: [{ id: "user-1", audioUrl: null }],
+  }),
+  "user-submitted is not mock",
+);
+
 console.log("honesty-check: ok");

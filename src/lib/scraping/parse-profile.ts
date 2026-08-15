@@ -18,6 +18,12 @@ import { mockScrapedProfile } from "@/lib/mocks/demo-data";
 import { prisma } from "@/lib/prisma";
 import { normalizeHandle, type Platform } from "@/lib/platform";
 import {
+  hasEnoughSubmittedReels,
+  profileFromSubmittedReels,
+  readSubmittedReels,
+  type SubmittedReel,
+} from "@/lib/submitted-reels";
+import {
   fetchInstagramViaApify,
   fetchTikTokViaApify,
   hasApifyCredentials,
@@ -40,8 +46,11 @@ export async function parseProfile(input: {
   handle: string;
   platform: Platform;
   userId?: string;
+  submittedReels?: SubmittedReel[] | unknown;
 }): Promise<ScrapedProfile> {
   const handle = normalizeHandle(input.handle, input.platform);
+  const submitted = readSubmittedReels(input.submittedReels);
+  const hasUserReels = hasEnoughSubmittedReels(submitted);
   const cacheKey = `${input.platform}:${handle.toLowerCase()}:${PROFILE_CACHE_VERSION}`;
 
   const cached = await prisma.scrapeCache.findUnique({
@@ -50,18 +59,39 @@ export async function parseProfile(input: {
   if (cached && Date.now() - cached.createdAt.getTime() < scrapeTtlMs()) {
     const cachedProfile = cached.profile as unknown as ScrapedProfile;
     // Never revive a demo row as a live scrape once keys exist.
-    if (!isMockScrapedProfile(cachedProfile) || allowMockProfile()) {
+    if (!isMockScrapedProfile(cachedProfile) && cachedProfile.source !== "user") {
       return {
         ...cachedProfile,
-        source: isMockScrapedProfile(cachedProfile) ? "mock" : "live",
+        source: "live",
       };
+    }
+    if (isMockScrapedProfile(cachedProfile) && allowMockProfile() && !hasUserReels) {
+      return { ...cachedProfile, source: "mock" };
     }
   }
 
-  assertCanAnalyzeProfile(input.platform);
+  assertCanAnalyzeProfile(input.platform, process.env, { hasUserReels });
 
-  if (envForcesAllMock() || !hasScrapingCredentials()) {
+  if (envForcesAllMock()) {
     return mockScrapedProfile(handle, input.platform);
+  }
+
+  if (!hasScrapingCredentials()) {
+    if (hasUserReels) {
+      return profileFromSubmittedReels({
+        handle,
+        platform: input.platform,
+        reels: submitted,
+      });
+    }
+    if (allowMockProfile()) {
+      return mockScrapedProfile(handle, input.platform);
+    }
+    throw new HonestyError(
+      "Нет ключа скрейпинга (APIFY_TOKEN или RAPIDAPI_KEY). Чтобы не выдумывать аккаунт, вставьте 3–5 ссылок на свои рилсы — можно с цифрами из Insights. Для демо задайте ALLOW_MOCK_PROFILE=true.",
+      "NO_SCRAPE",
+      503,
+    );
   }
 
   if (input.platform === "youtube") {
@@ -70,6 +100,13 @@ export async function parseProfile(input: {
   }
 
   if (input.platform === "tiktok" && !hasApifyCredentials()) {
+    if (hasUserReels) {
+      return profileFromSubmittedReels({
+        handle,
+        platform: input.platform,
+        reels: submitted,
+      });
+    }
     if (allowMockProfile()) return mockScrapedProfile(handle, input.platform);
     throw new HonestyError(TIKTOK_NEEDS_APIFY_MESSAGE, "TIKTOK", 503);
   }
@@ -119,6 +156,13 @@ export async function parseProfile(input: {
   }
 
   if (!profile) {
+    if (hasUserReels) {
+      return profileFromSubmittedReels({
+        handle,
+        platform: input.platform,
+        reels: submitted,
+      });
+    }
     // Never substitute a demo profile after a live scrape was attempted.
     const detail =
       lastError instanceof Error && lastError.message

@@ -70,6 +70,63 @@ const ROLE_LABEL: Record<string, string> = {
   entertainment: "Вовлечение",
 };
 
+function formatViews(n: number) {
+  if (!n) return null;
+  if (n >= 1000) {
+    const k = n / 1000;
+    return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(".0", "")} тыс.`;
+  }
+  return String(n);
+}
+
+function SourceVideosCard({
+  videos,
+  hidden,
+}: {
+  videos: NonNullable<AppAnalysis["sourceVideos"]>;
+  hidden?: boolean;
+}) {
+  if (hidden || videos.length === 0) return null;
+  return (
+    <section className="rounded-2xl border border-border/80 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        Какие ролики взяли
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Разбор именно этих ссылок, не «типичный фитнес».
+      </p>
+      <ol className="mt-3 space-y-2">
+        {videos.map((video, index) => {
+          const views = formatViews(video.views);
+          return (
+            <li key={`${video.url}-${index}`} className="text-sm">
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Ролик {index + 1}
+              </a>
+              {views ? (
+                <span className="text-muted-foreground"> · {views}</span>
+              ) : null}
+              {video.usedForSpeech ? (
+                <span className="text-muted-foreground"> · речь</span>
+              ) : null}
+              {video.caption ? (
+                <p className="mt-0.5 line-clamp-2 text-muted-foreground">
+                  {video.caption}
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 export function ResultsDashboard({
   user,
   analysis,
@@ -175,7 +232,9 @@ export function ResultsDashboard({
           <p className="mt-1 text-sm text-muted-foreground">
             {analysis.profileSource === "mock"
               ? "Профиль не скрейпили — это каркас, не разбор этого аккаунта"
-              : "Хуки из твоих роликов · пакет под Reels, VK и Telegram"}
+              : analysis.profileSource === "user"
+                ? "Разбор по ссылкам, которые вы прислали · суфлёр в этом сеансе"
+                : "Из роликов ниже · суфлёр в этом же сеансе"}
           </p>
           {usage && <div className="mt-2"><UsageQuotaCard usage={usage} /></div>}
         </div>
@@ -188,11 +247,24 @@ export function ResultsDashboard({
         <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
           <p className="font-medium text-amber-100">Это не разбор @{analysis.socialHandle}</p>
           <p className="mt-1 text-muted-foreground">
-            Нет живого скрейпа профиля. Текст ниже — демо-каркас, его нельзя
-            принимать за аудит этого аккаунта.
+            Нет живого скрейпа и нет ваших ссылок. Текст ниже — демо-каркас, его
+            нельзя принимать за аудит этого аккаунта. Так выглядит ChatGPT, не
+            разбор профиля.
           </p>
         </div>
       )}
+
+      {analysis.profileSource === "user" && (
+        <div className="rounded-2xl border border-border/80 bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+          Профиль целиком не скрейпили — разобрали ссылки, которые вы вставили.
+          Instagram ToS серый, тихий обход не используем.
+        </div>
+      )}
+
+      <SourceVideosCard
+        videos={analysis.sourceVideos || []}
+        hidden={analysis.profileSource === "mock"}
+      />
 
       {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
         <AgencyClientsPanel
@@ -821,7 +893,7 @@ function ScriptViewer({
           </div>
           {packsLocked || !packs ? (
             <Button variant="outline" className="w-full" onClick={onUnlock}>
-              <Lock className="size-4" /> Открыть кросс‑пакет
+              <Lock className="size-4" /> Подписи под площадки
             </Button>
           ) : (
             <PlatformPackView packs={packs} tab={platformTab} />
@@ -838,7 +910,7 @@ function ScriptViewer({
         <div className="grid gap-2">
           <Button onClick={onOpenTeleprompter}>
             <Clapperboard className="size-4" />
-            {lockedTeleprompter ? "Открыть суфлёр" : "Режим суфлёра"}
+            {lockedTeleprompter ? "Открыть суфлёр" : "Суфлёр — в этом сеансе"}
           </Button>
           {lockedTeleprompter && (
             <Button variant="outline" onClick={onUnlock}>

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { authErrorResponse, publicAnalysis, requireUser } from "@/lib/api-auth";
 import { HonestyError, assertCanAnalyzeProfile } from "@/lib/honesty";
+import { hasEnoughSubmittedReels } from "@/lib/submitted-reels";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
 import { refundQuota } from "@/lib/quota-lock";
@@ -28,7 +29,9 @@ export async function POST(request: Request) {
     });
 
     if (!body.clientAccountId && user.platform) {
-      assertCanAnalyzeProfile(user.platform);
+      assertCanAnalyzeProfile(user.platform, process.env, {
+        hasUserReels: hasEnoughSubmittedReels(user.submittedReels),
+      });
     }
 
     await assertCanEnqueueAnalysis(user);
@@ -63,7 +66,9 @@ export async function POST(request: Request) {
     }
 
     try {
-      assertCanAnalyzeProfile(platform);
+      assertCanAnalyzeProfile(platform, process.env, {
+        hasUserReels: hasEnoughSubmittedReels(user.submittedReels),
+      });
     } catch (honestyError) {
       await refundQuota(user.id, "analyses");
       consumedUserId = null;

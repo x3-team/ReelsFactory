@@ -104,6 +104,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       handle: user.socialHandle,
       platform: user.platform as Platform,
       userId: user.id,
+      submittedReels: user.submittedReels,
     });
     assertNotLiveOnMock(profile);
 
@@ -174,6 +175,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         rawProfileData: sanitizeForJson({
           ...profile,
           visualNotes,
+          usedVideoIds: clips.map((c) => c.videoId),
         }) as object,
       },
     });

@@ -38,6 +38,12 @@ export type AppUser = {
   offerSummary?: string | null;
   nichePreset?: string | null;
   voiceDraft?: string | null;
+  submittedReels?: Array<{
+    url: string;
+    caption?: string;
+    views?: number;
+    likes?: number;
+  }> | null;
   subscriptionPlan: "FREE" | "START" | "PRO" | "AGENCY";
   subscriptionExpiresAt?: string | null;
   referralBalance: number;
@@ -149,8 +155,16 @@ export type AppAnalysis = {
   platform: string;
   errorMessage?: string | null;
   createdAt?: string;
-  /** live = scraped account; mock = demo fallback, not this handle */
-  profileSource?: "live" | "mock" | null;
+  /** live = scraped; user = pasted links; mock = demo, not this handle */
+  profileSource?: "live" | "mock" | "user" | null;
+  sourceVideos?: Array<{
+    url: string;
+    caption: string;
+    views: number;
+    likes?: number;
+    durationSec?: number;
+    usedForSpeech: boolean;
+  }> | null;
   scripts: AppScript[];
 };
 

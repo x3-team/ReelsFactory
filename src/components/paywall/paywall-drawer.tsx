@@ -40,9 +40,9 @@ export type PaywallReason =
 
 const COPY: Record<PaywallReason, { title: string; description: string }> = {
   scripts: {
-    title: "Откройте суфлёр и кросс‑пакет",
+    title: "Откройте суфлёр",
     description:
-      "Полные сценарии 15 / 30 / 45 сек, подписи под Reels, VK и Telegram.",
+      "Полный текст в камеру 15 / 30 / 45 сек в этом же сеансе. Подписи под площадки — рядом, не вместо.",
   },
   studio: {
     title: "Студия: ремейк и разбор",
@@ -64,7 +64,7 @@ const COPY: Record<PaywallReason, { title: string; description: string }> = {
   generic: {
     title: "Снимите лимиты",
     description:
-      "Больше сценариев, съёмочный день и пакет под Reels, VK и Telegram.",
+      "Больше сценариев с суфлёром и съёмочный день. Оплата в рублях через ЮKassa.",
   },
 };
 

@@ -87,6 +87,8 @@ model User {
   nichePreset  String?
   /// Voice/idea draft pasted by user (Telegram voice → text)
   voiceDraft   String? @db.Text
+  /// Author-pasted reel URLs + optional Insights (safer than silent IG scrape)
+  submittedReels Json?
 
   subscriptionPlan      SubscriptionPlan @default(FREE)
   subscriptionExpiresAt DateTime?

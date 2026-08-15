@@ -100,16 +100,52 @@ export function publicAnalysis<T extends object>(analysis: T) {
   const clone = { ...analysis } as T & {
     rawProfileData?: unknown;
     transcriptions?: unknown;
-    profileSource?: "live" | "mock";
+    profileSource?: "live" | "mock" | "user";
+    sourceVideos?: Array<{
+      url: string;
+      caption: string;
+      views: number;
+      likes?: number;
+      durationSec?: number;
+      usedForSpeech: boolean;
+    }>;
   };
   const raw = clone.rawProfileData as
-    | { source?: string; topVideos?: Array<{ id?: string; audioUrl?: string }> }
+    | {
+        source?: string;
+        usedVideoIds?: string[];
+        topVideos?: Array<{
+          id?: string;
+          url?: string;
+          caption?: string;
+          views?: number;
+          likes?: number;
+          durationSec?: number;
+          audioUrl?: string;
+        }>;
+      }
     | null
     | undefined;
-  if (raw?.source === "mock" || raw?.source === "live") {
+  if (raw?.source === "mock" || raw?.source === "live" || raw?.source === "user") {
     clone.profileSource = raw.source;
   } else if (raw?.topVideos?.some((v) => v.audioUrl?.includes("example.com"))) {
     clone.profileSource = "mock";
+  }
+  const used = new Set(raw?.usedVideoIds || []);
+  if (clone.profileSource !== "mock") {
+    clone.sourceVideos = (raw?.topVideos || [])
+      .filter((video) => video.url && !video.url.includes("example.com"))
+      .slice(0, 8)
+      .map((video) => ({
+        url: video.url || "",
+        caption: (video.caption || "").replace(/\s+/g, " ").trim().slice(0, 140),
+        views: video.views || 0,
+        likes: video.likes,
+        durationSec: video.durationSec,
+        usedForSpeech: Boolean(video.id && used.has(video.id)),
+      }));
+  } else {
+    clone.sourceVideos = [];
   }
   delete clone.rawProfileData;
   delete clone.transcriptions;

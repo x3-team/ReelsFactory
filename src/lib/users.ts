@@ -86,6 +86,7 @@ export async function completeOnboarding(
     offerSummary?: string | null;
     nichePreset?: string | null;
     voiceDraft?: string | null;
+    submittedReels?: unknown;
   },
 ) {
   return prisma.user.update({
@@ -99,6 +100,7 @@ export async function completeOnboarding(
       offerSummary: data.offerSummary || null,
       nichePreset: data.nichePreset || null,
       voiceDraft: data.voiceDraft || null,
+      submittedReels: data.submittedReels ?? undefined,
       onboardedAt: new Date(),
     },
   });

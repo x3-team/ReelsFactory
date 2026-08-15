@@ -134,7 +134,7 @@ export function ContentStudioTools({
             <RefreshCw className="size-4" /> Пересними вирус под себя
           </CardTitle>
           <CardDescription>
-            Ссылка на чужой рилс → структура → ваш сценарий и кросс‑пакет
+            Ссылка на чужой рилс → структура → ваш сценарий и суфлёр
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">

@@ -6,6 +6,10 @@ import { ProfileGoal, ToneOfVoice } from "@prisma/client";
 import { authErrorResponse, requireUser } from "@/lib/api-auth";
 import { HonestyError, assertCanAnalyzeProfile } from "@/lib/honesty";
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
+import {
+  hasEnoughSubmittedReels,
+  parseSubmittedReels,
+} from "@/lib/submitted-reels";
 import { serialize } from "@/lib/serialize";
 import { completeOnboarding } from "@/lib/users";
 import { polishVoiceDraft } from "@/lib/ai/polish-voice-draft";
@@ -23,6 +27,7 @@ const bodySchema = z.object({
   offerSummary: z.string().max(500).optional(),
   nichePreset: z.enum(nicheIds).optional(),
   voiceDraft: z.string().max(4000).optional(),
+  submittedReelsText: z.string().max(4000).optional(),
 });
 
 export async function POST(request: Request) {
@@ -31,7 +36,10 @@ export async function POST(request: Request) {
     await requireUser(request, body.userId);
     const platform = detectPlatform(body.socialHandle);
     const handle = normalizeHandle(body.socialHandle, platform);
-    assertCanAnalyzeProfile(platform);
+    const submittedReels = parseSubmittedReels(body.submittedReelsText);
+    assertCanAnalyzeProfile(platform, process.env, {
+      hasUserReels: hasEnoughSubmittedReels(submittedReels),
+    });
 
     let voiceDraft = body.voiceDraft?.trim() || null;
     if (voiceDraft) {
@@ -51,6 +59,7 @@ export async function POST(request: Request) {
       offerSummary: body.offerSummary || null,
       nichePreset: body.nichePreset || null,
       voiceDraft,
+      submittedReels,
     });
 
     return NextResponse.json(serialize({ user }));
