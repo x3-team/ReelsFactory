@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { publicAnalysis } from "@/lib/api-auth";
 import { referralLink } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
 import { resolveTelegramAuth } from "@/lib/telegram/auth";
 import { upsertTelegramUser } from "@/lib/users";
+import { getUsageSnapshot } from "@/lib/usage";
 
 const bodySchema = z.object({
   initData: z.string().nullish(),
@@ -32,14 +34,18 @@ export async function POST(request: Request) {
       where: { agencyUserId: user.id },
       orderBy: { createdAt: "asc" },
     });
+    const usage = await getUsageSnapshot(user);
 
     return NextResponse.json(
       serialize({
         user,
-        latestAnalysis,
+        latestAnalysis: latestAnalysis
+          ? publicAnalysis(latestAnalysis)
+          : null,
         clientAccounts,
         referralLink: referralLink(user.telegramId.toString()),
         authVerified: auth.verified,
+        usage,
       }),
     );
   } catch (error) {

@@ -1,5 +1,9 @@
 # ReelsFactory — Context & Business Requirements
 
+> Устарело как операционный документ (EN, YouTube scrape, Claude, старый COGS).
+> Актуальная картина: `docs/PROJECT_STATE.md`. Запуск без скрейпа — ссылки
+> автора + Insights, не «открыли @username».
+
 ## Project Goal
 
 Build a high-margin SaaS Telegram Mini App (TMA) for creators, experts, and SMM managers in the CIS / RU market.

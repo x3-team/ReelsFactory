@@ -1,0 +1,43 @@
+{
+  "note": "Third wave: leftover unused ScrapeCache URLs with Russian captions. Not invented. Not Apify.",
+  "handlesWithUrls": [
+    {
+      "handle": "@karinakross",
+      "platform": "instagram",
+      "nichePreset": "custom",
+      "offerSummary": "юмор и бытовые ситуации",
+      "links": [
+        "https://www.instagram.com/p/C7ldKueIgt-/  Каждый поймёт по-своему, 9391295 просмотров",
+        "https://www.instagram.com/p/DWTMKSwDmD2/  Она у меня милая, 1861355 просмотров",
+        "https://www.instagram.com/p/DU5Eck9Do1Q/  Просто любить, спасибо ресторану за локацию, 1667710 просмотров",
+        "https://www.instagram.com/p/DV5bCWRj50e/  Раньше и сейчас, 1511018 просмотров"
+      ]
+    },
+    {
+      "handle": "@ksenia_makarchuk__",
+      "platform": "instagram",
+      "nichePreset": "realty",
+      "offerSummary": "жизнь и недвижимость в Петербурге",
+      "links": [
+        "https://www.instagram.com/p/DbG9Gjdsi0V/  Братья-купцы и кожевенное производство на Васильевском, 8057 просмотров",
+        "https://www.instagram.com/p/DZ67q43M9cZ/  Евро-двухкомнатная с ремонтом в Петербурге, 5012 просмотров",
+        "https://www.instagram.com/p/DZ7khIlsvxy/  Кто эти люди, которые покупают квартиры, 4744 просмотров",
+        "https://www.instagram.com/p/DZ7gT7gs4Yx/  Кем нужно работать, чтобы купить квартиру в Петербурге, 2377 просмотров"
+      ]
+    },
+    {
+      "handle": "@agre_daria_fit",
+      "platform": "instagram",
+      "nichePreset": "custom",
+      "offerSummary": "тренировки и жизнь тренера",
+      "links": [
+        "https://www.instagram.com/p/DaDBq27s7d3/  Даша, тренер 15 лет, связки упражнений, 15447 просмотров",
+        "https://www.instagram.com/p/DZkS5RTs-AA/  Лучшие связки упражнений в блоге, 12570 просмотров",
+        "https://www.instagram.com/p/DZdHQYDKyhJ/  Отправляй своей самой красивой подруге, 8000 просмотров",
+        "https://www.instagram.com/p/DY3yp6GsYkh/  А что бы вы выбрали, 22675 просмотров"
+      ]
+    }
+  ],
+  "youtubeNoVideoUrls": [],
+  "skippedNoKnownUrls": ["@homm9k", "@desertmsk"]
+}

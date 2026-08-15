@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Unbounded } from "next/font/google";
 import localFont from "next/font/local";
-
-import { TelegramProvider } from "@/components/telegram/telegram-provider";
 
 import "./globals.css";
 
@@ -17,21 +16,26 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+const unbounded = Unbounded({
+  subsets: ["cyrillic", "latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "ReelsFactory",
+  title: {
+    default: "ReelsFactory — рост аудитории в коротких видео",
+    template: "%s — ReelsFactory",
+  },
   description:
-    "AI Telegram Mini App: анализ профилей и генерация сценариев для Reels с суфлёром.",
+    "Разбор ваших рилсов и сценарий с суфлёром в том же сеансе. Аккаунт целиком не открываем.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#111111" },
-  ],
+  viewportFit: "cover",
+  themeColor: "#14110f",
 };
 
 export default function RootLayout({
@@ -40,11 +44,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${unbounded.variable} font-sans antialiased`}
       >
-        <TelegramProvider>{children}</TelegramProvider>
+        {children}
       </body>
     </html>
   );

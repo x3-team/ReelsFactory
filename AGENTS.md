@@ -10,36 +10,53 @@
 ### Product
 
 ReelsFactory Telegram Mini App for CIS/RU creators. Specs:
+- **Current state, code map, gaps, next steps: `docs/PROJECT_STATE.md` — read this first**
 - Build phases: `prompts.md`
 - Business requirements: `CONTEXT.md`
+
+### Routes
+
+- `/` — public marketing landing (no Telegram SDK)
+- `/app` — Telegram Mini App (`TelegramProvider` in `src/app/app/layout.tsx`)
+- `/legal/{offer,terms,privacy}` — legal pages from `NEXT_PUBLIC_LEGAL_*`
+
+Inside Telegram, `/` redirects to `/app`. BotFather Mini App URL should point at `/app`.
 
 ### Business rules
 
 - Plans: Free / Start 590₽ / Pro 1990₽ / **Agency 4990₽** (до 5 клиентских аккаунтов)
 - Referral: **30%** первая оплата, **10%** продления; share под карточками сценариев
 - AI: **AITunnel** (`https://api.aitunnel.ru/v1/`) — ключ `AITUNNEL_API_KEY`
-  - Default LLM: **`deepseek-v4-flash`** (Free/Start) — лучший баланс цена/качество для JSON-сценариев (~18/36 ₽ за 1M)
-  - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`, ~20/1200 ₽ за 1M)
-  - Whisper: `whisper-1` (основной AI-COGS)
+  - Default LLM: **`gpt-5.6-luna`** (Free/Start) — JSON/RU без «пустого ChatGPT», ~20/120 ₽ за 1M; не sonnet/opus на каждый ролик
+  - Pro/Agency LLM: **`gpt-5.6-terra`** (`AITUNNEL_LLM_MODEL_PRO`, ~20/1200 ₽ за 1M) — длиннее сценарии, всё ещё дешевле 4o/sol
+  - Whisper: `whisper-1` (основной AI-COGS, ~1.5₽ из ~1.7₽ анализа)
 - Scraping Instagram: **`APIFY_TOKEN`** (актор `apify/instagram-profile-scraper`) → fallback `RAPIDAPI_KEY` → mock
-- Очередь анализа: BullMQ при `REDIS_URL`, иначе in-process memory queue + polling `GET /api/analyze?id=`
+- Очередь анализа: BullMQ при `REDIS_URL` (**обязателен в production**, иначе `ALLOW_MEMORY_QUEUE=true`); polling `GET /api/analyze?id=`
 - Ключи только в `.env` / секретах Cursor — **не** в `.env.example`
 - Сценарии: длины **15 / 30 / 45** сек, жёсткий каркас хук→проблема→демо→CTA; цену не копировать в каждый ролик
 
 ### Services
 
+The dev environment is described by `.cursor/environment.json` in this repo, so every
+agent and machine gets the same setup:
+
+- `install` → `scripts/dev-env-install.sh` (apt packages, pnpm deps, `.env`, `prisma db push`)
+- `start` → `scripts/dev-env-start.sh` (Postgres cluster, `reelsfactory` DB, Redis)
+- `terminals` → `next-dev` running `pnpm dev`
+
 | Service | Required | How to run |
 | --- | --- | --- |
-| PostgreSQL | Yes | `sudo pg_ctlcluster 16 main start`; `DATABASE_URL` in `.env` |
+| PostgreSQL | Yes | `bash scripts/dev-env-start.sh`; `DATABASE_URL` in `.env` |
 | Next.js | Yes | `pnpm dev` → http://localhost:3000 |
-| Redis | Optional | Set `REDIS_URL` for BullMQ; иначе memory queue |
-| AITunnel / scrape / YooKassa | Optional in dev | Без ключей — `MOCK_EXTERNAL_APIS` |
+| Redis | Prod | `scripts/dev-env-start.sh` starts it locally; prod needs `REDIS_URL` |
+| AITunnel / scrape / YooKassa | Optional in dev | Без ключей `isMockMode()` сам включает моки |
 
 ### Commands
 
 - Lint / build: `pnpm lint`, `pnpm build`
 - DB: `pnpm db:generate`, `pnpm db:push`
 - Smoke: UI или `curl` на `/api/*`
+- Живой прогон анализа: `PLAN=PRO bash scripts/real-run.sh @handle` (отчёт в `/tmp`)
 
 ### Gotchas
 

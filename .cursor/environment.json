@@ -1,0 +1,10 @@
+{
+  "install": "bash scripts/dev-env-install.sh",
+  "start": "bash scripts/dev-env-start.sh",
+  "terminals": [
+    {
+      "name": "next-dev",
+      "command": "pnpm dev"
+    }
+  ]
+}

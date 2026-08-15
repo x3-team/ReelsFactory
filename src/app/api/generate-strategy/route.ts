@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { denyPublicCogs } from "@/lib/api-auth";
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 
 const bodySchema = z.object({
@@ -23,6 +24,8 @@ const bodySchema = z.object({
         durationSec: z.number().optional(),
       }),
     ),
+    recentCaptions: z.array(z.string()).optional(),
+    source: z.enum(["live", "mock"]).optional(),
   }),
   transcriptions: z.array(z.string()),
   goal: z.string(),
@@ -30,9 +33,14 @@ const bodySchema = z.object({
   offerSummary: z.string().nullish(),
   websiteUrl: z.string().nullish(),
   plan: z.enum(["FREE", "START", "PRO", "AGENCY"]).optional(),
+  nichePreset: z.string().nullish(),
+  voiceDraft: z.string().nullish(),
 });
 
 export async function POST(request: Request) {
+  const closed = denyPublicCogs();
+  if (closed) return closed;
+
   try {
     const body = bodySchema.parse(await request.json());
     const result = await generateStrategy(body);

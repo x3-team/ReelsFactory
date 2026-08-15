@@ -25,7 +25,27 @@ export async function upsertTelegramUser(input: {
   const telegramId = BigInt(input.telegramId);
 
   const existing = await prisma.user.findUnique({ where: { telegramId } });
+  const referrerTelegramId =
+    parseReferrerTelegramId(input.startParam) ||
+    (
+      await prisma.botSession.findUnique({
+        where: { telegramId },
+        select: { referrerTelegramId: true },
+      })
+    )?.referrerTelegramId ||
+    null;
+
+  async function resolveReferrerId() {
+    if (!referrerTelegramId || referrerTelegramId === telegramId) return undefined;
+    const referrer = await prisma.user.findUnique({
+      where: { telegramId: referrerTelegramId },
+    });
+    return referrer?.id;
+  }
+
   if (existing) {
+    const referrerId =
+      existing.referrerId || (await resolveReferrerId()) || undefined;
     return prisma.user.update({
       where: { telegramId },
       data: {
@@ -34,18 +54,12 @@ export async function upsertTelegramUser(input: {
         lastName: input.lastName ?? existing.lastName,
         languageCode: input.languageCode ?? existing.languageCode,
         photoUrl: input.photoUrl ?? existing.photoUrl,
+        ...(referrerId && !existing.referrerId ? { referrerId } : {}),
       },
     });
   }
 
-  let referrerId: string | undefined;
-  const referrerTelegramId = parseReferrerTelegramId(input.startParam);
-  if (referrerTelegramId && referrerTelegramId !== telegramId) {
-    const referrer = await prisma.user.findUnique({
-      where: { telegramId: referrerTelegramId },
-    });
-    if (referrer) referrerId = referrer.id;
-  }
+  const referrerId = await resolveReferrerId();
 
   return prisma.user.create({
     data: {
@@ -70,6 +84,9 @@ export async function completeOnboarding(
     toneOfVoice: ToneOfVoice;
     websiteUrl?: string | null;
     offerSummary?: string | null;
+    nichePreset?: string | null;
+    voiceDraft?: string | null;
+    submittedReels?: unknown;
   },
 ) {
   return prisma.user.update({
@@ -81,6 +98,9 @@ export async function completeOnboarding(
       toneOfVoice: data.toneOfVoice,
       websiteUrl: data.websiteUrl || null,
       offerSummary: data.offerSummary || null,
+      nichePreset: data.nichePreset || null,
+      voiceDraft: data.voiceDraft || null,
+      submittedReels: data.submittedReels ?? undefined,
       onboardedAt: new Date(),
     },
   });
@@ -88,6 +108,9 @@ export async function completeOnboarding(
 
 export function hasPaidAccess(user: User) {
   if (user.subscriptionPlan === SubscriptionPlan.FREE) return false;
-  if (!user.subscriptionExpiresAt) return true;
+  // Missing expiry used to mean "paid forever" — treat as expired in production.
+  if (!user.subscriptionExpiresAt) {
+    return process.env.NODE_ENV !== "production";
+  }
   return user.subscriptionExpiresAt.getTime() > Date.now();
 }

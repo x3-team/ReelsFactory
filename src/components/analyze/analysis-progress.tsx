@@ -3,32 +3,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { Progress } from "@/components/ui/progress";
+import { formatPlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
-/**
- * Реальные этапы пайплайна и ожидаемое время (сек) внутри этапа.
- * Шкала заполняется по статусу с сервера + плавный рост внутри этапа.
- */
 const STEPS = [
   {
     key: "SCRAPING",
     label: "Сканируем профиль",
-    detail: "Забираем био и топ‑рилсы из Instagram",
+    linksLabel: "Читаем ваши ссылки",
     expectedSec: 35,
     range: [5, 40] as const,
   },
   {
     key: "TRANSCRIBING",
-    label: "Разбираем рилсы",
-    detail: "Слушаем аудио и вытаскиваем хуки",
+    label: "Разбираем ролики",
+    linksLabel: "Собираем факты из подписей",
     expectedSec: 45,
     range: [40, 75] as const,
   },
   {
     key: "GENERATING",
     label: "Пишем сценарии",
-    detail: "Собираем столпы, хуки и суфлёр",
+    linksLabel: "Пишем сценарии и суфлёр",
     expectedSec: 25,
     range: [75, 97] as const,
   },
@@ -67,23 +65,32 @@ function percentForStatus(
   if (status === "FAILED") return 100;
 
   const idx = stepIndex(status);
-  if (idx < 0 || idx >= STEPS.length) return 5;
+  const step = STEPS.find((_, i) => i === idx);
+  if (!step) return 5;
 
-  const step = STEPS[idx];
   const [from, to] = step.range;
-  // Асимптота к верхней границе этапа — не «прыгает» на 100% раньше времени
   const t = 1 - Math.exp(-stageElapsedSec / Math.max(8, step.expectedSec * 0.55));
   return Math.round(from + (to - from) * t);
+}
+
+function scrapeDetail(platform?: string | null, fromLinks?: boolean) {
+  if (fromLinks) return "Только вставленные URL и подписи";
+  const name = formatPlatform(platform);
+  return `Био и топ‑видео · ${name}`;
 }
 
 export function AnalysisProgress({
   status,
   failedMessage,
   elapsedSec = 0,
+  platform,
+  fromLinks,
 }: {
   status?: string | null;
   failedMessage?: string | null;
   elapsedSec?: number;
+  platform?: string | null;
+  fromLinks?: boolean;
 }) {
   const index = stepIndex(status);
   const stageStartedAt = useRef(Date.now());
@@ -109,7 +116,6 @@ export function AnalysisProgress({
       setStageElapsed(stageSec);
       const target = percentForStatus(status, stageSec);
       setDisplayPercent((prev) => {
-        // Плавное догоняние без рывков назад
         if (target < prev) return prev;
         return prev + Math.max(0.3, (target - prev) * 0.35);
       });
@@ -124,8 +130,8 @@ export function AnalysisProgress({
       : Math.min(97, Math.round(displayPercent));
 
   const activeStep = STEPS[Math.max(0, Math.min(index, STEPS.length - 1))];
-  const etaSec = useMemo(() => {
-    if (failedMessage || status === "COMPLETED") return 0;
+  const etaLabel = useMemo(() => {
+    if (failedMessage || status === "COMPLETED") return "";
     const remainingStages = STEPS.slice(Math.max(0, index));
     let left = 0;
     remainingStages.forEach((step, i) => {
@@ -135,52 +141,38 @@ export function AnalysisProgress({
         left += step.expectedSec;
       }
     });
-    return Math.round(left);
+    if (left > 75) return "ещё около 1–2 минут";
+    if (left > 40) return "ещё около минуты";
+    return "почти готово";
   }, [failedMessage, status, index, stageElapsed]);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 p-4">
-      <div className="relative mx-auto flex size-28 items-center justify-center">
-        <div className="absolute inset-0 animate-ping rounded-full bg-primary/10" />
-        <div className="absolute inset-2 rounded-full bg-primary/10" />
-        <div className="relative flex flex-col items-center justify-center">
-          <span className="text-3xl font-semibold tabular-nums tracking-tight">
+      <div className="flex flex-col items-center gap-4">
+        <BrandMark size="lg" />
+        <div className="text-center">
+          <p className="font-display text-5xl font-semibold tabular-nums tracking-tight">
             {percent}%
-          </span>
-          <Loader2 className="mt-1 size-4 animate-spin text-primary" />
+          </p>
+          <p className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin text-primary" />
+            {failedMessage
+              ? "Не удалось завершить анализ"
+              : status === "COMPLETED"
+                ? "Готово"
+                : `${fromLinks ? activeStep.linksLabel : activeStep.label} · ${etaLabel}`}
+          </p>
         </div>
-      </div>
-
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Анализируем профиль
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {failedMessage
-            ? "Не удалось завершить анализ"
-            : status === "COMPLETED"
-              ? "Готово"
-              : `${activeStep.label} · обычно ещё ~${etaSec} сек`}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Живой анализ Instagram занимает 1–2 минуты. Прошло {elapsedSec} сек.
-        </p>
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Этап {Math.max(1, Math.min(index + 1, STEPS.length))} из{" "}
-            {STEPS.length}
-          </span>
-          <span className="tabular-nums font-medium text-foreground">
-            {percent}%
-          </span>
-        </div>
         <Progress value={percent} />
+        <p className="text-center text-xs text-muted-foreground">
+          Разбор занимает 1–2 минуты. Прошло {elapsedSec} сек.
+        </p>
       </div>
 
-      <ul className="space-y-3">
+      <ul className="space-y-2">
         {STEPS.map((step, i) => {
           const state = failedMessage
             ? i === Math.max(0, index)
@@ -193,14 +185,22 @@ export function AnalysisProgress({
               : i === index || (index < 0 && i === 0)
                 ? "active"
                 : "pending";
+          const detail =
+            step.key === "SCRAPING"
+              ? scrapeDetail(platform, fromLinks)
+              : step.key === "TRANSCRIBING"
+                ? fromLinks
+                  ? "Подписи и цифры Insights, без Whisper"
+                  : "Слушаем аудио и вытаскиваем хуки"
+                : "Столпы, хуки и суфлёр";
 
           return (
             <li
               key={step.key}
               className={cn(
-                "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
-                state === "active" && "border-primary bg-primary/5",
-                state === "done" && "opacity-80",
+                "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
+                state === "active" && "border-primary/60 bg-primary/10",
+                state === "done" && "opacity-70",
                 state === "failed" && "border-destructive text-destructive",
               )}
             >
@@ -210,7 +210,8 @@ export function AnalysisProgress({
                   state === "active" && "bg-primary text-primary-foreground",
                   state === "done" && "bg-primary text-primary-foreground",
                   state === "pending" && "bg-muted text-muted-foreground",
-                  state === "failed" && "bg-destructive text-destructive-foreground",
+                  state === "failed" &&
+                    "bg-destructive text-destructive-foreground",
                 )}
               >
                 {state === "done" ? (
@@ -223,24 +224,18 @@ export function AnalysisProgress({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">
-                  {state === "failed" ? failedMessage : step.label}
+                  {state === "failed"
+                    ? failedMessage
+                    : fromLinks
+                      ? step.linksLabel
+                      : step.label}
                 </span>
                 {state !== "failed" && (
                   <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {step.detail}
-                    {state === "active"
-                      ? ` · ~${step.expectedSec} сек`
-                      : state === "done"
-                        ? " · готово"
-                        : ""}
+                    {detail}
                   </span>
                 )}
               </span>
-              {state === "active" && (
-                <span className="shrink-0 tabular-nums text-xs font-medium text-primary">
-                  {percent}%
-                </span>
-              )}
             </li>
           );
         })}

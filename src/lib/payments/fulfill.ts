@@ -1,30 +1,66 @@
+import { PaymentStatus, type Payment } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 import {
-  PaymentStatus,
   ReferralStatus,
   SubscriptionPlan,
-  type Payment,
 } from "@prisma/client";
-import { Decimal } from "@prisma/client/runtime/library";
 
 import {
+  billingPeriodDays,
+  isBillingPeriod,
   REFERRAL_FIRST_COMMISSION_RATE,
   REFERRAL_RENEWAL_COMMISSION_RATE,
 } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 
-export async function fulfillSuccessfulPayment(payment: Payment) {
-  if (payment.status === PaymentStatus.SUCCEEDED) {
-    return { payment, alreadyFulfilled: true as const };
-  }
+function creditFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return 0;
+  const raw = (metadata as { creditApplied?: unknown }).creditApplied;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
 
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30);
+function periodFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return "month" as const;
+  const raw = (metadata as { billingPeriod?: unknown }).billingPeriod;
+  return isBillingPeriod(raw) ? raw : ("month" as const);
+}
+
+export async function fulfillSuccessfulPayment(payment: Payment) {
+  const days = billingPeriodDays(periodFromMetadata(payment.metadata));
+  const reservedCredit = creditFromMetadata(payment.metadata);
 
   const result = await prisma.$transaction(async (tx) => {
-    const updatedPayment = await tx.payment.update({
-      where: { id: payment.id },
+    const claimed = await tx.payment.updateMany({
+      where: { id: payment.id, status: PaymentStatus.PENDING },
       data: { status: PaymentStatus.SUCCEEDED },
     });
+    if (claimed.count === 0) {
+      const current = await tx.payment.findUniqueOrThrow({
+        where: { id: payment.id },
+      });
+      return { payment: current, alreadyFulfilled: true as const };
+    }
+
+    const updatedPayment = await tx.payment.findUniqueOrThrow({
+      where: { id: payment.id },
+    });
+
+    const current = await tx.user.findUniqueOrThrow({
+      where: { id: payment.userId },
+      select: { subscriptionPlan: true, subscriptionExpiresAt: true },
+    });
+
+    // Renewing the same plan early keeps the days already paid for.
+    const now = new Date();
+    const base =
+      current.subscriptionPlan === payment.plan &&
+      current.subscriptionExpiresAt &&
+      current.subscriptionExpiresAt > now
+        ? current.subscriptionExpiresAt
+        : now;
+    const expiresAt = new Date(base);
+    expiresAt.setDate(expiresAt.getDate() + days);
 
     const user = await tx.user.update({
       where: { id: payment.userId },
@@ -34,6 +70,7 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
       },
     });
 
+    // Commission is based on money actually charged (after referral discount).
     if (user.referrerId && payment.plan !== SubscriptionPlan.FREE) {
       const priorPaid = await tx.payment.count({
         where: {
@@ -48,26 +85,38 @@ export async function fulfillSuccessfulPayment(payment: Payment) {
         : REFERRAL_FIRST_COMMISSION_RATE;
       const credit = new Decimal(payment.amount.toString()).mul(rate);
 
-      await tx.user.update({
-        where: { id: user.referrerId },
-        data: { referralBalance: { increment: credit } },
-      });
+      if (credit.gt(0)) {
+        await tx.user.update({
+          where: { id: user.referrerId },
+          data: { referralBalance: { increment: credit } },
+        });
 
-      await tx.referral.create({
-        data: {
-          referrerId: user.referrerId,
-          referredId: user.id,
-          paymentId: payment.id,
-          creditAmount: credit,
-          commissionRate: rate,
-          isRenewal,
-          status: ReferralStatus.CREDITED,
-        },
-      });
+        await tx.referral.create({
+          data: {
+            referrerId: user.referrerId,
+            referredId: user.id,
+            paymentId: payment.id,
+            creditAmount: credit,
+            commissionRate: rate,
+            isRenewal,
+            status: ReferralStatus.CREDITED,
+          },
+        });
+      }
     }
 
-    return updatedPayment;
+    void reservedCredit;
+    return { payment: updatedPayment, alreadyFulfilled: false as const };
   });
 
-  return { payment: result, alreadyFulfilled: false as const };
+  return result;
+}
+
+export async function refundReservedCredit(payment: Payment) {
+  const credit = creditFromMetadata(payment.metadata);
+  if (credit <= 0) return;
+  await prisma.user.update({
+    where: { id: payment.userId },
+    data: { referralBalance: { increment: credit } },
+  });
 }

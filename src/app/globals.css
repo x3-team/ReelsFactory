@@ -4,59 +4,108 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 222 47% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84% 60%;
+    /* Studio dark — warm near-black + coral. Product chrome, not Telegram/shadcn default. */
+    --background: 20 14% 6%;
+    --foreground: 30 24% 96%;
+    --card: 20 12% 9%;
+    --card-foreground: 30 24% 96%;
+    --popover: 20 12% 9%;
+    --popover-foreground: 30 24% 96%;
+    --primary: 12 86% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 10% 14%;
+    --secondary-foreground: 30 20% 92%;
+    --muted: 20 10% 14%;
+    --muted-foreground: 24 10% 62%;
+    --accent: 12 32% 16%;
+    --accent-foreground: 12 86% 72%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 222 47% 20%;
-    --radius: 0.75rem;
+    --border: 20 10% 18%;
+    --input: 20 10% 18%;
+    --ring: 12 86% 56%;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 222 47% 20%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62% 50%;
+    --background: 20 14% 6%;
+    --foreground: 30 24% 96%;
+    --card: 20 12% 9%;
+    --card-foreground: 30 24% 96%;
+    --popover: 20 12% 9%;
+    --popover-foreground: 30 24% 96%;
+    --primary: 12 86% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 10% 14%;
+    --secondary-foreground: 30 20% 92%;
+    --muted: 20 10% 14%;
+    --muted-foreground: 24 10% 62%;
+    --accent: 12 32% 16%;
+    --accent-foreground: 12 86% 72%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 83%;
+    --border: 20 10% 18%;
+    --input: 20 10% 18%;
+    --ring: 12 86% 56%;
   }
 
   * {
     @apply border-border;
   }
 
+  html {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    /* Prefer Telegram theme vars when Mini App CSS vars are bound */
-    background: var(--tg-theme-bg-color, hsl(var(--background)));
-    color: var(--tg-theme-text-color, hsl(var(--foreground)));
     min-height: 100dvh;
+    padding-top: max(
+      env(safe-area-inset-top, 0px),
+      var(--tg-viewport-safe-area-inset-top, 0px)
+    );
+    padding-bottom: max(
+      env(safe-area-inset-bottom, 0px),
+      var(--tg-viewport-safe-area-inset-bottom, 0px)
+    );
+  }
+
+  input,
+  textarea,
+  select {
+    scroll-margin-bottom: 8rem;
+  }
+}
+
+@layer utilities {
+  .rf-grain {
+    opacity: 0.28;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  .rf-rise {
+    animation: rf-rise 0.7s ease-out both;
+  }
+
+  .rf-cta {
+    box-shadow: 0 12px 32px -14px hsl(12 86% 56% / 0.7);
+  }
+
+  @keyframes rf-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rf-rise {
+      animation: none;
+    }
   }
 }

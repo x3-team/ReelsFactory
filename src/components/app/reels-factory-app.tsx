@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 import { AnalysisProgress } from "@/components/analyze/analysis-progress";
+import { BrandMark } from "@/components/brand/brand-mark";
 import {
   OnboardingForm,
   type OnboardingValues,
@@ -11,12 +11,15 @@ import {
 import { ResultsDashboard } from "@/components/results/results-dashboard";
 import { TelegramBackButton } from "@/components/telegram/back-button";
 import { useTelegram } from "@/components/telegram/telegram-provider";
+import { Button } from "@/components/ui/button";
 import {
   api,
+  setClientInitData,
   type AppAnalysis,
+  type AppUsageSnapshot,
   type AppUser,
 } from "@/lib/client-api";
-import { referralLink, type PlanId } from "@/lib/config";
+import { referralLink, type BillingPeriod, type PlanId } from "@/lib/config";
 
 type Screen = "boot" | "onboarding" | "analyzing" | "results" | "error";
 
@@ -37,6 +40,7 @@ export function ReelsFactoryApp() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [analysis, setAnalysis] = useState<AppAnalysis | null>(null);
   const [referralUrl, setReferralUrl] = useState("");
+  const [usage, setUsage] = useState<AppUsageSnapshot | null>(null);
   const [clientAccounts, setClientAccounts] = useState<
     Array<{
       id: string;
@@ -49,6 +53,7 @@ export function ReelsFactoryApp() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [analysisElapsedSec, setAnalysisElapsedSec] = useState(0);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
 
   const displayName = useMemo(() => {
     if (user?.firstName) {
@@ -61,6 +66,7 @@ export function ReelsFactoryApp() {
   }, [user, tgUser]);
 
   const bootstrap = useCallback(async () => {
+    setClientInitData(rawInitData);
     setScreen("boot");
     setError(null);
 
@@ -84,6 +90,7 @@ export function ReelsFactoryApp() {
       user: AppUser;
       latestAnalysis: AppAnalysis | null;
       referralLink: string;
+      usage?: AppUsageSnapshot;
       clientAccounts?: Array<{
         id: string;
         socialHandle: string;
@@ -98,6 +105,7 @@ export function ReelsFactoryApp() {
     setUser(data.user);
     setReferralUrl(data.referralLink || referralLink(data.user.telegramId));
     setClientAccounts(data.clientAccounts || []);
+    if (data.usage) setUsage(data.usage);
 
     const paidFlag =
       typeof window !== "undefined" &&
@@ -128,6 +136,38 @@ export function ReelsFactoryApp() {
       return;
     }
 
+    const inFlight = new Set([
+      "PENDING",
+      "QUEUED",
+      "SCRAPING",
+      "TRANSCRIBING",
+      "GENERATING",
+    ]);
+    if (
+      data.latestAnalysis &&
+      inFlight.has(data.latestAnalysis.status)
+    ) {
+      setScreen("analyzing");
+      setAnalysisStatus(data.latestAnalysis.status);
+      const analysisResult = await pollAnalysis(
+        data.latestAnalysis.id,
+        data.user.id,
+        Date.now(),
+      );
+      setAnalysis(analysisResult);
+      setScreen("results");
+      return;
+    }
+
+    if (data.latestAnalysis?.status === "FAILED") {
+      setError(
+        data.latestAnalysis.errorMessage ||
+          "Последний анализ не удался. Можно запустить заново.",
+      );
+      setScreen("error");
+      return;
+    }
+
     if (data.user.onboardedAt) {
       setScreen("analyzing");
       await runAnalysis(data.user.id);
@@ -147,7 +187,11 @@ export function ReelsFactoryApp() {
     });
   }, [ready, bootstrap]);
 
-  async function pollAnalysis(analysisId: string, startedAt: number) {
+  async function pollAnalysis(
+    analysisId: string,
+    userId: string,
+    startedAt: number,
+  ) {
     const terminal = new Set(["COMPLETED", "FAILED"]);
     const maxMs = 180_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
     for (;;) {
@@ -160,7 +204,7 @@ export function ReelsFactoryApp() {
       }
 
       const data = await api<{ analysis: AppAnalysis }>(
-        `/api/analyze?id=${encodeURIComponent(analysisId)}`,
+        `/api/analyze?id=${encodeURIComponent(analysisId)}&userId=${encodeURIComponent(userId)}`,
       );
       setAnalysisStatus(data.analysis.status);
 
@@ -178,7 +222,11 @@ export function ReelsFactoryApp() {
     }
   }
 
-  async function runAnalysis(userId: string, clientAccountId?: string) {
+  async function runAnalysis(
+    userId: string,
+    clientAccountId?: string,
+    submittedReelsText?: string,
+  ) {
     setScreen("analyzing");
     setError(null);
     setAnalysisStatus("QUEUED");
@@ -187,10 +235,10 @@ export function ReelsFactoryApp() {
     try {
       const data = await api<{ analysis: AppAnalysis }>("/api/analyze", {
         method: "POST",
-        body: JSON.stringify({ userId, clientAccountId }),
+        body: JSON.stringify({ userId, clientAccountId, submittedReelsText }),
       });
       setAnalysisStatus(data.analysis.status);
-      const analysisResult = await pollAnalysis(data.analysis.id, startedAt);
+      const analysisResult = await pollAnalysis(data.analysis.id, userId, startedAt);
       setAnalysis(analysisResult);
       setScreen("results");
     } catch (err) {
@@ -202,26 +250,65 @@ export function ReelsFactoryApp() {
   async function handleOnboarding(values: OnboardingValues) {
     if (!user) return;
     setError(null);
-    const data = await api<{ user: AppUser }>("/api/users/onboard", {
-      method: "POST",
-      body: JSON.stringify({ userId: user.id, ...values }),
-    });
-    setUser(data.user);
-    await runAnalysis(data.user.id);
+    setOnboardingBusy(true);
+    try {
+      const data = await api<{ user: AppUser }>("/api/users/onboard", {
+        method: "POST",
+        body: JSON.stringify({ userId: user.id, ...values }),
+      });
+      setUser(data.user);
+      await runAnalysis(data.user.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка онбординга");
+      setScreen("error");
+    } finally {
+      setOnboardingBusy(false);
+    }
   }
 
-  async function handleSelectPlan(plan: Exclude<PlanId, "FREE">) {
+  async function handleSelectPlan(
+    plan: Exclude<PlanId, "FREE">,
+    billingPeriod: BillingPeriod = "month",
+  ) {
     if (!user) return;
     setLoadingPlan(plan);
     try {
       const data = await api<{
         confirmationUrl?: string;
         mocked?: boolean;
+        paidFromBalance?: boolean;
         payment: { providerPaymentId?: string };
       }>("/api/payments/create", {
         method: "POST",
-        body: JSON.stringify({ userId: user.id, plan }),
+        body: JSON.stringify({ userId: user.id, plan, billingPeriod }),
       });
+
+      if (data.paidFromBalance) {
+        const telegramId = tgUser?.id ? String(tgUser.id) : getDevTelegramId();
+        const refreshed = await api<{
+          user: AppUser;
+          usage?: AppUsageSnapshot;
+        }>("/api/users", {
+          method: "POST",
+          body: JSON.stringify({
+            initData: rawInitData || null,
+            telegramId,
+            username: tgUser?.username ?? (isTelegram ? null : "local_dev"),
+            firstName: tgUser?.first_name ?? (isTelegram ? null : "Локальный"),
+            lastName: tgUser?.last_name ?? (isTelegram ? null : "Автор"),
+            languageCode: tgUser?.language_code ?? "ru",
+            photoUrl: tgUser?.photo_url ?? null,
+            startParam:
+              startParam ||
+              (typeof window !== "undefined"
+                ? new URLSearchParams(window.location.search).get("start")
+                : null),
+          }),
+        });
+        setUser(refreshed.user);
+        if (refreshed.usage) setUsage(refreshed.usage);
+        return;
+      }
 
       if (data.confirmationUrl) {
         window.location.href = data.confirmationUrl;
@@ -238,25 +325,37 @@ export function ReelsFactoryApp() {
 
   if (screen === "boot" || !ready) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-5 p-6">
+        <BrandMark size="lg" />
+        <div className="w-full max-w-[16rem] space-y-2">
+          <div className="h-3 w-2/3 animate-pulse rounded-full bg-secondary" />
+          <div className="h-3 w-full animate-pulse rounded-full bg-secondary" />
+          <div className="h-3 w-5/6 animate-pulse rounded-full bg-secondary" />
+        </div>
+        <p className="font-display text-sm text-muted-foreground">ReelsFactory</p>
       </div>
     );
   }
 
   if (screen === "error") {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4 text-center">
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 p-4 text-center">
         <TelegramBackButton show={false} />
-        <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
+        <BrandMark />
+        <h1 className="font-display text-xl font-semibold">Не собралось</h1>
         <p className="text-sm text-muted-foreground">{error}</p>
-        <button
-          type="button"
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-          onClick={() => void bootstrap()}
+        <Button
+          className="w-full max-w-xs"
+          onClick={() => {
+            if (user?.onboardedAt) {
+              void runAnalysis(user.id);
+              return;
+            }
+            void bootstrap();
+          }}
         >
-          Повторить
-        </button>
+          {user?.onboardedAt ? "Снова разобрать ролики" : "Повторить"}
+        </Button>
       </div>
     );
   }
@@ -267,6 +366,7 @@ export function ReelsFactoryApp() {
         <TelegramBackButton show={false} />
         <OnboardingForm
           userName={displayName}
+          loading={onboardingBusy}
           onSubmit={handleOnboarding}
         />
       </>
@@ -281,6 +381,12 @@ export function ReelsFactoryApp() {
           status={analysisStatus}
           elapsedSec={analysisElapsedSec}
           failedMessage={null}
+          platform={user?.platform}
+          fromLinks={Boolean(
+            user?.submittedReels &&
+              Array.isArray(user.submittedReels) &&
+              user.submittedReels.length >= 2,
+          )}
         />
       </>
     );
@@ -295,18 +401,54 @@ export function ReelsFactoryApp() {
           analysis={analysis}
           referralUrl={referralUrl}
           clientAccounts={clientAccounts}
+          usage={usage}
           onSelectPlan={handleSelectPlan}
           loadingPlan={loadingPlan}
           onReanalyze={() => {
             if (user) void runAnalysis(user.id);
           }}
+          onReanalyzeWithLinks={(submittedReelsText) => {
+            if (user) void runAnalysis(user.id, undefined, submittedReelsText);
+          }}
           onAnalyzeClient={(clientAccountId) => {
             if (user) void runAnalysis(user.id, clientAccountId);
+          }}
+          onScriptsUpdated={(scripts) => {
+            setAnalysis((prev) => (prev ? { ...prev, scripts } : prev));
+            setUsage((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    usage: {
+                      ...prev.usage,
+                      scripts: prev.usage.scripts + 1,
+                    },
+                    remaining: {
+                      ...prev.remaining,
+                      scripts: Math.max(0, prev.remaining.scripts - 1),
+                    },
+                  }
+                : prev,
+            );
+          }}
+          onAnalysisChange={(next) => {
+            setAnalysis(next);
+          }}
+          onUserPatch={(patch) => {
+            setUser((prev) => (prev ? { ...prev, ...patch } : prev));
           }}
         />
       </>
     );
   }
 
-  return null;
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+      <BrandMark />
+      <p className="text-sm text-muted-foreground">Собираем экран…</p>
+      <Button variant="outline" onClick={() => void bootstrap()}>
+        Обновить
+      </Button>
+    </div>
+  );
 }

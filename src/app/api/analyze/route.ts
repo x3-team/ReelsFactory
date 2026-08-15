@@ -1,22 +1,64 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { authErrorResponse, publicAnalysis, requireUser } from "@/lib/api-auth";
+import {
+  HonestyError,
+  USER_REELS_WEAK_MESSAGE,
+  assertCanAnalyzeProfile,
+} from "@/lib/honesty";
+import {
+  hasEnoughSubmittedReels,
+  hasSubmittedReelSignal,
+  parseSubmittedReels,
+} from "@/lib/submitted-reels";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
+import { refundQuota } from "@/lib/quota-lock";
+import { assertRateLimit, httpErrorStatus } from "@/lib/rate-limit";
 import { serialize } from "@/lib/serialize";
+import { assertCanEnqueueAnalysis, QuotaError } from "@/lib/usage";
 
 const bodySchema = z.object({
   userId: z.string().min(1),
   clientAccountId: z.string().optional(),
+  submittedReelsText: z.string().max(4000).optional(),
 });
 
 export async function POST(request: Request) {
+  let consumedUserId: string | null = null;
   try {
     const body = bodySchema.parse(await request.json());
-    const user = await prisma.user.findUnique({ where: { id: body.userId } });
-    if (!user) {
-      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    let user = await requireUser(request, body.userId);
+    await assertRateLimit({
+      name: "analyze",
+      id: user.id,
+      max: 12,
+      windowSec: 3600,
+    });
+
+    if (body.submittedReelsText && !body.clientAccountId) {
+      const submittedReels = parseSubmittedReels(body.submittedReelsText);
+      if (!hasSubmittedReelSignal(submittedReels)) {
+        throw new HonestyError(USER_REELS_WEAK_MESSAGE, "USER_REELS_WEAK", 400);
+      }
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { submittedReels },
+      });
     }
+
+    const hasUserReels = hasEnoughSubmittedReels(user.submittedReels);
+
+    if (!body.clientAccountId && user.platform) {
+      assertCanAnalyzeProfile(user.platform, process.env, {
+        hasUserReels,
+        handle: user.socialHandle,
+      });
+    }
+
+    await assertCanEnqueueAnalysis(user);
+    consumedUserId = user.id;
 
     let socialHandle = user.socialHandle;
     let platform = user.platform;
@@ -26,6 +68,8 @@ export async function POST(request: Request) {
         where: { id: body.clientAccountId, agencyUserId: user.id },
       });
       if (!client) {
+        await refundQuota(user.id, "analyses");
+        consumedUserId = null;
         return NextResponse.json(
           { error: "Клиентский аккаунт не найден" },
           { status: 404 },
@@ -36,10 +80,23 @@ export async function POST(request: Request) {
     }
 
     if (!socialHandle || !platform) {
+      await refundQuota(user.id, "analyses");
+      consumedUserId = null;
       return NextResponse.json(
         { error: "Сначала завершите онбординг (укажите @username)" },
         { status: 400 },
       );
+    }
+
+    try {
+      assertCanAnalyzeProfile(platform, process.env, {
+        hasUserReels: body.clientAccountId ? false : hasUserReels,
+        handle: socialHandle,
+      });
+    } catch (honestyError) {
+      await refundQuota(user.id, "analyses");
+      consumedUserId = null;
+      throw honestyError;
     }
 
     const queued = await enqueueAnalysis({
@@ -48,6 +105,7 @@ export async function POST(request: Request) {
       platform,
       clientAccountId: body.clientAccountId,
     });
+    consumedUserId = null;
 
     const analysis = await prisma.profileAnalysis.findUniqueOrThrow({
       where: { id: queued.analysisId },
@@ -56,38 +114,82 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       serialize({
-        analysis,
+        analysis: publicAnalysis(analysis),
         queued: true,
         jobId: queued.jobId,
         queueMode: queued.mode,
       }),
     );
   } catch (error) {
+    if (consumedUserId) {
+      await refundQuota(consumedUserId, "analyses").catch(() => undefined);
+    }
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     console.error("POST /api/analyze", error);
+    const status =
+      error instanceof HonestyError
+        ? error.status
+        : error instanceof QuotaError
+          ? 402
+          : httpErrorStatus(error, 500);
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : "Не удалось поставить анализ в очередь",
+        code:
+          error instanceof HonestyError
+            ? error.code
+            : error instanceof QuotaError
+              ? error.code
+              : undefined,
       },
-      { status: 500 },
+      { status },
     );
   }
 }
 
 export async function GET(request: Request) {
-  const id = new URL(request.url).searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "id обязателен" }, { status: 400 });
-  }
+  try {
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+    const userId = url.searchParams.get("userId");
+    const user = await requireUser(request, userId);
 
-  const analysis = await prisma.profileAnalysis.findUnique({
-    where: { id },
-    include: { scripts: { orderBy: { createdAt: "asc" } } },
-  });
+    if (!id) {
+      const analyses = await prisma.profileAnalysis.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          status: true,
+          socialHandle: true,
+          platform: true,
+          niche: true,
+          createdAt: true,
+        },
+      });
+      return NextResponse.json(serialize({ analyses }));
+    }
 
-  if (!analysis) {
+    const analysis = await prisma.profileAnalysis.findUnique({
+      where: { id },
+      include: { scripts: { orderBy: { createdAt: "asc" } } },
+    });
+
+    if (!analysis || analysis.userId !== user.id) {
+      return NextResponse.json({ error: "Не найдено" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      serialize({
+        analysis: publicAnalysis(analysis),
+      }),
+    );
+  } catch (error) {
+    const auth = authErrorResponse(error);
+    if (auth) return auth;
     return NextResponse.json({ error: "Не найдено" }, { status: 404 });
   }
-
-  return NextResponse.json(serialize({ analysis }));
 }

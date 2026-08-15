@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: reelsfactory
+    ports:
+      - "5432:5432"
+    volumes:
+      - reelsfactory_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - reelsfactory_redis:/data
+
+volumes:
+  reelsfactory_pg:
+  reelsfactory_redis:
