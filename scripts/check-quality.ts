@@ -27,6 +27,7 @@ import {
   parseViewsHint,
 } from "@/lib/submitted-reels";
 import {
+  CORPUS_NO_LIVE_MESSAGE,
   HonestyError,
   NO_SCRAPE_LIVE_MESSAGE,
   YOUTUBE_UNSUPPORTED_MESSAGE,
@@ -35,6 +36,7 @@ import {
   isMockScrapedProfile,
   resolveHonesty,
 } from "@/lib/honesty";
+import { detectPlatform } from "@/lib/platform";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -585,6 +587,40 @@ try {
     error instanceof HonestyError &&
       error.message === YOUTUBE_UNSUPPORTED_MESSAGE,
     "youtube copy",
+  );
+}
+
+try {
+  assertCanAnalyzeProfile("youtube", {});
+  throw new Error("youtube must throw in demo");
+} catch (error) {
+  assert(
+    error instanceof HonestyError &&
+      error.message === YOUTUBE_UNSUPPORTED_MESSAGE,
+    "youtube never mocked",
+  );
+}
+
+assert(detectPlatform("@kolodets") === "youtube", "kolodets is youtube");
+try {
+  assertCanAnalyzeProfile("instagram", { ALLOW_MOCK_PROFILE: "true" }, {
+    handle: "kolodets",
+  });
+  throw new Error("kolodets must not become IG mock");
+} catch (error) {
+  assert(
+    error instanceof HonestyError && error.code === "YOUTUBE",
+    "kolodets stays youtube",
+  );
+}
+try {
+  assertCanAnalyzeProfile("instagram", {}, { handle: "karinakross" });
+  throw new Error("corpus must not mock");
+} catch (error) {
+  assert(
+    error instanceof HonestyError &&
+      error.message === CORPUS_NO_LIVE_MESSAGE,
+    "corpus no live",
   );
 }
 

@@ -70,7 +70,10 @@ export async function parseProfile(input: {
     }
   }
 
-  assertCanAnalyzeProfile(input.platform, process.env, { hasUserReels });
+  assertCanAnalyzeProfile(input.platform, process.env, {
+    hasUserReels,
+    handle,
+  });
 
   if (envForcesAllMock()) {
     return mockScrapedProfile(handle, input.platform);
@@ -95,7 +98,6 @@ export async function parseProfile(input: {
   }
 
   if (input.platform === "youtube") {
-    if (allowMockProfile()) return mockScrapedProfile(handle, input.platform);
     throw new HonestyError(YOUTUBE_UNSUPPORTED_MESSAGE, "YOUTUBE", 400);
   }
 

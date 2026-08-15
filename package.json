@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "test:honesty": "node --experimental-strip-types scripts/honesty-check.ts"
+    "test:honesty": "node --experimental-strip-types scripts/honesty-check.ts",
+    "test:corpus": "node --experimental-strip-types scripts/corpus-run.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

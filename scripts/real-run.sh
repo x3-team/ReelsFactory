@@ -45,6 +45,20 @@ has_key() {
 # Без ключа скрейпинга профиль берётся из демо-данных. Если при этом есть ключ AI,
 # модель отработает по-настоящему — и отчёт будет выглядеть настоящим, хотя факты
 # в нём выдуманы. Предупреждаем громко, чтобы такой прогон не приняли за живой.
+# Публичный корпус (karinakross, kolodets, …) нельзя закрывать демо-профилем.
+# Даже ALLOW_MOCK_PROFILE=true здесь — враньё: «разобрали живой аккаунт».
+if node --experimental-strip-types scripts/corpus-guard.ts "$HANDLE"; then
+  :
+else
+  guard_rc=$?
+  if [ "$guard_rc" -eq 2 ] || [ "$guard_rc" -eq 3 ] || [ "$guard_rc" -eq 4 ]; then
+    echo "  Прогон остановлен (corpus-guard exit $guard_rc)." >&2
+    exit "$guard_rc"
+  fi
+  echo "  corpus-guard упал с кодом $guard_rc" >&2
+  exit 1
+fi
+
 if ! has_key APIFY_TOKEN && ! has_key RAPIDAPI_KEY; then
   cat >&2 <<'WARN'
 

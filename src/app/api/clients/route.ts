@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authErrorResponse, requireUser } from "@/lib/api-auth";
 import { PLANS } from "@/lib/config";
+import { HonestyError, assertCanAnalyzeProfile } from "@/lib/honesty";
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
 
     const platform = detectPlatform(body.socialHandle);
     const handle = normalizeHandle(body.socialHandle, platform);
+    assertCanAnalyzeProfile(platform, process.env, { handle });
     const account = await prisma.clientAccount.create({
       data: {
         agencyUserId: user.id,
@@ -84,12 +86,14 @@ export async function POST(request: Request) {
     const auth = authErrorResponse(error);
     if (auth) return auth;
     console.error("POST /api/clients", error);
+    const status = error instanceof HonestyError ? error.status : 400;
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : "Не удалось добавить аккаунт",
+        code: error instanceof HonestyError ? error.code : undefined,
       },
-      { status: 400 },
+      { status },
     );
   }
 }

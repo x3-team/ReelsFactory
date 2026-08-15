@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     if (!body.clientAccountId && user.platform) {
       assertCanAnalyzeProfile(user.platform, process.env, {
         hasUserReels: hasEnoughSubmittedReels(user.submittedReels),
+        handle: user.socialHandle,
       });
     }
 
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     try {
       assertCanAnalyzeProfile(platform, process.env, {
         hasUserReels: hasEnoughSubmittedReels(user.submittedReels),
+        handle: socialHandle,
       });
     } catch (honestyError) {
       await refundQuota(user.id, "analyses");

@@ -3,10 +3,13 @@
  * fabricated profile. Live LLM + mock scrape is the most misleading failure.
  */
 
+import { lookupCorpus } from "./test-corpus.ts";
+
 export type ProfileSource = "live" | "mock" | "user";
 
 export type AnalyzeIntent = {
   hasUserReels?: boolean;
+  handle?: string | null;
 };
 
 export type HonestyMode = "live" | "demo" | "blocked";
@@ -37,6 +40,12 @@ export const SCRAPE_FAILED_MESSAGE =
 
 export const LIVE_ON_MOCK_MESSAGE =
   "Демо-профиль нельзя разбирать живой моделью — получится уверенный текст про выдуманный аккаунт.";
+
+export const CORPUS_NO_LIVE_MESSAGE =
+  "Этот публичный аккаунт из тестового корпуса нельзя разбирать демо-профилем. Без ключа скрейпа (APIFY_TOKEN или RAPIDAPI_KEY) живого разбора нет — не подставляем «стратегию огонь».";
+
+export const CORPUS_PLATFORM_UNKNOWN_MESSAGE =
+  "Для этого хендла площадка не подтверждена. Не угадываем Instagram. Вставьте URL профиля или 3–5 ссылок на свои ролики.";
 
 export class HonestyError extends Error {
   status: number;
@@ -154,10 +163,25 @@ export function assertCanAnalyzeProfile(
   intent: AnalyzeIntent = {},
 ) {
   const honesty = resolveHonesty(env);
-  const p = (platform || "").toLowerCase();
+  const hit = lookupCorpus(intent.handle);
+  const p = (hit?.platform || platform || "").toLowerCase();
 
-  if (p === "youtube" && !honesty.allowMockProfile) {
+  if (hit && !hit.platform && !intent.hasUserReels) {
+    throw new HonestyError(
+      CORPUS_PLATFORM_UNKNOWN_MESSAGE,
+      "CORPUS_PLATFORM_UNKNOWN",
+      400,
+    );
+  }
+
+  // YouTube is never scraped. Mocking it as a Reels "lifestyle" audit is a lie
+  // for channels like @kolodets / @investfutureru.
+  if (p === "youtube" && !intent.hasUserReels) {
     throw new HonestyError(YOUTUBE_UNSUPPORTED_MESSAGE, "YOUTUBE", 400);
+  }
+
+  if (hit && !canScrapePlatform(p, env) && !intent.hasUserReels) {
+    throw new HonestyError(CORPUS_NO_LIVE_MESSAGE, "CORPUS_NO_LIVE", 503);
   }
 
   if (honesty.mode === "blocked" && !intent.hasUserReels) {

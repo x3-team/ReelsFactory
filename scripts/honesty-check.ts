@@ -3,6 +3,8 @@
  *   node --experimental-strip-types scripts/honesty-check.ts
  */
 import {
+  CORPUS_NO_LIVE_MESSAGE,
+  CORPUS_PLATFORM_UNKNOWN_MESSAGE,
   HonestyError,
   NO_SCRAPE_LIVE_MESSAGE,
   TIKTOK_NEEDS_APIFY_MESSAGE,
@@ -13,6 +15,8 @@ import {
   isMockScrapedProfile,
   resolveHonesty,
 } from "../src/lib/honesty.ts";
+import { detectPlatform } from "../src/lib/platform.ts";
+import { TEST_CORPUS, lookupCorpus } from "../src/lib/test-corpus.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -59,6 +63,74 @@ try {
 } catch (error) {
   assert((error as HonestyError).message === YOUTUBE_UNSUPPORTED_MESSAGE, "yt copy");
 }
+
+try {
+  assertCanAnalyzeProfile("youtube", {});
+  throw new Error("expected youtube throw in demo");
+} catch (error) {
+  assert(
+    (error as HonestyError).message === YOUTUBE_UNSUPPORTED_MESSAGE,
+    "yt never mocked",
+  );
+}
+
+assert(detectPlatform("@kolodets") === "youtube", "kolodets is YT, not IG");
+assert(detectPlatform("@investfutureru") === "youtube", "investfutureru is YT");
+assert(detectPlatform("@homm9k") === "tiktok", "homm9k is TikTok");
+assert(detectPlatform("@hommm9k") === "instagram", "hommm9k three m is IG");
+assert(detectPlatform("@ksenia_makarchuk__") === "instagram", "double underscore");
+assert(TEST_CORPUS.length === 16, "owner gave 16 handles, do not invent more");
+assert(lookupCorpus("@karinakross")?.platform === "instagram", "karina IG");
+assert(lookupCorpus("tanyatgym")?.platform === null, "tanyatgym platform unknown");
+
+try {
+  assertCanAnalyzeProfile("instagram", {}, { handle: "karinakross" });
+  throw new Error("expected corpus no-live");
+} catch (error) {
+  assert(error instanceof HonestyError, "corpus HonestyError");
+  assert((error as HonestyError).code === "CORPUS_NO_LIVE", "corpus code");
+  assert((error as HonestyError).message === CORPUS_NO_LIVE_MESSAGE, "corpus copy");
+}
+
+try {
+  assertCanAnalyzeProfile("instagram", { ALLOW_MOCK_PROFILE: "true" }, {
+    handle: "kolodets",
+  });
+  throw new Error("expected kolodets refuse even with mock flag");
+} catch (error) {
+  assert(
+    (error as HonestyError).message === YOUTUBE_UNSUPPORTED_MESSAGE ||
+      (error as HonestyError).code === "CORPUS_NO_LIVE",
+    "kolodets never mocked as IG lifestyle",
+  );
+}
+
+try {
+  assertCanAnalyzeProfile(detectPlatform("@kolodets"), { ALLOW_MOCK_PROFILE: "true" }, {
+    handle: "kolodets",
+  });
+  throw new Error("expected kolodets youtube refuse");
+} catch (error) {
+  assert((error as HonestyError).code === "YOUTUBE", "kolodets youtube code");
+}
+
+try {
+  assertCanAnalyzeProfile("instagram", {}, { handle: "tanyatgym" });
+  throw new Error("expected unknown platform");
+} catch (error) {
+  assert(
+    (error as HonestyError).message === CORPUS_PLATFORM_UNKNOWN_MESSAGE,
+    "do not guess tanyatgym IG",
+  );
+}
+
+assertCanAnalyzeProfile(
+  "instagram",
+  { APIFY_TOKEN: "apify" },
+  { handle: "karinakross" },
+);
+
+assertCanAnalyzeProfile("instagram", {}, { handle: "reelsfactory.demo" });
 
 assert(
   isMockScrapedProfile({

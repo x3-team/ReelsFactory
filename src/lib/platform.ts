@@ -1,3 +1,5 @@
+import { lookupCorpus } from "./test-corpus.ts";
+
 export type Platform = "instagram" | "tiktok" | "youtube";
 
 export function formatPlatform(platform?: string | null) {
@@ -13,9 +15,9 @@ export function formatPlatform(platform?: string | null) {
   }
 }
 
-export function detectPlatform(input: string): Platform {
+export function detectPlatformFromUrl(input: string): Platform | null {
   const value = input.trim().toLowerCase();
-  if (value.includes("tiktok.com") || value.startsWith("@") && value.includes("tiktok")) {
+  if (value.includes("tiktok.com") || (value.startsWith("@") && value.includes("tiktok"))) {
     return "tiktok";
   }
   if (
@@ -26,6 +28,17 @@ export function detectPlatform(input: string): Platform {
   ) {
     return "youtube";
   }
+  if (value.includes("instagram.com")) {
+    return "instagram";
+  }
+  return null;
+}
+
+export function detectPlatform(input: string): Platform {
+  const fromUrl = detectPlatformFromUrl(input);
+  if (fromUrl) return fromUrl;
+  const corpus = lookupCorpus(input);
+  if (corpus?.platform) return corpus.platform;
   return "instagram";
 }
 

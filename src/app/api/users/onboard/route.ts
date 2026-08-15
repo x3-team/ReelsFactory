@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     const submittedReels = parseSubmittedReels(body.submittedReelsText);
     assertCanAnalyzeProfile(platform, process.env, {
       hasUserReels: hasEnoughSubmittedReels(submittedReels),
+      handle,
     });
 
     let voiceDraft = body.voiceDraft?.trim() || null;
