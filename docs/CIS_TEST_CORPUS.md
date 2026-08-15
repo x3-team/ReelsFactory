@@ -24,6 +24,27 @@ absent. `RAPIDAPI_KEY` absent. Мок не подставляли.
 `@hommm9k` (три m) не подставляли вместо TikTok.
 Цифры роста не утверждаем — только то, что вернул Apify.
 
+## Живой LLM (15.08.2026, новая VM)
+
+`APIFY_TOKEN` present, non-empty, prefix=`apify_api_`, length=46.
+`AITUNNEL_API_KEY` present, non-empty, prefix=`sk-`, length=44.
+`RAPIDAPI_KEY` absent. Мок не подставляли. Тихий `local-shell` выключен.
+
+Новый Apify run — **403 Monthly usage hard limit**. Движок взял SUCCEEDED-датасет
+того же хендла (оплаченный прогон ~20:09–20:13) и прогнал `POST /api/analyze`.
+Модель стратегии: **`gpt-5.6-luna`** (Start). Whisper: `whisper-1`.
+
+| Хендл | Площадка | Модель | Результат | Сценарии про этот аккаунт? |
+| --- | --- | --- | --- | --- |
+| `@karinakross` | Instagram | `gpt-5.6-luna` | live, `apify-reuse`, 0 транскриптов | да: лето / приложение / дети 90-х, не фитнес |
+| `@agre_daria_fit` | Instagram | `gpt-5.6-luna` | live, `apify-reuse`, 0 транскриптов | да: ягодицы / резинка / тренер 35+ |
+| `@ksenia_makarchuk__` | Instagram | `gpt-5.6-luna` | live, `apify-reuse`, 3 транскрипта | да: новостройки СПб / ипотека, не фитнес |
+| `@homm9k` | TikTok | `gpt-5.6-luna` | live, `apify-reuse`, 0 транскриптов | да: Батуми / тревел HOMA, не фитнес |
+| `@kolodets` | YouTube | — | HTTP 400 `YOUTUBE` | отказ, не Reels |
+| `@investfutureru` | YouTube | — | HTTP 400 `YOUTUBE` | отказ, не Reels |
+
+Рост не обещаем. CTA-слово часто общее (`ГАЙД` / `УРОК`) — это не ниша.
+
 ## Вторая пачка (15.08.2026, та же VM)
 
 `AITUNNEL_API_KEY` по-прежнему absent → **HARD_STOP_NO_AITUNNEL**: первую
