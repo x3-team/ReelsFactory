@@ -29,6 +29,9 @@ export type HonestySnapshot = {
 export const NO_SCRAPE_LIVE_MESSAGE =
   "Нет ключа скрейпинга (APIFY_TOKEN или RAPIDAPI_KEY). Чтобы не выдумывать аккаунт, вставьте 3–5 ссылок на свои рилсы — можно с цифрами из Insights. Для демо задайте ALLOW_MOCK_PROFILE=true.";
 
+export const USER_REELS_WEAK_MESSAGE =
+  "К ссылкам напишите, о чём ролик, или цифру из Insights (просмотры / удержание). Иначе не из чего собрать сценарий — и мы не будем притворяться, что открыли аккаунт.";
+
 export const YOUTUBE_UNSUPPORTED_MESSAGE =
   "YouTube пока не разбираем. Укажите открытый Instagram или TikTok.";
 

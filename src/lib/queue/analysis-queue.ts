@@ -89,6 +89,8 @@ async function processAnalysisJob(data: AnalysisJobData) {
       websiteUrl: client.websiteUrl || user.websiteUrl,
       profileGoal: client.profileGoal || user.profileGoal,
       toneOfVoice: client.toneOfVoice || user.toneOfVoice,
+      // Never reuse the agency owner's personal links as if they were the client's.
+      submittedReels: null,
     };
   }
 

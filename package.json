@@ -13,7 +13,8 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "test:honesty": "node --experimental-strip-types scripts/honesty-check.ts",
-    "test:corpus": "node --experimental-strip-types scripts/corpus-run.ts"
+    "test:corpus": "node --experimental-strip-types scripts/corpus-run.ts",
+    "test:user-links": "bash scripts/user-links-run.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

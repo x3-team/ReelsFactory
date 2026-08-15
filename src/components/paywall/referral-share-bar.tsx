@@ -24,7 +24,7 @@ export function ReferralShareBar({
   const shareHref = telegramShareUrl(
     referralUrl,
     shareText ||
-      "ReelsFactory растит аудиторию в коротких видео: разбирает твой аккаунт и собирает сценарии с суфлёром под него.",
+      "ReelsFactory: сценарий с суфлёром из твоих рилсов. Не обещаем подписчиков и не притворяемся, что открыли аккаунт.",
   );
 
   return (

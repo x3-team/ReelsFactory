@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s — ReelsFactory",
   },
   description:
-    "Разбор аккаунта и инструменты роста: сценарии с суфлёром, съёмочный день, ремейки и воронка в Telegram.",
+    "Разбор ваших рилсов и сценарий с суфлёром в том же сеансе. Аккаунт целиком не открываем.",
 };
 
 export const viewport: Viewport = {

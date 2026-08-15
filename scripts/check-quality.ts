@@ -23,6 +23,8 @@ import {
 import type { ScrapedProfile } from "@/lib/types";
 import {
   hasEnoughSubmittedReels,
+  hasSubmittedReelSignal,
+  parseRetentionHint,
   parseSubmittedReels,
   parseViewsHint,
 } from "@/lib/submitted-reels";
@@ -641,16 +643,24 @@ assert(
 
 const pasted = parseSubmittedReels(
   [
-    "https://www.instagram.com/reel/AbC123/ торт без сахара, 12 тыс просмотров",
-    "https://instagram.com/reel/DeF456/ разлом зефира",
+    "https://www.instagram.com/reel/AbC123/ торт без сахара, 12 тыс просмотров, 41% удержание",
+    "https://instagram.com/reel/DeF456/ разлом зефира, 8 тыс",
+    "https://instagram.com/reel/GhI789/ фисташка и малина",
   ].join("\n"),
 );
-assert(pasted.length === 2, "two pasted reels");
+assert(pasted.length === 3, "three pasted reels");
 assert(pasted[0].views === 12000, "insights views");
+assert(pasted[0].retentionPct === 41, "retention");
 assert(/торт без сахара/.test(pasted[0].caption || ""), "caption kept");
 assert(!/\//.test(pasted[0].caption || ""), "no leftover slash");
 assert(hasEnoughSubmittedReels(pasted), "enough user reels");
+assert(hasSubmittedReelSignal(pasted), "caption/insights signal");
 assert(parseViewsHint("8.4k views") === 8400, "k views");
+assert(parseRetentionHint("41% удержание") === 41, "retention hint");
+assert(
+  !hasEnoughSubmittedReels(pasted.slice(0, 2)),
+  "two links are not enough",
+);
 assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
 
 console.log("check-quality: ok", {

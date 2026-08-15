@@ -105,7 +105,7 @@ function SiteNav() {
           <Button asChild size="sm" className="h-10 px-4">
             <Link href={APP_HREF}>
               <span className="sm:hidden">Начать</span>
-              <span className="hidden sm:inline">Разобрать профиль</span>
+              <span className="hidden sm:inline">Разобрать мои ролики</span>
               <ArrowRight className="size-3.5" />
             </Link>
           </Button>
@@ -146,7 +146,7 @@ function Hero() {
             <Button asChild size="lg" className="rf-cta h-12 px-6 text-base">
               <Link href={APP_HREF}>
                 <Clapperboard className="size-4" />
-                Разобрать мой профиль
+                Разобрать мои ролики
               </Link>
             </Button>
             <a
@@ -376,7 +376,7 @@ function Tools() {
       <div className="mx-auto max-w-5xl">
         <SectionLabel>Инструменты</SectionLabel>
         <h2 className="font-display mt-2 max-w-[20ch] text-3xl font-semibold tracking-tight md:text-4xl">
-          Профиль → сценарий → суфлёр
+          Ваши рилсы → сценарий → суфлёр
         </h2>
         <p className="mt-3 max-w-[48ch] text-[1.05rem] leading-7 text-muted-foreground">
           Это вся работа. Не фабрика AI-видео и не кросспост. Каждый инструмент
@@ -772,7 +772,7 @@ function Offer() {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button asChild size="lg" className="rf-cta h-12 px-6 text-base">
             <Link href={APP_HREF}>
-              Разобрать мой профиль
+              Разобрать мои ролики
               <ArrowRight className="size-4" />
             </Link>
           </Button>

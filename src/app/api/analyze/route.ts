@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authErrorResponse, publicAnalysis, requireUser } from "@/lib/api-auth";
-import { HonestyError, assertCanAnalyzeProfile } from "@/lib/honesty";
-import { hasEnoughSubmittedReels } from "@/lib/submitted-reels";
+import {
+  HonestyError,
+  USER_REELS_WEAK_MESSAGE,
+  assertCanAnalyzeProfile,
+} from "@/lib/honesty";
+import {
+  hasEnoughSubmittedReels,
+  hasSubmittedReelSignal,
+  parseSubmittedReels,
+} from "@/lib/submitted-reels";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
 import { refundQuota } from "@/lib/quota-lock";
@@ -14,13 +22,14 @@ import { assertCanEnqueueAnalysis, QuotaError } from "@/lib/usage";
 const bodySchema = z.object({
   userId: z.string().min(1),
   clientAccountId: z.string().optional(),
+  submittedReelsText: z.string().max(4000).optional(),
 });
 
 export async function POST(request: Request) {
   let consumedUserId: string | null = null;
   try {
     const body = bodySchema.parse(await request.json());
-    const user = await requireUser(request, body.userId);
+    let user = await requireUser(request, body.userId);
     await assertRateLimit({
       name: "analyze",
       id: user.id,
@@ -28,9 +37,22 @@ export async function POST(request: Request) {
       windowSec: 3600,
     });
 
+    if (body.submittedReelsText && !body.clientAccountId) {
+      const submittedReels = parseSubmittedReels(body.submittedReelsText);
+      if (!hasSubmittedReelSignal(submittedReels)) {
+        throw new HonestyError(USER_REELS_WEAK_MESSAGE, "USER_REELS_WEAK", 400);
+      }
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { submittedReels },
+      });
+    }
+
+    const hasUserReels = hasEnoughSubmittedReels(user.submittedReels);
+
     if (!body.clientAccountId && user.platform) {
       assertCanAnalyzeProfile(user.platform, process.env, {
-        hasUserReels: hasEnoughSubmittedReels(user.submittedReels),
+        hasUserReels,
         handle: user.socialHandle,
       });
     }
@@ -68,7 +90,7 @@ export async function POST(request: Request) {
 
     try {
       assertCanAnalyzeProfile(platform, process.env, {
-        hasUserReels: hasEnoughSubmittedReels(user.submittedReels),
+        hasUserReels: body.clientAccountId ? false : hasUserReels,
         handle: socialHandle,
       });
     } catch (honestyError) {

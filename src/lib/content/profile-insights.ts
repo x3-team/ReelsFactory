@@ -354,7 +354,7 @@ export function hookLine(caption: string) {
   const sentences = caption
     .split(/\n+|(?<=[.!?…💔🔥💚💕😅])\s+/)
     .map((l) => stripDecor(l).replace(/[«»]/g, "").trim())
-    .filter((l) => l.length >= 12);
+    .filter((l) => l.length >= 8);
 
   const scored = sentences.map((s) => {
     let score = 0;
@@ -456,7 +456,7 @@ function voiceSamples(captions: string[]) {
 
 function videoAngles(videos: ScrapedVideo[]): CaptionAngle[] {
   return videos
-    .filter((v) => (v.caption || "").trim().length >= 12)
+    .filter((v) => (v.caption || "").trim().length >= 8)
     .slice(0, 16)
     .map((v) => ({
       id: v.id,

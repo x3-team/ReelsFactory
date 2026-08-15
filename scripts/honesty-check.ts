@@ -16,6 +16,13 @@ import {
   resolveHonesty,
 } from "../src/lib/honesty.ts";
 import { detectPlatform } from "../src/lib/platform.ts";
+import {
+  MIN_SUBMITTED_REELS,
+  hasEnoughSubmittedReels,
+  hasSubmittedReelSignal,
+  parseRetentionHint,
+  parseSubmittedReels,
+} from "../src/lib/submitted-reels.ts";
 import { TEST_CORPUS, lookupCorpus } from "../src/lib/test-corpus.ts";
 
 function assert(cond: unknown, msg: string) {
@@ -150,6 +157,7 @@ const forced = { MOCK_EXTERNAL_APIS: "true", APIFY_TOKEN: "apify", AITUNNEL_API_
 assert(resolveHonesty(forced).mode === "demo", "MOCK_EXTERNAL_APIS wins");
 
 assertCanAnalyzeProfile("instagram", lie, { hasUserReels: true });
+assertCanAnalyzeProfile("youtube", lie, { hasUserReels: true });
 assert(
   !isMockScrapedProfile({
     source: "user",
@@ -157,5 +165,18 @@ assert(
   }),
   "user-submitted is not mock",
 );
+
+assert(MIN_SUBMITTED_REELS === 3, "launch path asks for 3–5 links");
+const three = parseSubmittedReels(
+  [
+    "https://instagram.com/reel/Aaa  торт без сахара, 12 тыс, 41% удержание",
+    "https://instagram.com/reel/Bbb  разлом зефира",
+    "https://instagram.com/reel/Ccc  фисташка и малина",
+  ].join("\n"),
+);
+assert(three.length === 3 && three[0].retentionPct === 41, "retention parsed");
+assert(hasEnoughSubmittedReels(three) && hasSubmittedReelSignal(three), "user signal");
+assert(parseRetentionHint("удержание 38%") === 38, "retention before number");
+assert(!hasEnoughSubmittedReels(three.slice(0, 2)), "two links not enough");
 
 console.log("honesty-check: ok");

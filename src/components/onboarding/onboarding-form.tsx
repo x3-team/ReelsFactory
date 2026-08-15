@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Mic } from "lucide-react";
+
+import {
+  MIN_SUBMITTED_REELS,
+  hasSubmittedReelSignal,
+  parseSubmittedReels,
+} from "@/lib/submitted-reels";
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
@@ -73,14 +79,41 @@ export function OnboardingForm({
   const [voiceDraft, setVoiceDraft] = useState("");
   const [submittedReelsText, setSubmittedReelsText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needsUserReels, setNeedsUserReels] = useState(true);
+
+  useEffect(() => {
+    void fetch("/api/health")
+      .then((res) => res.json())
+      .then((data: { honesty?: { scrape?: boolean; needsUserReels?: boolean } }) => {
+        setNeedsUserReels(
+          Boolean(data.honesty?.needsUserReels ?? !data.honesty?.scrape),
+        );
+      })
+      .catch(() => setNeedsUserReels(true));
+  }, []);
 
   const totalSteps = 4;
 
   async function next() {
     setError(null);
     if (step === 0 && socialHandle.trim().length < 2) {
-      setError("Укажите @username Instagram или TikTok");
+      setError("Укажите @username — только как подпись разбора, аккаунт не откроем");
       return;
+    }
+    if (step === 0) {
+      const reels = parseSubmittedReels(submittedReelsText);
+      if (needsUserReels && reels.length < MIN_SUBMITTED_REELS) {
+        setError(
+          `Вставьте ${MIN_SUBMITTED_REELS}–5 ссылок на свои рилсы. Без скрейпа не притворимся, что открыли аккаунт.`,
+        );
+        return;
+      }
+      if (reels.length > 0 && !hasSubmittedReelSignal(reels)) {
+        setError(
+          "К ссылкам напишите, о чём ролик, или цифру из Insights (просмотры / удержание).",
+        );
+        return;
+      }
     }
     if (step < totalSteps - 1) {
       setStep((s) => s + 1);
@@ -127,31 +160,34 @@ export function OnboardingForm({
 
       {step === 0 && (
         <section className="space-y-3">
-          <Label htmlFor="handle">Instagram или TikTok</Label>
-          <Input
-            id="handle"
-            placeholder="@username или ссылка на профиль"
-            value={socialHandle}
-            onChange={(e) => setSocialHandle(e.target.value)}
-            autoFocus
-          />
-          <p className="text-xs text-muted-foreground">
-            @ник нужен, чтобы подписать разбор. YouTube пока не разбираем.
-          </p>
           <Label htmlFor="reels">Ссылки на 3–5 своих рилсов</Label>
           <Textarea
             id="reels"
             placeholder={
-              "https://instagram.com/reel/…  торт без сахара, 12 тыс просмотров\nhttps://instagram.com/reel/…  разлом зефира"
+              "https://instagram.com/reel/…  торт без сахара, 12 тыс просмотров, 41% удержание\nhttps://instagram.com/reel/…  разлом зефира, 8 тыс\nhttps://instagram.com/reel/…  фисташка и малина"
             }
             value={submittedReelsText}
             onChange={(e) => setSubmittedReelsText(e.target.value)}
-            rows={5}
+            rows={6}
+            autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Так видно, какие ролики взяли — не «типичный фитнес». Можно добавить
-            цифры из Insights. Без ссылок живой разбор не начнём, если скрейпа
-            нет: не будем притворяться, что открыли аккаунт.
+            Это основной путь: разбор ваших ссылок, не «открыли @аккаунт».
+            К URL — о чём ролик и по желанию просмотры / удержание из Insights.
+            {needsUserReels
+              ? " Скрейпа нет — без ссылок дальше не пойдём."
+              : " Ссылки можно не дублировать, если скрейп живой."}
+          </p>
+          <Label htmlFor="handle">@ник — только подпись</Label>
+          <Input
+            id="handle"
+            placeholder="@username Instagram или TikTok"
+            value={socialHandle}
+            onChange={(e) => setSocialHandle(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Нужен, чтобы подписать сценарии. YouTube пока не разбираем (честный
+            отказ, не «стратегия огонь»).
           </p>
         </section>
       )}
@@ -320,7 +356,7 @@ export function OnboardingForm({
           {step === totalSteps - 1
             ? loading
               ? "Запускаем…"
-              : "Анализировать профиль"
+              : "Разобрать мои ролики"
             : "Продолжить"}
           <ArrowRight className="size-4" />
         </Button>

@@ -21,6 +21,8 @@ import { TeleprompterMode } from "@/components/results/teleprompter";
 import { UsageQuotaCard } from "@/components/results/usage-quota-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { formatSubmittedReelsText } from "@/lib/submitted-reels";
 import {
   Card,
   CardContent,
@@ -82,9 +84,11 @@ function formatViews(n: number) {
 function SourceVideosCard({
   videos,
   hidden,
+  fromLinks,
 }: {
   videos: NonNullable<AppAnalysis["sourceVideos"]>;
   hidden?: boolean;
+  fromLinks?: boolean;
 }) {
   if (hidden || videos.length === 0) return null;
   return (
@@ -93,7 +97,9 @@ function SourceVideosCard({
         Какие ролики взяли
       </p>
       <p className="mt-1 text-sm text-muted-foreground">
-        Разбор именно этих ссылок, не «типичный фитнес».
+        {fromLinks
+          ? "Только эти ссылки. Аккаунт целиком не открывали."
+          : "Разбор именно этих роликов, не «типичный фитнес»."}
       </p>
       <ol className="mt-3 space-y-2">
         {videos.map((video, index) => {
@@ -111,8 +117,16 @@ function SourceVideosCard({
               {views ? (
                 <span className="text-muted-foreground"> · {views}</span>
               ) : null}
+              {video.retentionPct ? (
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {video.retentionPct}% удерж.
+                </span>
+              ) : null}
               {video.usedForSpeech ? (
                 <span className="text-muted-foreground"> · речь</span>
+              ) : fromLinks && video.caption ? (
+                <span className="text-muted-foreground"> · из подписи</span>
               ) : null}
               {video.caption ? (
                 <p className="mt-0.5 line-clamp-2 text-muted-foreground">
@@ -136,6 +150,7 @@ export function ResultsDashboard({
   onSelectPlan,
   loadingPlan,
   onReanalyze,
+  onReanalyzeWithLinks,
   onAnalyzeClient,
   onScriptsUpdated,
   onAnalysisChange,
@@ -159,6 +174,7 @@ export function ResultsDashboard({
   ) => Promise<void> | void;
   loadingPlan?: string | null;
   onReanalyze: () => void;
+  onReanalyzeWithLinks?: (submittedReelsText: string) => void;
   onAnalyzeClient?: (clientAccountId: string) => void;
   onScriptsUpdated?: (scripts: AppScript[]) => void;
   onAnalysisChange?: (analysis: AppAnalysis) => void;
@@ -222,18 +238,22 @@ export function ResultsDashboard({
       <header className="flex items-start justify-between gap-3 pt-1">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">
-            @{analysis.socialHandle} · {formatPlatform(analysis.platform)}
+            {analysis.profileSource === "user"
+              ? `@${analysis.socialHandle} — подпись разбора, аккаунт не открывали`
+              : `@${analysis.socialHandle} · ${formatPlatform(analysis.platform)}`}
           </p>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {analysis.profileSource === "mock"
               ? "Демо-сценарии"
-              : "Сценарии готовы"}
+              : analysis.profileSource === "user"
+                ? "Сценарии из ваших ссылок"
+                : "Сценарии готовы"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {analysis.profileSource === "mock"
               ? "Профиль не скрейпили — это каркас, не разбор этого аккаунта"
               : analysis.profileSource === "user"
-                ? "Разбор по ссылкам, которые вы прислали · суфлёр в этом сеансе"
+                ? "Суфлёр в этом сеансе · не «открыли @username»"
                 : "Из роликов ниже · суфлёр в этом же сеансе"}
           </p>
           {usage && <div className="mt-2"><UsageQuotaCard usage={usage} /></div>}
@@ -256,15 +276,33 @@ export function ResultsDashboard({
 
       {analysis.profileSource === "user" && (
         <div className="rounded-2xl border border-border/80 bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-          Профиль целиком не скрейпили — разобрали ссылки, которые вы вставили.
-          Instagram ToS серый, тихий обход не используем.
+          Аккаунт @{analysis.socialHandle} не открывали. Разобрали только
+          ссылки ниже. Instagram ToS серый — тихий обход не используем.
+        </div>
+      )}
+
+      {analysis.profileSource === "user" && analysis.aiMocked && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <p className="font-medium text-amber-100">Живой модели нет</p>
+          <p className="mt-1 text-muted-foreground">
+            Ссылки ваши. Сценарий собран из подписей по каркасу, не «аудит
+            аккаунта».
+          </p>
         </div>
       )}
 
       <SourceVideosCard
         videos={analysis.sourceVideos || []}
         hidden={analysis.profileSource === "mock"}
+        fromLinks={analysis.profileSource === "user"}
       />
+
+      {analysis.profileSource === "user" && onReanalyzeWithLinks && (
+        <LinksEditor
+          initial={user.submittedReels}
+          onSubmit={onReanalyzeWithLinks}
+        />
+      )}
 
       {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
         <AgencyClientsPanel
@@ -340,14 +378,11 @@ export function ResultsDashboard({
                   handle={analysis.socialHandle}
                   platformTab={platformTab}
                   onPlatformTab={setPlatformTab}
-                  lockedTeleprompter={isFree && selected.isTeaser}
+                  lockedTeleprompter={false}
+                  fromLinks={analysis.profileSource === "user"}
                   packsLocked={isFree}
                   hooksLocked={isFree && selected.isTeaser}
                   onOpenTeleprompter={() => {
-                    if (isFree && selected.isTeaser) {
-                      openPaywall("scripts");
-                      return;
-                    }
                     setTeleprompterOpen(true);
                   }}
                   onUnlock={() => openPaywall("scripts")}
@@ -736,6 +771,7 @@ function ScriptViewer({
   platformTab,
   onPlatformTab,
   lockedTeleprompter,
+  fromLinks,
   packsLocked,
   hooksLocked,
   onOpenTeleprompter,
@@ -749,6 +785,7 @@ function ScriptViewer({
   platformTab: PlatformTab;
   onPlatformTab: (tab: PlatformTab) => void;
   lockedTeleprompter: boolean;
+  fromLinks?: boolean;
   packsLocked: boolean;
   /** Teaser on a free plan: regeneration is a paid action, so send them to plans. */
   hooksLocked: boolean;
@@ -794,7 +831,8 @@ function ScriptViewer({
         </CardDescription>
         {script.sourceAngle ? (
           <p className="text-xs text-muted-foreground">
-            Угол из профиля: {script.sourceAngle}
+            {fromLinks ? "Угол из ваших роликов" : "Угол из роликов"}:{" "}
+            {script.sourceAngle}
           </p>
         ) : null}
       </CardHeader>
@@ -872,7 +910,11 @@ function ScriptViewer({
 
         <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Пакет площадок
+            Подписи под площадки
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Не кросспост и не обещание роста — только текст, если нужно
+            продублировать.
           </p>
           <div className="flex gap-1 overflow-x-auto">
             {PLATFORM_TABS.map((tab) => (
@@ -1044,5 +1086,44 @@ function PlatformPackView({
       <p className="whitespace-pre-wrap">{packs.telegram_post.text}</p>
       <p className="font-medium">{packs.telegram_post.cta}</p>
     </div>
+  );
+}
+
+function LinksEditor({
+  initial,
+  onSubmit,
+}: {
+  initial?: AppUser["submittedReels"];
+  onSubmit: (text: string) => void;
+}) {
+  const [text, setText] = useState(() => formatSubmittedReelsText(initial));
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="rounded-2xl border border-dashed border-border/80 p-4">
+      <button
+        type="button"
+        className="text-sm font-medium text-primary"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? "Скрыть ссылки" : "Другие ссылки — разобрать заново"}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={5}
+            placeholder="https://instagram.com/reel/…  о чём ролик, 12 тыс"
+          />
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => onSubmit(text)}
+          >
+            Разобрать эти ссылки
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }

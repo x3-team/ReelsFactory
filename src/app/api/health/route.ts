@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveHonesty } from "@/lib/honesty";
+import { MIN_SUBMITTED_REELS } from "@/lib/submitted-reels";
 import { prisma } from "@/lib/prisma";
 import { pingRedis, redisUrl } from "@/lib/queue/analysis-queue";
 import { APP_VERSION } from "@/lib/version";
@@ -36,6 +37,8 @@ export async function GET() {
         payments: honesty.payments,
         allowMockProfile: honesty.allowMockProfile,
         warning: honesty.warning,
+        needsUserReels: !honesty.scrape,
+        minSubmittedReels: MIN_SUBMITTED_REELS,
       },
     },
     { status: ok ? 200 : 503 },

@@ -1,6 +1,7 @@
 import { sanitizeForJson } from "@/lib/ai/safe-json";
 import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
+import { shouldUseMockAi } from "@/lib/ai/aitunnel";
 import { assembleScriptsFromFacts, type SpokenClip } from "@/lib/ai/assemble-scripts";
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
@@ -110,7 +111,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
 
     if (!hasProfileMedia(profile)) {
       throw new Error(
-        "Не удалось разобрать ролики этого аккаунта. Проверьте, что профиль открытый и в нём есть Reels.",
+        profile.source === "user"
+          ? "Не нашли ролики в ваших ссылках. Вставьте 3–5 URL Reels или TikTok."
+          : "Не удалось взять ролики. Проверьте ссылки или что профиль открытый.",
       );
     }
 
@@ -160,7 +163,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     const insights = mergeVisualNotes(buildProfileInsights(profile), visualNotes);
     if (!hasScriptSignal(insights)) {
       throw new Error(
-        "В профиле слишком мало понятных роликов для сценариев. Нужны Reels с подписями или текстом на экране.",
+        profile.source === "user"
+          ? "К ссылкам нужна подпись или цифра Insights — иначе не из чего писать сценарий. Аккаунт мы не открывали."
+          : "Слишком мало понятных роликов для сценариев. Нужны Reels с подписями или текстом на экране.",
       );
     }
 
@@ -176,6 +181,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
           ...profile,
           visualNotes,
           usedVideoIds: clips.map((c) => c.videoId),
+          aiMocked: shouldUseMockAi(),
         }) as object,
       },
     });
@@ -229,7 +235,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     });
     if (!assembled.length) {
       throw new Error(
-        "В профиле слишком мало понятных роликов для сценариев. Нужны Reels с подписями или текстом на экране.",
+        profile.source === "user"
+          ? "Не собрали сценарий из ваших ссылок. Добавьте к URL, о чём ролик."
+          : "Слишком мало понятных роликов для сценариев. Нужны Reels с подписями или текстом на экране.",
       );
     }
     const strategy = constrainFacts(

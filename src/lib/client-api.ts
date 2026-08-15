@@ -43,6 +43,7 @@ export type AppUser = {
     caption?: string;
     views?: number;
     likes?: number;
+    retentionPct?: number;
   }> | null;
   subscriptionPlan: "FREE" | "START" | "PRO" | "AGENCY";
   subscriptionExpiresAt?: string | null;
@@ -157,12 +158,14 @@ export type AppAnalysis = {
   createdAt?: string;
   /** live = scraped; user = pasted links; mock = demo, not this handle */
   profileSource?: "live" | "mock" | "user" | null;
+  aiMocked?: boolean;
   sourceVideos?: Array<{
     url: string;
     caption: string;
     views: number;
     likes?: number;
     durationSec?: number;
+    retentionPct?: number;
     usedForSpeech: boolean;
   }> | null;
   scripts: AppScript[];

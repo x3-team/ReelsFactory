@@ -222,7 +222,11 @@ export function ReelsFactoryApp() {
     }
   }
 
-  async function runAnalysis(userId: string, clientAccountId?: string) {
+  async function runAnalysis(
+    userId: string,
+    clientAccountId?: string,
+    submittedReelsText?: string,
+  ) {
     setScreen("analyzing");
     setError(null);
     setAnalysisStatus("QUEUED");
@@ -231,7 +235,7 @@ export function ReelsFactoryApp() {
     try {
       const data = await api<{ analysis: AppAnalysis }>("/api/analyze", {
         method: "POST",
-        body: JSON.stringify({ userId, clientAccountId }),
+        body: JSON.stringify({ userId, clientAccountId, submittedReelsText }),
       });
       setAnalysisStatus(data.analysis.status);
       const analysisResult = await pollAnalysis(data.analysis.id, userId, startedAt);
@@ -350,7 +354,7 @@ export function ReelsFactoryApp() {
             void bootstrap();
           }}
         >
-          {user?.onboardedAt ? "Запустить анализ" : "Повторить"}
+          {user?.onboardedAt ? "Снова разобрать ролики" : "Повторить"}
         </Button>
       </div>
     );
@@ -378,6 +382,11 @@ export function ReelsFactoryApp() {
           elapsedSec={analysisElapsedSec}
           failedMessage={null}
           platform={user?.platform}
+          fromLinks={Boolean(
+            user?.submittedReels &&
+              Array.isArray(user.submittedReels) &&
+              user.submittedReels.length >= 2,
+          )}
         />
       </>
     );
@@ -397,6 +406,9 @@ export function ReelsFactoryApp() {
           loadingPlan={loadingPlan}
           onReanalyze={() => {
             if (user) void runAnalysis(user.id);
+          }}
+          onReanalyzeWithLinks={(submittedReelsText) => {
+            if (user) void runAnalysis(user.id, undefined, submittedReelsText);
           }}
           onAnalyzeClient={(clientAccountId) => {
             if (user) void runAnalysis(user.id, clientAccountId);

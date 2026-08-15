@@ -4,10 +4,15 @@ import { z } from "zod";
 import { ProfileGoal, ToneOfVoice } from "@prisma/client";
 
 import { authErrorResponse, requireUser } from "@/lib/api-auth";
-import { HonestyError, assertCanAnalyzeProfile } from "@/lib/honesty";
+import {
+  HonestyError,
+  USER_REELS_WEAK_MESSAGE,
+  assertCanAnalyzeProfile,
+} from "@/lib/honesty";
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
 import {
   hasEnoughSubmittedReels,
+  hasSubmittedReelSignal,
   parseSubmittedReels,
 } from "@/lib/submitted-reels";
 import { serialize } from "@/lib/serialize";
@@ -37,8 +42,12 @@ export async function POST(request: Request) {
     const platform = detectPlatform(body.socialHandle);
     const handle = normalizeHandle(body.socialHandle, platform);
     const submittedReels = parseSubmittedReels(body.submittedReelsText);
+    const hasUserReels = hasEnoughSubmittedReels(submittedReels);
+    if (hasUserReels && !hasSubmittedReelSignal(submittedReels)) {
+      throw new HonestyError(USER_REELS_WEAK_MESSAGE, "USER_REELS_WEAK", 400);
+    }
     assertCanAnalyzeProfile(platform, process.env, {
-      hasUserReels: hasEnoughSubmittedReels(submittedReels),
+      hasUserReels,
       handle,
     });
 

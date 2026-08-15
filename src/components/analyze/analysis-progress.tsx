@@ -12,18 +12,21 @@ const STEPS = [
   {
     key: "SCRAPING",
     label: "Сканируем профиль",
+    linksLabel: "Читаем ваши ссылки",
     expectedSec: 35,
     range: [5, 40] as const,
   },
   {
     key: "TRANSCRIBING",
     label: "Разбираем ролики",
+    linksLabel: "Собираем факты из подписей",
     expectedSec: 45,
     range: [40, 75] as const,
   },
   {
     key: "GENERATING",
     label: "Пишем сценарии",
+    linksLabel: "Пишем сценарии и суфлёр",
     expectedSec: 25,
     range: [75, 97] as const,
   },
@@ -70,7 +73,8 @@ function percentForStatus(
   return Math.round(from + (to - from) * t);
 }
 
-function scrapeDetail(platform?: string | null) {
+function scrapeDetail(platform?: string | null, fromLinks?: boolean) {
+  if (fromLinks) return "Только вставленные URL · аккаунт не открывали";
   const name = formatPlatform(platform);
   return `Био и топ‑видео · ${name}`;
 }
@@ -80,11 +84,13 @@ export function AnalysisProgress({
   failedMessage,
   elapsedSec = 0,
   platform,
+  fromLinks,
 }: {
   status?: string | null;
   failedMessage?: string | null;
   elapsedSec?: number;
   platform?: string | null;
+  fromLinks?: boolean;
 }) {
   const index = stepIndex(status);
   const stageStartedAt = useRef(Date.now());
@@ -154,7 +160,7 @@ export function AnalysisProgress({
               ? "Не удалось завершить анализ"
               : status === "COMPLETED"
                 ? "Готово"
-                : `${activeStep.label} · ${etaLabel}`}
+                : `${fromLinks ? activeStep.linksLabel : activeStep.label} · ${etaLabel}`}
           </p>
         </div>
       </div>
@@ -181,9 +187,11 @@ export function AnalysisProgress({
                 : "pending";
           const detail =
             step.key === "SCRAPING"
-              ? scrapeDetail(platform)
+              ? scrapeDetail(platform, fromLinks)
               : step.key === "TRANSCRIBING"
-                ? "Слушаем аудио и вытаскиваем хуки"
+                ? fromLinks
+                  ? "Подписи и цифры Insights, без Whisper"
+                  : "Слушаем аудио и вытаскиваем хуки"
                 : "Столпы, хуки и суфлёр";
 
           return (
@@ -216,7 +224,11 @@ export function AnalysisProgress({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">
-                  {state === "failed" ? failedMessage : step.label}
+                  {state === "failed"
+                    ? failedMessage
+                    : fromLinks
+                      ? step.linksLabel
+                      : step.label}
                 </span>
                 {state !== "failed" && (
                   <span className="mt-0.5 block text-xs text-muted-foreground">

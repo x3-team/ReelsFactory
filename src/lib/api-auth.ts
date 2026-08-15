@@ -101,12 +101,14 @@ export function publicAnalysis<T extends object>(analysis: T) {
     rawProfileData?: unknown;
     transcriptions?: unknown;
     profileSource?: "live" | "mock" | "user";
+    aiMocked?: boolean;
     sourceVideos?: Array<{
       url: string;
       caption: string;
       views: number;
       likes?: number;
       durationSec?: number;
+      retentionPct?: number;
       usedForSpeech: boolean;
     }>;
   };
@@ -114,6 +116,7 @@ export function publicAnalysis<T extends object>(analysis: T) {
     | {
         source?: string;
         usedVideoIds?: string[];
+        aiMocked?: boolean;
         topVideos?: Array<{
           id?: string;
           url?: string;
@@ -121,6 +124,7 @@ export function publicAnalysis<T extends object>(analysis: T) {
           views?: number;
           likes?: number;
           durationSec?: number;
+          retentionPct?: number;
           audioUrl?: string;
         }>;
       }
@@ -131,6 +135,7 @@ export function publicAnalysis<T extends object>(analysis: T) {
   } else if (raw?.topVideos?.some((v) => v.audioUrl?.includes("example.com"))) {
     clone.profileSource = "mock";
   }
+  clone.aiMocked = Boolean(raw?.aiMocked);
   const used = new Set(raw?.usedVideoIds || []);
   if (clone.profileSource !== "mock") {
     clone.sourceVideos = (raw?.topVideos || [])
@@ -142,6 +147,7 @@ export function publicAnalysis<T extends object>(analysis: T) {
         views: video.views || 0,
         likes: video.likes,
         durationSec: video.durationSec,
+        retentionPct: video.retentionPct,
         usedForSpeech: Boolean(video.id && used.has(video.id)),
       }));
   } else {

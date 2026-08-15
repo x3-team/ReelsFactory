@@ -115,6 +115,7 @@ export type ScrapedVideo = {
   likes?: number;
   audioUrl?: string;
   durationSec?: number;
+  retentionPct?: number;
 };
 
 export type ScrapedProfile = {
