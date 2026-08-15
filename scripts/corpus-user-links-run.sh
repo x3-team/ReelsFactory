@@ -161,7 +161,7 @@ done
 
 log "YouTube без роликов — 400"
 yn="$(jq '.youtubeNoVideoUrls | length' "$FIXTURE")"
-for i in $(seq 0 $((yn - 1))); do
+for ((i = 0; i < yn; i++)); do
   handle="$(jq -r ".youtubeNoVideoUrls[$i]" "$FIXTURE")"
   user_id="$(make_user "cul_yt_$RANDOM")"
   code="$(curl -sS -o /tmp/cul-yt400.json -w "%{http_code}" -X POST "$BASE/api/users/onboard" \

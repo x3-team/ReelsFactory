@@ -1,0 +1,46 @@
+{
+  "note": "Second wave: unused public URLs from the same ScrapeCache rows. Not invented. Not Apify.",
+  "handlesWithUrls": [
+    {
+      "handle": "@karinakross",
+      "platform": "instagram",
+      "nichePreset": "custom",
+      "offerSummary": "юмор и бытовые ситуации",
+      "links": [
+        "https://www.instagram.com/p/DXT7F9HCKZx/  Спасибо за настоящую любовь и поддержку родителей, 2773349 просмотров",
+        "https://www.instagram.com/p/DV0QfHxj8eJ/  Человек, которого никогда не встретишь в магазине, 2016093 просмотров",
+        "https://www.instagram.com/p/DXcAk62CBNc/  Ты Москва — я Минск, 1782959 просмотров",
+        "https://www.instagram.com/p/DWYTjnAj2kg/  Перешли своей корзине, 1462772 просмотров"
+      ]
+    },
+    {
+      "handle": "@ksenia_makarchuk__",
+      "platform": "instagram",
+      "nichePreset": "realty",
+      "offerSummary": "жизнь и недвижимость в Петербурге",
+      "links": [
+        "https://www.instagram.com/p/DbnNKSDMMKx/  Курортный проект на Балтике: марина и искусственные острова, 17499 просмотров",
+        "https://www.instagram.com/p/DannQihMlOe/  Дом на Петроградке и училище XIX века, 9804 просмотров",
+        "https://www.instagram.com/p/DZwbODTs47J/  Пять лучших школ Петербурга, 9437 просмотров",
+        "https://www.instagram.com/p/Db42ePaM_r-/  Новая Голландия: прогулки у воды, 2670 просмотров"
+      ]
+    },
+    {
+      "handle": "@agre_daria_fit",
+      "platform": "instagram",
+      "nichePreset": "custom",
+      "offerSummary": "тренировки и жизнь тренера",
+      "links": [
+        "https://www.instagram.com/p/DZE0MKhMDlQ/  Написали почти всем блогерам, мне в два аккаунта, 8902 просмотров",
+        "https://www.instagram.com/p/DZ_ivmbIrG6/  Наряжать для себя самое любимое, 9784 просмотров",
+        "https://www.instagram.com/p/DZdTEneM_t6/  Поймут только девушки, 14430 просмотров",
+        "https://www.instagram.com/p/DaQ_lqVMaQr/  Какой-то факт совпал с вашим, 9745 просмотров"
+      ]
+    }
+  ],
+  "youtubeNoVideoUrls": [],
+  "skippedNoKnownUrls": [
+    "@homm9k",
+    "@desertmsk"
+  ]
+}
