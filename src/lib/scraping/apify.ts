@@ -159,13 +159,24 @@ async function runApifyActor<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    if (isApifyHardLimitBody(res.status, body)) {
-      const reused = await reuseSucceededDataset<T>(actor, input);
-      if (reused) return reused;
-      throw new HonestyError(APIFY_HARD_LIMIT_MESSAGE, "APIFY_HARD_LIMIT", 503);
+    const status = Number(res.status);
+    const hardLimit = isApifyHardLimitBody(status, body) || status === 403;
+    if (hardLimit) {
+      try {
+        const reused = await reuseSucceededDataset<T>(actor, input);
+        if (reused?.length) return reused;
+      } catch (error) {
+        console.warn(
+          "Apify dataset reuse failed",
+          error instanceof Error ? error.message : error,
+        );
+      }
+      if (isApifyHardLimitBody(status, body) || status === 403) {
+        throw new HonestyError(APIFY_HARD_LIMIT_MESSAGE, "APIFY_HARD_LIMIT", 503);
+      }
     }
     throw new Error(
-      `Apify ${actor} failed (${res.status}): ${body.slice(0, 300)}`,
+      `Apify ${actor} failed (${status}): ${body.slice(0, 300)}`,
     );
   }
 

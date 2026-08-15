@@ -5,12 +5,14 @@
  */
 
 export function isApifyHardLimitBody(status: number, body: string) {
-  if (status !== 402 && status !== 403) return false;
+  const code = Number(status);
+  if (code !== 402 && code !== 403) return false;
   const text = (body || "").toLowerCase();
   return (
     text.includes("monthly usage hard limit") ||
     text.includes("platform-feature-disabled") ||
-    text.includes("maxmonthlyusage")
+    text.includes("maxmonthlyusage") ||
+    text.includes("hard limit")
   );
 }
 
