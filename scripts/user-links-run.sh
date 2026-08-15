@@ -11,6 +11,11 @@ OUT="${OUT:-/tmp/user-links-run-$(date +%Y%m%d-%H%M%S).md}"
 
 log() { printf '\n[user-links] %s\n' "$*"; }
 
+psql_db() {
+  local url="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/reelsfactory}"
+  printf '%s\n' "${url%%\?*}"
+}
+
 health="$(curl -sf "$BASE/api/health" || true)"
 if [ -z "$health" ]; then
   echo "[user-links] сервер не отвечает на $BASE — запусти pnpm dev" >&2

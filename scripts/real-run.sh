@@ -34,6 +34,12 @@ OUT="${OUT:-/tmp/real-run-$(date +%Y%m%d-%H%M%S).md}"
 
 log() { printf '\n[real-run] %s\n' "$*"; }
 
+# Prisma URLs often include ?schema=public — psql rejects that query param.
+psql_db() {
+  local url="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/reelsfactory}"
+  printf '%s\n' "${url%%\?*}"
+}
+
 log "сервер: $BASE · аккаунт: $HANDLE · тариф: $PLAN · telegramId: $TG_ID"
 
 # Ключ может прийти двумя путями: переменной окружения (секреты Cursor) или из .env.
@@ -95,7 +101,7 @@ USER_ID="$(echo "$user_json" | jq -r '.user.id')"
 log "пользователь: $USER_ID"
 
 if [ "$PLAN" != "FREE" ]; then
-  psql "${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/reelsfactory}" -qc \
+  psql "$(psql_db)" -qc \
     "UPDATE \"User\" SET \"subscriptionPlan\" = '$PLAN', \"subscriptionExpiresAt\" = now() + interval '30 days' WHERE id = '$USER_ID';"
   log "тариф выставлен: $PLAN"
 fi
@@ -230,7 +236,7 @@ key_label() { has_key "$1" && echo да || echo нет; }
     end'
 } > "$OUT"
 
-DB="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/reelsfactory}"
+DB="$(psql_db)"
 {
   echo
   echo "## Качество сигнала"
