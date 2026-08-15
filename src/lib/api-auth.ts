@@ -102,6 +102,10 @@ export function publicAnalysis<T extends object>(analysis: T) {
     transcriptions?: unknown;
     profileSource?: "live" | "mock" | "user";
     aiMocked?: boolean;
+    strategyModel?: string;
+    strategyBackend?: string;
+    whisperModel?: string;
+    spokenClipCount?: number;
     sourceVideos?: Array<{
       url: string;
       caption: string;
@@ -117,6 +121,10 @@ export function publicAnalysis<T extends object>(analysis: T) {
         source?: string;
         usedVideoIds?: string[];
         aiMocked?: boolean;
+        strategyModel?: string;
+        strategyBackend?: string;
+        whisperModel?: string;
+        spokenClipCount?: number;
         topVideos?: Array<{
           id?: string;
           url?: string;
@@ -136,6 +144,12 @@ export function publicAnalysis<T extends object>(analysis: T) {
     clone.profileSource = "mock";
   }
   clone.aiMocked = Boolean(raw?.aiMocked);
+  if (raw?.strategyModel) clone.strategyModel = raw.strategyModel;
+  if (raw?.strategyBackend) clone.strategyBackend = raw.strategyBackend;
+  if (raw?.whisperModel) clone.whisperModel = raw.whisperModel;
+  if (typeof raw?.spokenClipCount === "number") {
+    clone.spokenClipCount = raw.spokenClipCount;
+  }
   const used = new Set(raw?.usedVideoIds || []);
   if (clone.profileSource !== "mock") {
     clone.sourceVideos = (raw?.topVideos || [])

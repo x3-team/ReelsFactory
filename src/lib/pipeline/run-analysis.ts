@@ -1,7 +1,7 @@
 import { sanitizeForJson } from "@/lib/ai/safe-json";
 import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
 
-import { shouldUseMockAi } from "@/lib/ai/aitunnel";
+import { shouldUseMockAi, whisperModel } from "@/lib/ai/aitunnel";
 import { assembleScriptsFromFacts, type SpokenClip } from "@/lib/ai/assemble-scripts";
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
@@ -33,7 +33,11 @@ import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { scheduleShootReminder } from "@/lib/reminders";
 import { parseProfile } from "@/lib/scraping/parse-profile";
-import { assertNotLiveOnMock, isMockScrapedProfile } from "@/lib/honesty";
+import {
+  assertNotLiveOnMock,
+  isMockScrapedProfile,
+  resolveStrategyBackend,
+} from "@/lib/honesty";
 import type { Platform } from "@/lib/platform";
 import type { GeneratedScript, ScrapedProfile } from "@/lib/types";
 import { getUsageSnapshot } from "@/lib/usage";
@@ -180,7 +184,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         rawProfileData: sanitizeForJson({
           ...profile,
           visualNotes,
-          usedVideoIds: clips.map((c) => c.videoId),
+          usedVideoIds: clips
+            .map((c) => c.videoId)
+            .filter((id): id is string => Boolean(id)),
           aiMocked: shouldUseMockAi(),
         }) as object,
       },
@@ -210,7 +216,11 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       if (hooks[row.hookIndex]) winningHooks.push(hooks[row.hookIndex]);
     }
 
-    const { strategy: rawStrategy } = await generateStrategy({
+    const {
+      strategy: rawStrategy,
+      model: strategyModel,
+      mocked: strategyMocked,
+    } = await generateStrategy({
       profile,
       transcriptions,
       goal: user.profileGoal,
@@ -285,6 +295,18 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
           funnelKit: strategy.funnel_kit ?? undefined,
           autopsyTemplate: strategy.autopsy_template ?? undefined,
           errorMessage: null,
+          rawProfileData: sanitizeForJson({
+            ...profile,
+            visualNotes,
+            usedVideoIds: clips
+              .map((c) => c.videoId)
+              .filter((id): id is string => Boolean(id)),
+            aiMocked: shouldUseMockAi() || strategyMocked,
+            strategyModel,
+            strategyBackend: resolveStrategyBackend(profile),
+            whisperModel: whisperModel(),
+            spokenClipCount: clips.length,
+          }) as object,
         }),
       });
 

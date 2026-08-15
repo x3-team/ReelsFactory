@@ -85,12 +85,25 @@ function SourceVideosCard({
   videos,
   hidden,
   fromLinks,
+  strategyModel,
+  whisperModel,
+  spokenClipCount,
 }: {
   videos: NonNullable<AppAnalysis["sourceVideos"]>;
   hidden?: boolean;
   fromLinks?: boolean;
+  strategyModel?: string | null;
+  whisperModel?: string | null;
+  spokenClipCount?: number | null;
 }) {
   if (hidden || videos.length === 0) return null;
+  const modelLine = [
+    strategyModel ? `стратегия: ${strategyModel}` : null,
+    whisperModel ? `речь: ${whisperModel}` : null,
+    typeof spokenClipCount === "number" ? `транскриптов: ${spokenClipCount}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <section className="rounded-2xl border border-border/80 p-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -101,6 +114,9 @@ function SourceVideosCard({
           ? "Только эти ссылки. Аккаунт целиком не открывали."
           : "Разбор именно этих роликов, не «типичный фитнес»."}
       </p>
+      {modelLine ? (
+        <p className="mt-1 text-xs text-muted-foreground">{modelLine}</p>
+      ) : null}
       <ol className="mt-3 space-y-2">
         {videos.map((video, index) => {
           const views = formatViews(video.views);
@@ -295,6 +311,9 @@ export function ResultsDashboard({
         videos={analysis.sourceVideos || []}
         hidden={analysis.profileSource === "mock"}
         fromLinks={analysis.profileSource === "user"}
+        strategyModel={analysis.strategyModel}
+        whisperModel={analysis.whisperModel}
+        spokenClipCount={analysis.spokenClipCount}
       />
 
       {analysis.profileSource === "user" && onReanalyzeWithLinks && (

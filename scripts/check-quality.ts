@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { sanitizeForJson, sliceChars, sliceWords, stripLoneSurrogates } from "@/lib/ai/safe-json";
 import { isUsableTranscript } from "@/lib/ai/speech-signal";
 import { formatTeleprompter, humanizeKeyword, stripPrices } from "@/lib/ai/sanitize-scripts";
@@ -736,6 +737,14 @@ assert(
   assert(llmModelForStudio("START") === "gpt-5.6-luna", "start studio luna");
   assert(llmModelForStudio("PRO") === "gpt-5.6-terra", "pro studio terra");
   assert(whisperModel() === "whisper-1", "whisper unchanged");
+  const strategySrc = readFileSync(
+    new URL("../src/lib/ai/generate-strategy.ts", import.meta.url),
+    "utf8",
+  );
+  assert(
+    !strategySrc.includes("using local shell"),
+    "no silent local-shell after live LLM fail",
+  );
   process.env.AITUNNEL_LLM_MODEL = "custom-luna";
   process.env.AITUNNEL_LLM_MODEL_PRO = "custom-terra";
   assert(llmModel() === "custom-luna", "env override base");

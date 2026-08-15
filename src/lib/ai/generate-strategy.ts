@@ -240,23 +240,12 @@ export async function generateStrategy(input: {
     try {
       result = await attempt(4000);
     } catch (error) {
-      console.warn(
-        "LLM strategy failed, using local shell",
-        error instanceof Error ? error.message : error,
+      const detail = error instanceof Error ? error.message : String(error);
+      console.warn("LLM strategy failed", detail);
+      await recordCostEvent("llm", input.userId, "strategy-failed");
+      throw new Error(
+        `Живая стратегия не собралась (model=${model}): ${detail}`,
       );
-      await recordCostEvent("llm", input.userId, "strategy-fallback");
-      return {
-        strategy: sanitizeStrategy(
-          normalizeStrategy(
-            localStrategyShell(input, sharedKeyword),
-            input.previousTitles,
-            { sharedKeyword },
-          ),
-          sharedKeyword,
-        ),
-        mocked: false,
-        model: "local-shell",
-      };
     }
   }
   await recordCostEvent("llm", input.userId, "strategy");

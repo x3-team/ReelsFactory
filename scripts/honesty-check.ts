@@ -214,5 +214,17 @@ assert(
   !aitunnelSrc.includes('"deepseek-v4-flash"'),
   "flash is no longer the hardcoded default",
 );
+const strategySrc = readFileSync(
+  new URL("../src/lib/ai/generate-strategy.ts", import.meta.url),
+  "utf8",
+);
+assert(
+  !strategySrc.includes("using local shell"),
+  "live LLM must not silently fall back to local-shell",
+);
+assert(
+  strategySrc.includes("Живая стратегия не собралась"),
+  "LLM failure stays visible",
+);
 
 console.log("honesty-check: ok");

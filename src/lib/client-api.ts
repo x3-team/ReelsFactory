@@ -159,6 +159,10 @@ export type AppAnalysis = {
   /** live = scraped; user = pasted links; mock = demo, not this handle */
   profileSource?: "live" | "mock" | "user" | null;
   aiMocked?: boolean;
+  strategyModel?: string | null;
+  strategyBackend?: string | null;
+  whisperModel?: string | null;
+  spokenClipCount?: number | null;
   sourceVideos?: Array<{
     url: string;
     caption: string;

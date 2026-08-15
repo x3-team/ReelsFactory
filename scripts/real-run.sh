@@ -165,6 +165,19 @@ key_label() { has_key "$1" && echo да || echo нет; }
   echo "- живой скрейп (APIFY_TOKEN / RAPIDAPI_KEY): **$(key_label APIFY_TOKEN) / $(key_label RAPIDAPI_KEY)**"
   echo "- живой AI (AITUNNEL_API_KEY): **$(key_label AITUNNEL_API_KEY)**"
   echo "- источник профиля в ответе: **$(echo "$result" | jq -r '.analysis.profileSource // "не указан"')**"
+  echo "- модель стратегии: **$(echo "$result" | jq -r '.analysis.strategyModel // "не указана"')**"
+  echo "- backend стратегии: **$(echo "$result" | jq -r '.analysis.strategyBackend // "не указан"')**"
+  echo "- Whisper: **$(echo "$result" | jq -r '.analysis.whisperModel // "не указан"')**, живых транскриптов: **$(echo "$result" | jq -r '.analysis.spokenClipCount // 0')**"
+  echo
+  echo "## Какие ролики взяли"
+  echo
+  echo "$result" | jq -r '
+    (.analysis.sourceVideos // []) as $v |
+    if ($v | length) == 0 then "- (список пуст — разбор не должен считаться живым)"
+    else
+      $v | to_entries[] |
+      "- \(.key + 1). \(.value.url) · \(.value.views // 0) просм.\(if .value.usedForSpeech then " · речь" else "" end)\(if .value.caption != "" then " — \(.value.caption)" else "" end)"
+    end'
   echo
   echo "## Стратегия"
   echo
@@ -264,6 +277,20 @@ DB="$(psql_db)"
     FROM \"Script\" WHERE \"analysisId\" = '$ANALYSIS_ID' ORDER BY \"createdAt\";
   "
 } >> "$OUT"
+
+strategy_model="$(echo "$result" | jq -r '.analysis.strategyModel // ""')"
+strategy_backend="$(echo "$result" | jq -r '.analysis.strategyBackend // ""')"
+profile_source="$(echo "$result" | jq -r '.analysis.profileSource // ""')"
+if has_key AITUNNEL_API_KEY; then
+  if [ "$strategy_model" = "local-shell" ] || [ "$strategy_model" = "mock" ] || [ "$strategy_backend" = "local-shell" ] || [ "$strategy_backend" = "mock" ]; then
+    echo "[real-run] живой AI есть, но стратегия ушла в $strategy_model / $strategy_backend — это не live LLM" >&2
+    exit 5
+  fi
+  if [ "$profile_source" != "live" ] && [ "$profile_source" != "user" ]; then
+    echo "[real-run] профиль не live/user (source=$profile_source) — не принимаем за разбор аккаунта" >&2
+    exit 5
+  fi
+fi
 
 echo
 echo "Отчёт: $OUT"
