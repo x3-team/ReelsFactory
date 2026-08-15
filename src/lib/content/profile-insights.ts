@@ -100,7 +100,12 @@ export function isReactionHook(text: string) {
   const t = stripDecor(text || "").trim();
   if (!t) return true;
   if (PRODUCT_HINT.test(t)) return false;
-  return REACTION_ONLY.test(t) || Array.from(t).length < 18;
+  if (REACTION_ONLY.test(t)) return true;
+  // Two real RU words are a pasted caption, not a reaction crumb.
+  // Otherwise "колодец под ключ" dies and we pretend there was nothing to write.
+  const words = t.split(/\s+/).filter((w) => /[А-Яа-яЁё]{3,}/.test(w));
+  if (words.length >= 2) return false;
+  return Array.from(t).length < 18;
 }
 
 export function isTruncatedAngle(text: string) {

@@ -23,6 +23,7 @@ import {
   isOfftopicAngle,
   isPromoAngle,
   isTruncatedAngle,
+  isWeakAngle,
   mergeVisualNotes,
   nicheFromInsights,
 } from "@/lib/content/profile-insights";
@@ -741,6 +742,48 @@ assert(
 assert(
   !/шапк/i.test(stripPrices("стоит 1300 рублей", "не в кадре")),
   "user price stub",
+);
+
+const wellInsights = buildProfileInsights({
+  handle: "kolodets",
+  platform: "youtube",
+  bio: "",
+  followers: 0,
+  topVideos: [
+    {
+      id: "user-1",
+      url: "https://youtube.com/shorts/UserYtOne",
+      caption: "колодец под ключ",
+      views: 9000,
+      retentionPct: 44,
+    },
+    {
+      id: "user-2",
+      url: "https://youtube.com/watch?v=UserYtTwo",
+      caption: "кессон и обсадка",
+      views: 6000,
+    },
+    {
+      id: "user-3",
+      url: "https://youtu.be/UserYtThree",
+      caption: "септик на участке",
+      views: 0,
+    },
+  ],
+  recentCaptions: [],
+  source: "user",
+});
+assert(
+  wellInsights.captionAngles.some((a) => /колодец/i.test(a.hookLine)),
+  "yt pasted well caption is an angle",
+);
+assert(
+  assembleScriptsFromFacts(wellInsights, "ГАЙД").length === 3,
+  "yt pasted captions assemble scripts",
+);
+assert(
+  !isWeakAngle("колодец под ключ") && !isWeakAngle("кессон и обсадка"),
+  "two-word RU captions are not reaction crumbs",
 );
 
 assert(
