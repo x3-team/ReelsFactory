@@ -21,8 +21,26 @@ absent. `RAPIDAPI_KEY` absent. Мок не подставляли.
 | `@kolodets` | YouTube | HTTP 400 `YOUTUBE`, `real-run` exit 3 |
 | `@investfutureru` | YouTube | HTTP 400 `YOUTUBE`, `real-run` exit 3 |
 
-Остальные 10 из 16 не гоняли. `@hommm9k` (три m) не подставляли вместо TikTok.
+`@hommm9k` (три m) не подставляли вместо TikTok.
 Цифры роста не утверждаем — только то, что вернул Apify.
+
+## Вторая пачка (15.08.2026, та же VM)
+
+`AITUNNEL_API_KEY` по-прежнему absent → **HARD_STOP_NO_AITUNNEL**: первую
+четвёрку IG/TT не перегоняли живой LLM и не мокали. Скрейп Apify живой.
+
+| Хендл | Площадка | Результат |
+| --- | --- | --- |
+| `@victoriabonya` | Instagram | live, 16 роликов, 3 сценария из подписей |
+| `@goar_avetisyan` | Instagram | live, 16 роликов, 3 сценария из подписей |
+| `@prodasha_live` | Instagram | live, 16 роликов, 3 сценария из подписей |
+| `@krava_nakormit` | TikTok | live, 16 роликов, 3 сценария из подписей |
+| `@eugenius_official` | TikTok | live, 16 роликов, 3 сценария из подписей |
+| `@botagozomarova2` | TikTok | live, 16 роликов, 3 сценария из подписей |
+| `@tanyatgym` | не указана | HTTP 400 `CORPUS_PLATFORM_UNKNOWN`, guard exit 4 |
+| `@oskarhartmann1` | YouTube | HTTP 400 `YOUTUBE`; IG-алиас `@oskar_hartmann` не подставляли |
+| `@linguamarina` | YouTube | HTTP 400 `YOUTUBE` |
+| `@a4a4a4a4` | YouTube | HTTP 400 `YOUTUBE`; `@a4omg` не угадывали |
 
 ## Как гонять
 
