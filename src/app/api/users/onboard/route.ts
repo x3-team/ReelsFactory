@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ProfileGoal, ToneOfVoice } from "@prisma/client";
 
 import { authErrorResponse, requireUser } from "@/lib/api-auth";
+import { HonestyError, assertCanAnalyzeProfile } from "@/lib/honesty";
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
 import { serialize } from "@/lib/serialize";
 import { completeOnboarding } from "@/lib/users";
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     await requireUser(request, body.userId);
     const platform = detectPlatform(body.socialHandle);
     const handle = normalizeHandle(body.socialHandle, platform);
+    assertCanAnalyzeProfile(platform);
 
     let voiceDraft = body.voiceDraft?.trim() || null;
     if (voiceDraft) {
@@ -56,12 +58,14 @@ export async function POST(request: Request) {
     const auth = authErrorResponse(error);
     if (auth) return auth;
     console.error("POST /api/users/onboard", error);
+    const status = error instanceof HonestyError ? error.status : 400;
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : "Failed to save onboarding",
+        code: error instanceof HonestyError ? error.code : undefined,
       },
-      { status: 400 },
+      { status },
     );
   }
 }

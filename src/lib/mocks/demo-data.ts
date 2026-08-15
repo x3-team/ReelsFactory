@@ -92,6 +92,7 @@ export function mockScrapedProfile(
         durationSec: 19,
       },
     ],
+    source: "mock",
   };
 }
 

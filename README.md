@@ -1,6 +1,6 @@
 # ReelsFactory
 
-AI-powered Telegram Mini App that analyzes Instagram / TikTok / YouTube profiles and generates ready-to-record reel scripts with a teleprompter.
+AI-powered Telegram Mini App that analyzes Instagram / TikTok profiles and generates ready-to-record reel scripts with a teleprompter. YouTube is not scraped yet.
 
 Product requirements: [`prompts.md`](./prompts.md).
 
@@ -25,7 +25,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-With `MOCK_EXTERNAL_APIS=true` (default when AI keys are missing), scraping / Whisper / LLM / YooKassa use realistic demo responses so the full flow works offline.
+Without any keys the app runs a labeled demo. An AI key without a scrape key is refused (`honesty.mode=blocked`) — live LLM + silent mock profile is a lie. Explicit demo: `ALLOW_MOCK_PROFILE=true` or `MOCK_EXTERNAL_APIS=true`.
 
 Production needs Redis (`REDIS_URL`, or `docker compose up -d redis`) and `TELEGRAM_WEBHOOK_SECRET`. Register the bot webhook with `POST /api/telegram/setup` (header `x-setup-secret`) or set `REGISTER_TELEGRAM_WEBHOOK=true`. Health: `GET /api/health`.
 
@@ -36,7 +36,7 @@ YooKassa notifications: `POST /api/payments/webhook` — the handler re-fetches 
 1. **Onboarding** — social handle, goal, tone, optional offer
 2. **Analysis** — parse profile → transcribe top videos → generate strategy JSON
 3. **Results** — audit tips, content pillars, script viewer + teleprompter
-4. **Paywall** — Start 590₽ / Pro 1990₽ + copy referral link `t.me/Bot?start=ref_{telegram_id}`
+4. **Paywall** — Start 590₽ / Pro 1990₽ / Agency 4990₽ + referral `t.me/Bot?start=ref_{telegram_id}`
 
 ## API
 
@@ -56,7 +56,7 @@ YooKassa notifications: `POST /api/payments/webhook` — the handler re-fetches 
 | `GET/POST /api/referrals/payout` | Referral cash-out request (from 500₽) |
 | `POST /api/telegram/webhook` | Bot `/start ref_` + comment-keyword replies |
 | `POST /api/telegram/setup` | Register Telegram webhook |
-| `GET /api/health` | Postgres + Redis |
+| `GET /api/health` | Postgres + Redis + `honesty` (live / demo / blocked) |
 
 ## Scripts
 
@@ -69,3 +69,4 @@ YooKassa notifications: `POST /api/payments/webhook` — the handler re-fetches 
 | `pnpm db:push` | Push schema |
 | `pnpm db:migrate` | Migrations |
 | `pnpm db:studio` | Prisma Studio |
+| `pnpm test:honesty` | Live-LLM + mock-profile must not pass |

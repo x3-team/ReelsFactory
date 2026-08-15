@@ -77,7 +77,7 @@ export function OnboardingForm({
   async function next() {
     setError(null);
     if (step === 0 && socialHandle.trim().length < 2) {
-      setError("Укажите @username Instagram/TikTok или ссылку на YouTube");
+      setError("Укажите @username Instagram или TikTok");
       return;
     }
     if (step < totalSteps - 1) {
@@ -124,16 +124,17 @@ export function OnboardingForm({
 
       {step === 0 && (
         <section className="space-y-3">
-          <Label htmlFor="handle">Instagram / TikTok / YouTube</Label>
+          <Label htmlFor="handle">Instagram или TikTok</Label>
           <Input
             id="handle"
-            placeholder="@username или ссылка на канал"
+            placeholder="@username или ссылка на профиль"
             value={socialHandle}
             onChange={(e) => setSocialHandle(e.target.value)}
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Разберём био и топ‑видео, соберём пакет под Reels, VK Клипы и Telegram.
+            Разберём био и топ‑видео открытого аккаунта. YouTube пока не
+            поддерживается.
           </p>
         </section>
       )}

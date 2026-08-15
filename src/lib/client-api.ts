@@ -149,6 +149,8 @@ export type AppAnalysis = {
   platform: string;
   errorMessage?: string | null;
   createdAt?: string;
+  /** live = scraped account; mock = demo fallback, not this handle */
+  profileSource?: "live" | "mock" | null;
   scripts: AppScript[];
 };
 

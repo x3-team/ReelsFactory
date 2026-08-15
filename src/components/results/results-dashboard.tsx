@@ -168,10 +168,14 @@ export function ResultsDashboard({
             @{analysis.socialHandle} · {formatPlatform(analysis.platform)}
           </p>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            Сценарии готовы
+            {analysis.profileSource === "mock"
+              ? "Демо-сценарии"
+              : "Сценарии готовы"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Хуки из твоих роликов · пакет под Reels, VK и Telegram
+            {analysis.profileSource === "mock"
+              ? "Профиль не скрейпили — это каркас, не разбор этого аккаунта"
+              : "Хуки из твоих роликов · пакет под Reels, VK и Telegram"}
           </p>
           {usage && <div className="mt-2"><UsageQuotaCard usage={usage} /></div>}
         </div>
@@ -179,6 +183,16 @@ export function ResultsDashboard({
           {planLabel}
         </Badge>
       </header>
+
+      {analysis.profileSource === "mock" && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <p className="font-medium text-amber-100">Это не разбор @{analysis.socialHandle}</p>
+          <p className="mt-1 text-muted-foreground">
+            Нет живого скрейпа профиля. Текст ниже — демо-каркас, его нельзя
+            принимать за аудит этого аккаунта.
+          </p>
+        </div>
+      )}
 
       {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
         <AgencyClientsPanel

@@ -25,6 +25,7 @@ const bodySchema = z.object({
       }),
     ),
     recentCaptions: z.array(z.string()).optional(),
+    source: z.enum(["live", "mock"]).optional(),
   }),
   transcriptions: z.array(z.string()),
   goal: z.string(),

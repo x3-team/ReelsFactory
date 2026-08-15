@@ -162,7 +162,7 @@ export function AnalysisProgress({
       <div className="space-y-2">
         <Progress value={percent} />
         <p className="text-center text-xs text-muted-foreground">
-          Живой разбор занимает 1–2 минуты. Прошло {elapsedSec} сек.
+          Разбор занимает 1–2 минуты. Прошло {elapsedSec} сек.
         </p>
       </div>
 

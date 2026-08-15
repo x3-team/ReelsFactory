@@ -32,6 +32,7 @@ import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
 import { scheduleShootReminder } from "@/lib/reminders";
 import { parseProfile } from "@/lib/scraping/parse-profile";
+import { assertNotLiveOnMock, isMockScrapedProfile } from "@/lib/honesty";
 import type { Platform } from "@/lib/platform";
 import type { GeneratedScript, ScrapedProfile } from "@/lib/types";
 import { getUsageSnapshot } from "@/lib/usage";
@@ -104,12 +105,15 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       platform: user.platform as Platform,
       userId: user.id,
     });
+    assertNotLiveOnMock(profile);
 
     if (!hasProfileMedia(profile)) {
       throw new Error(
         "Не удалось разобрать ролики этого аккаунта. Проверьте, что профиль открытый и в нём есть Reels.",
       );
     }
+
+    const demoProfile = isMockScrapedProfile(profile);
 
     await prisma.profileAnalysis.update({
       where: { id: analysisId },
@@ -121,7 +125,8 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
 
     const clips: SpokenClip[] = [];
     let garbageStreak = 0;
-    for (const video of profile.topVideos.slice(0, WHISPER_MAX_VIDEOS)) {
+    // Demo videos point at example.com — do not burn Whisper or pretend we heard them.
+    for (const video of demoProfile ? [] : profile.topVideos.slice(0, WHISPER_MAX_VIDEOS)) {
       if (garbageStreak >= WHISPER_GARBAGE_STREAK_STOP) break;
       if (!video.audioUrl) {
         garbageStreak += 1;
@@ -144,7 +149,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     const transcriptions = clips.map((c) => c.text);
     const contentMode = contentModeFromTranscripts(transcriptions);
     const visualNotes =
-      contentMode === "process_no_speech"
+      !demoProfile && contentMode === "process_no_speech"
         ? await inspectSilentVideos({
             videos: profile.topVideos.slice(0, VISION_MAX_VIDEOS),
             cachePrefix: `${user.platform}:${user.socialHandle}`,

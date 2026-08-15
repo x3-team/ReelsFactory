@@ -100,7 +100,17 @@ export function publicAnalysis<T extends object>(analysis: T) {
   const clone = { ...analysis } as T & {
     rawProfileData?: unknown;
     transcriptions?: unknown;
+    profileSource?: "live" | "mock";
   };
+  const raw = clone.rawProfileData as
+    | { source?: string; topVideos?: Array<{ id?: string; audioUrl?: string }> }
+    | null
+    | undefined;
+  if (raw?.source === "mock" || raw?.source === "live") {
+    clone.profileSource = raw.source;
+  } else if (raw?.topVideos?.some((v) => v.audioUrl?.includes("example.com"))) {
+    clone.profileSource = "mock";
+  }
   delete clone.rawProfileData;
   delete clone.transcriptions;
   return clone;

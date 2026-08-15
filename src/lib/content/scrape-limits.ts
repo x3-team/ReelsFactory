@@ -11,4 +11,4 @@ export const VISION_MAX_VIDEOS = 2;
 /** Frames sampled per video (early + mid). */
 export const VISION_FRAMES_PER_VIDEO = 2;
 /** Bump to invalidate scrape cache when the mapped profile shape changes. */
-export const PROFILE_CACHE_VERSION = "v6";
+export const PROFILE_CACHE_VERSION = "v7-source";

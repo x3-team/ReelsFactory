@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { denyPublicCogs } from "@/lib/api-auth";
+import { HonestyError, isMockScrapedProfile } from "@/lib/honesty";
 import { detectPlatform, normalizeHandle } from "@/lib/platform";
-import {
-  hasScrapingCredentials,
-  parseProfile,
-} from "@/lib/scraping/parse-profile";
-import { isMockMode } from "@/lib/config";
+import { parseProfile } from "@/lib/scraping/parse-profile";
 
 const bodySchema = z.object({
   handle: z.string().min(2),
@@ -26,16 +23,18 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       profile,
-      mocked: isMockMode() || !hasScrapingCredentials(),
+      mocked: isMockScrapedProfile(profile),
     });
   } catch (error) {
     console.error("POST /api/parse-profile", error);
+    const status = error instanceof HonestyError ? error.status : 400;
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : "Failed to parse profile",
+        code: error instanceof HonestyError ? error.code : undefined,
       },
-      { status: 400 },
+      { status },
     );
   }
 }

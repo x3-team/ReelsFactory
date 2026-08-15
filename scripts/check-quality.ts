@@ -21,6 +21,15 @@ import {
   nicheFromInsights,
 } from "@/lib/content/profile-insights";
 import type { ScrapedProfile } from "@/lib/types";
+import {
+  HonestyError,
+  NO_SCRAPE_LIVE_MESSAGE,
+  YOUTUBE_UNSUPPORTED_MESSAGE,
+  allowMockProfile,
+  assertCanAnalyzeProfile,
+  isMockScrapedProfile,
+  resolveHonesty,
+} from "@/lib/honesty";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -534,6 +543,52 @@ assert(
 assert(
   new Set(talkingBeats.map((s) => s.teleprompter_script)).size === 3,
   "three different spoken beats",
+);
+
+const lie = {
+  AITUNNEL_API_KEY: "sk-test",
+  APIFY_TOKEN: "",
+  RAPIDAPI_KEY: "",
+};
+assert(resolveHonesty(lie).mode === "blocked", "live AI + no scrape = blocked");
+assert(!allowMockProfile(lie), "do not mock when only AI key exists");
+try {
+  assertCanAnalyzeProfile("instagram", lie);
+  throw new Error("lie path must throw");
+} catch (error) {
+  assert(error instanceof HonestyError, "HonestyError");
+  assert(error.message === NO_SCRAPE_LIVE_MESSAGE, "no-scrape copy");
+}
+
+const demo = {};
+assert(resolveHonesty(demo).mode === "demo", "no keys = demo");
+assert(allowMockProfile(demo), "full demo allowed");
+
+const live = { APIFY_TOKEN: "apify", AITUNNEL_API_KEY: "sk" };
+assert(resolveHonesty(live).mode === "live", "both keys = live");
+assert(allowMockProfile({ ALLOW_MOCK_PROFILE: "true", ...lie }), "explicit demo");
+
+try {
+  assertCanAnalyzeProfile("youtube", live);
+  throw new Error("youtube must throw");
+} catch (error) {
+  assert(error instanceof HonestyError, "youtube HonestyError");
+  assert(error.message === YOUTUBE_UNSUPPORTED_MESSAGE, "youtube copy");
+}
+
+assert(
+  isMockScrapedProfile({
+    source: "mock",
+    topVideos: [{ id: "v1", audioUrl: "https://example.com/audio/1.mp3" }],
+  }),
+  "tagged mock",
+);
+assert(
+  !isMockScrapedProfile({
+    source: "live",
+    topVideos: [{ id: "1", audioUrl: "https://instagram.com/x.mp4" }],
+  }),
+  "tagged live",
 );
 
 console.log("check-quality: ok", {

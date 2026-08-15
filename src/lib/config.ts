@@ -88,6 +88,8 @@ export const REFERRAL_RENEWAL_COMMISSION_RATE = 0.1;
 /** @deprecated use REFERRAL_FIRST_COMMISSION_RATE */
 export const REFERRAL_COMMISSION_RATE = REFERRAL_FIRST_COMMISSION_RATE;
 
+/** AI/payments demo switch. Scrape honesty is `src/lib/honesty.ts` — an AI key
+ * without a scrape key must not silently invent a profile. */
 export function isMockMode() {
   if (process.env.MOCK_EXTERNAL_APIS === "true") return true;
   if (process.env.MOCK_EXTERNAL_APIS === "false") return false;

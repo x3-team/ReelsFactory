@@ -128,6 +128,8 @@ export type ScrapedProfile = {
   topVideos: ScrapedVideo[];
   /** Captions from latest posts (photos + videos), for offer mining */
   recentCaptions?: string[];
+  /** live = scraped; mock = demo fallback. Missing on old cache rows. */
+  source?: "live" | "mock";
 };
 
 export type ViralRemakePayload = {

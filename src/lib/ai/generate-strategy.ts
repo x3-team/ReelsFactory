@@ -15,6 +15,7 @@ import {
   nicheFromInsights,
   type ProfileInsights,
 } from "@/lib/content/profile-insights";
+import { isMockScrapedProfile } from "@/lib/honesty";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
 const STRATEGY_SYSTEM_PROMPT = `Ты стратег короткого видео для рынка РФ/СНГ (Instagram Reels, VK Клипы, YouTube Shorts, Telegram).
@@ -89,7 +90,7 @@ export async function generateStrategy(input: {
     input.insights?.suggestedKeyword ||
     "ГАЙД";
 
-  if (shouldUseMockAi()) {
+  if (shouldUseMockAi() || isMockScrapedProfile(input.profile)) {
     return {
       strategy: sanitizeStrategy(
         normalizeStrategy(

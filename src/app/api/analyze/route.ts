@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authErrorResponse, publicAnalysis, requireUser } from "@/lib/api-auth";
+import { HonestyError, assertCanAnalyzeProfile } from "@/lib/honesty";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { prisma } from "@/lib/prisma";
 import { refundQuota } from "@/lib/quota-lock";
@@ -25,6 +26,10 @@ export async function POST(request: Request) {
       max: 12,
       windowSec: 3600,
     });
+
+    if (!body.clientAccountId && user.platform) {
+      assertCanAnalyzeProfile(user.platform);
+    }
 
     await assertCanEnqueueAnalysis(user);
     consumedUserId = user.id;
@@ -57,6 +62,14 @@ export async function POST(request: Request) {
       );
     }
 
+    try {
+      assertCanAnalyzeProfile(platform);
+    } catch (honestyError) {
+      await refundQuota(user.id, "analyses");
+      consumedUserId = null;
+      throw honestyError;
+    }
+
     const queued = await enqueueAnalysis({
       userId: user.id,
       socialHandle,
@@ -86,12 +99,21 @@ export async function POST(request: Request) {
     if (auth) return auth;
     console.error("POST /api/analyze", error);
     const status =
-      error instanceof QuotaError ? 402 : httpErrorStatus(error, 500);
+      error instanceof HonestyError
+        ? error.status
+        : error instanceof QuotaError
+          ? 402
+          : httpErrorStatus(error, 500);
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : "Не удалось поставить анализ в очередь",
-        code: error instanceof QuotaError ? error.code : undefined,
+        code:
+          error instanceof HonestyError
+            ? error.code
+            : error instanceof QuotaError
+              ? error.code
+              : undefined,
       },
       { status },
     );

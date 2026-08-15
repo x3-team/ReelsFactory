@@ -1,10 +1,19 @@
-import { isMockMode } from "@/lib/config";
 import { canRunApify, recordCostEvent } from "@/lib/cost-meter";
 import {
   CAPTION_VIDEOS_LIMIT,
   PROFILE_CACHE_VERSION,
   SCRAPE_POSTS_LIMIT,
 } from "@/lib/content/scrape-limits";
+import {
+  HonestyError,
+  SCRAPE_FAILED_MESSAGE,
+  TIKTOK_NEEDS_APIFY_MESSAGE,
+  YOUTUBE_UNSUPPORTED_MESSAGE,
+  allowMockProfile,
+  assertCanAnalyzeProfile,
+  envForcesAllMock,
+  isMockScrapedProfile,
+} from "@/lib/honesty";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
 import { prisma } from "@/lib/prisma";
 import { normalizeHandle, type Platform } from "@/lib/platform";
@@ -39,14 +48,34 @@ export async function parseProfile(input: {
     where: { cacheKey },
   });
   if (cached && Date.now() - cached.createdAt.getTime() < scrapeTtlMs()) {
-    return cached.profile as unknown as ScrapedProfile;
+    const cachedProfile = cached.profile as unknown as ScrapedProfile;
+    // Never revive a demo row as a live scrape once keys exist.
+    if (!isMockScrapedProfile(cachedProfile) || allowMockProfile()) {
+      return {
+        ...cachedProfile,
+        source: isMockScrapedProfile(cachedProfile) ? "mock" : "live",
+      };
+    }
   }
 
-  if (isMockMode() || !hasScrapingCredentials()) {
+  assertCanAnalyzeProfile(input.platform);
+
+  if (envForcesAllMock() || !hasScrapingCredentials()) {
     return mockScrapedProfile(handle, input.platform);
   }
 
+  if (input.platform === "youtube") {
+    if (allowMockProfile()) return mockScrapedProfile(handle, input.platform);
+    throw new HonestyError(YOUTUBE_UNSUPPORTED_MESSAGE, "YOUTUBE", 400);
+  }
+
+  if (input.platform === "tiktok" && !hasApifyCredentials()) {
+    if (allowMockProfile()) return mockScrapedProfile(handle, input.platform);
+    throw new HonestyError(TIKTOK_NEEDS_APIFY_MESSAGE, "TIKTOK", 503);
+  }
+
   let profile: ScrapedProfile | null = null;
+  let lastError: unknown = null;
 
   if (input.platform === "instagram") {
     if (hasApifyCredentials() && (await canRunApify())) {
@@ -54,15 +83,23 @@ export async function parseProfile(input: {
         profile = await fetchInstagramViaApify(handle, input.userId);
         await recordCostEvent("apify", input.userId, handle);
       } catch (error) {
+        lastError = error;
         console.error("Apify Instagram scrape failed, trying RapidAPI", error);
-        if (!hasRapidApiCredentials()) throw error;
+        if (!hasRapidApiCredentials()) {
+          throw error;
+        }
       }
     } else if (hasApifyCredentials()) {
-      console.warn("Apify monthly cap reached — RapidAPI/mock fallback");
+      console.warn("Apify monthly cap reached — RapidAPI fallback");
     }
 
     if (!profile && hasRapidApiCredentials()) {
-      profile = await fetchInstagramViaRapidApi(handle);
+      try {
+        profile = await fetchInstagramViaRapidApi(handle);
+      } catch (error) {
+        lastError = error;
+        console.error("RapidAPI Instagram scrape failed", error);
+      }
     }
   }
 
@@ -72,24 +109,33 @@ export async function parseProfile(input: {
         profile = await fetchTikTokViaApify(handle);
         await recordCostEvent("apify", input.userId, handle);
       } catch (error) {
-        console.error("Apify TikTok scrape failed, using mock fallback", error);
+        lastError = error;
+        console.error("Apify TikTok scrape failed", error);
       }
     } else if (hasApifyCredentials()) {
-      console.warn("Apify monthly cap reached — TikTok mock fallback");
+      lastError = new Error("Достигнут месячный лимит Apify");
+      console.warn("Apify monthly cap reached — TikTok scrape refused");
     }
   }
 
   if (!profile) {
-    return mockScrapedProfile(handle, input.platform);
+    // Never substitute a demo profile after a live scrape was attempted.
+    const detail =
+      lastError instanceof Error && lastError.message
+        ? lastError.message
+        : SCRAPE_FAILED_MESSAGE;
+    throw new HonestyError(detail, "SCRAPE_FAILED", 502);
   }
+
+  const liveProfile: ScrapedProfile = { ...profile, source: "live" };
 
   await prisma.scrapeCache.upsert({
     where: { cacheKey },
-    create: { cacheKey, profile: profile as object },
-    update: { profile: profile as object, createdAt: new Date() },
+    create: { cacheKey, profile: liveProfile as object },
+    update: { profile: liveProfile as object, createdAt: new Date() },
   });
 
-  return profile;
+  return liveProfile;
 }
 
 async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile> {

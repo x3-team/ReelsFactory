@@ -10,7 +10,8 @@
 # Реальные данные вместо моков включаются ключами в .env:
 #   APIFY_TOKEN       — скрейп Instagram/TikTok
 #   AITUNNEL_API_KEY  — Whisper + LLM
-# Без них прогон пройдёт на демо-данных (`isMockMode`).
+# Без скрейпа скрипт останавливается: живая модель + демо-профиль = ложь.
+# Демо-прогон только явно: ALLOW_MOCK_PROFILE=true (AI тоже останется демо).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -64,7 +65,13 @@ if [ -z "$health" ]; then
   echo "[real-run] сервер не отвечает на $BASE — запусти pnpm dev" >&2
   exit 1
 fi
-echo "$health" | jq -c .
+echo "$health" | jq -c '{ok,version,honesty}'
+
+honesty_mode="$(echo "$health" | jq -r '.honesty.mode // "unknown"')"
+if [ "$honesty_mode" = "blocked" ]; then
+  echo "$health" | jq -r '.honesty.warning // "живой разбор заблокирован"' >&2
+  exit 2
+fi
 
 user_json="$(curl -sf -X POST "$BASE/api/users" \
   -H 'content-type: application/json' \
@@ -127,11 +134,17 @@ log "готово за ${elapsed}с — отчёт: $OUT"
 key_label() { has_key "$1" && echo да || echo нет; }
 
 {
-  echo "# Прогон на реальных данных: $HANDLE"
+  if [ "$honesty_mode" = "live" ]; then
+    echo "# Прогон на живом скрейпе: $HANDLE"
+  else
+    echo "# Демо-прогон (профиль не скрейпили): $HANDLE"
+  fi
   echo
   echo "- тариф: **$PLAN**, время анализа: **${elapsed}с**, версия: $(echo "$health" | jq -r .version)"
+  echo "- честность: **${honesty_mode}**$(echo "$health" | jq -r 'if .honesty.warning then " — \(.honesty.warning)" else "" end')"
   echo "- живой скрейп (APIFY_TOKEN / RAPIDAPI_KEY): **$(key_label APIFY_TOKEN) / $(key_label RAPIDAPI_KEY)**"
   echo "- живой AI (AITUNNEL_API_KEY): **$(key_label AITUNNEL_API_KEY)**"
+  echo "- источник профиля в ответе: **$(echo "$result" | jq -r '.analysis.profileSource // "не указан"')**"
   echo
   echo "## Стратегия"
   echo
