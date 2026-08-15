@@ -38,7 +38,7 @@ USER_ID="$(echo "$user_json" | jq -r '.user.id')"
 log "пользователь $USER_ID"
 
 if [ "$PLAN" != "FREE" ]; then
-  psql "${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/reelsfactory}" -qc \
+  psql "$(psql_db)" -qc \
     "UPDATE \"User\" SET \"subscriptionPlan\" = '$PLAN', \"subscriptionExpiresAt\" = now() + interval '30 days' WHERE id = '$USER_ID';"
 fi
 
