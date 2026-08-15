@@ -131,6 +131,8 @@ export type ScrapedProfile = {
   recentCaptions?: string[];
   /** live = scraped; user = author pasted links; mock = demo. */
   source?: "live" | "mock" | "user";
+  /** live-run = new Apify actor; apify-reuse = paid dataset, no new run. */
+  scrapeMode?: "live-run" | "apify-reuse";
 };
 
 export type PublicSourceVideo = {

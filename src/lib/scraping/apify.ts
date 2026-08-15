@@ -2,7 +2,21 @@ import {
   CAPTION_VIDEOS_LIMIT,
   SCRAPE_POSTS_LIMIT,
 } from "@/lib/content/scrape-limits";
+import { APIFY_HARD_LIMIT_MESSAGE, HonestyError } from "@/lib/honesty";
+import {
+  apifyInputMentionsHandle,
+  handleFromApifyInput,
+  isApifyHardLimitBody,
+} from "@/lib/scraping/apify-reuse";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
+
+let apifyReuseHits = 0;
+
+export function consumeApifyReuseFlag() {
+  const reused = apifyReuseHits > 0;
+  apifyReuseHits = 0;
+  return reused;
+}
 
 const DEFAULT_IG_PROFILE_ACTOR = "apify/instagram-profile-scraper";
 const DEFAULT_IG_POSTS_ACTOR = "apify/instagram-scraper";
@@ -64,6 +78,57 @@ function actorPath(id: string) {
   return id.replace("/", "~");
 }
 
+async function apifyGet<T>(path: string): Promise<T> {
+  const token = apifyToken();
+  const res = await fetch(`https://api.apify.com/v2/${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Apify GET ${path} failed (${res.status}): ${body.slice(0, 180)}`);
+  }
+  return (await res.json()) as T;
+}
+
+async function reuseSucceededDataset<T>(
+  actor: string,
+  input: unknown,
+): Promise<T[] | null> {
+  const handle = handleFromApifyInput(input);
+  if (!handle) return null;
+  type RunRow = {
+    id?: string;
+    status?: string;
+    defaultDatasetId?: string;
+    defaultKeyValueStoreId?: string;
+  };
+  const listed = await apifyGet<{ data?: { items?: RunRow[] } }>(
+    `acts/${actorPath(actor)}/runs?limit=30&desc=1&status=SUCCEEDED`,
+  );
+  for (const run of listed.data?.items || []) {
+    if (!run.defaultDatasetId || !run.defaultKeyValueStoreId) continue;
+    let runInput: unknown = null;
+    try {
+      runInput = await apifyGet(
+        `key-value-stores/${run.defaultKeyValueStoreId}/records/INPUT`,
+      );
+    } catch {
+      continue;
+    }
+    if (!apifyInputMentionsHandle(runInput, handle)) continue;
+    const items = await apifyGet<T[]>(`datasets/${run.defaultDatasetId}/items`);
+    if (Array.isArray(items) && items.length > 0) {
+      apifyReuseHits += 1;
+      console.info(
+        `Apify ${actor}: reuse SUCCEEDED dataset for @${handle} (new run blocked)`,
+      );
+      return items;
+    }
+  }
+  return null;
+}
+
 async function runApifyActor<T>(
   actor: string,
   input: unknown,
@@ -94,6 +159,11 @@ async function runApifyActor<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    if (isApifyHardLimitBody(res.status, body)) {
+      const reused = await reuseSucceededDataset<T>(actor, input);
+      if (reused) return reused;
+      throw new HonestyError(APIFY_HARD_LIMIT_MESSAGE, "APIFY_HARD_LIMIT", 503);
+    }
     throw new Error(
       `Apify ${actor} failed (${res.status}): ${body.slice(0, 300)}`,
     );
@@ -246,6 +316,7 @@ export async function fetchInstagramViaApify(
   }
   const merged = extra.length ? collectIgPosts([...items, ...extra]) : latest;
   const topVideos = mapPosts(merged);
+  const scrapeMode = consumeApifyReuseFlag() ? "apify-reuse" : "live-run";
 
   return {
     handle: profile.username || handle,
@@ -257,6 +328,7 @@ export async function fetchInstagramViaApify(
     postsCount: profile.postsCount,
     topVideos,
     recentCaptions: collectCaptions(merged),
+    scrapeMode,
   };
 }
 
@@ -349,5 +421,6 @@ export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfil
       .map((item) => (item.text || "").trim())
       .filter((text) => text.length >= 12)
       .slice(0, SCRAPE_POSTS_LIMIT),
+    scrapeMode: consumeApifyReuseFlag() ? "apify-reuse" : "live-run",
   };
 }

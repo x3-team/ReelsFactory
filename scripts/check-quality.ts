@@ -30,6 +30,7 @@ import {
   parseViewsHint,
 } from "@/lib/submitted-reels";
 import {
+  APIFY_HARD_LIMIT_MESSAGE,
   CORPUS_NO_LIVE_MESSAGE,
   HonestyError,
   NO_SCRAPE_LIVE_MESSAGE,
@@ -40,6 +41,10 @@ import {
   resolveHonesty,
   resolveStrategyBackend,
 } from "@/lib/honesty";
+import {
+  apifyInputMentionsHandle,
+  isApifyHardLimitBody,
+} from "@/lib/scraping/apify-reuse";
 import { detectPlatform } from "@/lib/platform";
 import {
   llmModel,
@@ -708,6 +713,15 @@ assert(
   ) === "local-shell",
   "live + no AI = local-shell",
 );
+assert(
+  isApifyHardLimitBody(403, "Monthly usage hard limit exceeded"),
+  "hard limit body",
+);
+assert(
+  apifyInputMentionsHandle({ usernames: ["ksenia_makarchuk__"] }, "ksenia_makarchuk__"),
+  "double underscore handle",
+);
+assert(APIFY_HARD_LIMIT_MESSAGE.includes("hard limit"), "hard limit copy");
 assert(
   resolveStrategyBackend(
     { source: "mock", topVideos: [{ id: "v1", audioUrl: "https://example.com/audio/1.mp3" }] },

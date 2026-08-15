@@ -106,6 +106,7 @@ export function publicAnalysis<T extends object>(analysis: T) {
     strategyBackend?: string;
     whisperModel?: string;
     spokenClipCount?: number;
+    scrapeMode?: "live-run" | "apify-reuse";
     sourceVideos?: Array<{
       url: string;
       caption: string;
@@ -125,6 +126,7 @@ export function publicAnalysis<T extends object>(analysis: T) {
         strategyBackend?: string;
         whisperModel?: string;
         spokenClipCount?: number;
+        scrapeMode?: "live-run" | "apify-reuse";
         topVideos?: Array<{
           id?: string;
           url?: string;
@@ -149,6 +151,9 @@ export function publicAnalysis<T extends object>(analysis: T) {
   if (raw?.whisperModel) clone.whisperModel = raw.whisperModel;
   if (typeof raw?.spokenClipCount === "number") {
     clone.spokenClipCount = raw.spokenClipCount;
+  }
+  if (raw?.scrapeMode === "live-run" || raw?.scrapeMode === "apify-reuse") {
+    clone.scrapeMode = raw.scrapeMode;
   }
   const used = new Set(raw?.usedVideoIds || []);
   if (clone.profileSource !== "mock") {

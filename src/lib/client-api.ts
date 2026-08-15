@@ -163,6 +163,7 @@ export type AppAnalysis = {
   strategyBackend?: string | null;
   whisperModel?: string | null;
   spokenClipCount?: number | null;
+  scrapeMode?: "live-run" | "apify-reuse" | null;
   sourceVideos?: Array<{
     url: string;
     caption: string;

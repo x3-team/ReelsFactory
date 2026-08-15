@@ -41,6 +41,9 @@ export const TIKTOK_NEEDS_APIFY_MESSAGE =
 export const SCRAPE_FAILED_MESSAGE =
   "Не удалось разобрать этот аккаунт. Проверьте, что профиль открытый и в нём есть Reels.";
 
+export const APIFY_HARD_LIMIT_MESSAGE =
+  "Apify: месячный hard limit. Новый скрейп не запускаем. Свежий датасет этого аккаунта берём, если он есть — иначе отказ, не мок.";
+
 export const LIVE_ON_MOCK_MESSAGE =
   "Демо-профиль нельзя разбирать живой моделью — получится уверенный текст про выдуманный аккаунт.";
 

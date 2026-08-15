@@ -4,6 +4,7 @@
  */
 import { readFileSync } from "node:fs";
 import {
+  APIFY_HARD_LIMIT_MESSAGE,
   CORPUS_NO_LIVE_MESSAGE,
   CORPUS_PLATFORM_UNKNOWN_MESSAGE,
   HonestyError,
@@ -26,6 +27,12 @@ import {
   parseSubmittedReels,
 } from "../src/lib/submitted-reels.ts";
 import { TEST_CORPUS, lookupCorpus } from "../src/lib/test-corpus.ts";
+import {
+  apifyInputMentionsHandle,
+  bareApifyHandle,
+  handleFromApifyInput,
+  isApifyHardLimitBody,
+} from "../src/lib/scraping/apify-reuse.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -226,5 +233,24 @@ assert(
   strategySrc.includes("Живая стратегия не собралась"),
   "LLM failure stays visible",
 );
+assert(isApifyHardLimitBody(403, '{"error":{"type":"platform-feature-disabled","message":"Monthly usage hard limit exceeded"}}'), "apify hard limit");
+assert(!isApifyHardLimitBody(403, "forbidden"), "random 403 is not hard limit");
+assert(bareApifyHandle("https://www.instagram.com/karinakross/") === "karinakross", "ig url handle");
+assert(
+  apifyInputMentionsHandle({ usernames: ["karinakross"] }, "karinakross"),
+  "profile input matches",
+);
+assert(
+  apifyInputMentionsHandle(
+    { directUrls: ["https://www.instagram.com/agre_daria_fit/"] },
+    "agre_daria_fit",
+  ),
+  "posts input matches",
+);
+assert(
+  handleFromApifyInput({ profiles: ["homm9k"] }) === "homm9k",
+  "tt input handle",
+);
+assert(APIFY_HARD_LIMIT_MESSAGE.includes("не мок"), "hard limit copy refuses mock");
 
 console.log("honesty-check: ok");

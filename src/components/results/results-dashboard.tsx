@@ -88,6 +88,7 @@ function SourceVideosCard({
   strategyModel,
   whisperModel,
   spokenClipCount,
+  scrapeMode,
 }: {
   videos: NonNullable<AppAnalysis["sourceVideos"]>;
   hidden?: boolean;
@@ -95,9 +96,15 @@ function SourceVideosCard({
   strategyModel?: string | null;
   whisperModel?: string | null;
   spokenClipCount?: number | null;
+  scrapeMode?: "live-run" | "apify-reuse" | null;
 }) {
   if (hidden || videos.length === 0) return null;
   const modelLine = [
+    scrapeMode === "apify-reuse"
+      ? "скрейп: датасет Apify (новый run закрыт лимитом)"
+      : scrapeMode === "live-run"
+        ? "скрейп: новый run Apify"
+        : null,
     strategyModel ? `стратегия: ${strategyModel}` : null,
     whisperModel ? `речь: ${whisperModel}` : null,
     typeof spokenClipCount === "number" ? `транскриптов: ${spokenClipCount}` : null,
@@ -314,6 +321,7 @@ export function ResultsDashboard({
         strategyModel={analysis.strategyModel}
         whisperModel={analysis.whisperModel}
         spokenClipCount={analysis.spokenClipCount}
+        scrapeMode={analysis.scrapeMode}
       />
 
       {analysis.profileSource === "user" && onReanalyzeWithLinks && (

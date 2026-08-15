@@ -165,6 +165,7 @@ export async function parseProfile(input: {
         reels: submitted,
       });
     }
+    if (lastError instanceof HonestyError) throw lastError;
     // Never substitute a demo profile after a live scrape was attempted.
     const detail =
       lastError instanceof Error && lastError.message

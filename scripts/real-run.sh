@@ -168,6 +168,7 @@ key_label() { has_key "$1" && echo да || echo нет; }
   echo "- модель стратегии: **$(echo "$result" | jq -r '.analysis.strategyModel // "не указана"')**"
   echo "- backend стратегии: **$(echo "$result" | jq -r '.analysis.strategyBackend // "не указан"')**"
   echo "- Whisper: **$(echo "$result" | jq -r '.analysis.whisperModel // "не указан"')**, живых транскриптов: **$(echo "$result" | jq -r '.analysis.spokenClipCount // 0')**"
+  echo "- режим скрейпа: **$(echo "$result" | jq -r '.analysis.scrapeMode // "не указан"')**"
   echo
   echo "## Какие ролики взяли"
   echo

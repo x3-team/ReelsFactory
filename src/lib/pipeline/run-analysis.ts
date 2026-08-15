@@ -306,6 +306,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
             strategyBackend: resolveStrategyBackend(profile),
             whisperModel: whisperModel(),
             spokenClipCount: clips.length,
+            scrapeMode: profile.scrapeMode,
           }) as object,
         }),
       });
