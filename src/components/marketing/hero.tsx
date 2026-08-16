@@ -81,7 +81,7 @@ export function Hero() {
             />
 
             <div className="absolute -left-[9.5rem] top-14 hidden w-[184px] rounded-2xl border border-ink/10 bg-cream px-4 py-3 shadow-[0_18px_40px_-24px_rgba(26,20,16,0.55)] sm:block">
-              <p className="type-eyebrow text-ink/40">Хук из твоих слов</p>
+              <p className="type-eyebrow text-ink/40">Твой хук</p>
               <p className="mt-1.5 text-[0.9rem] font-semibold leading-snug">
                 «Агар тут ни при чём»
               </p>
