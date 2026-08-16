@@ -103,6 +103,37 @@ test("desertmsk live 15s with отсаживание / кусочками passes
 
   const phrases = extractAnchorPhrases(corpus.texts);
   assert.ok(phrases.some((item) => /клубника со сливками/i.test(item)));
+  assert.ok(phrases.some((item) => /маршмеллоу|пружин|отсаж|кусок/i.test(item)));
+});
+
+test("two scripts about the same bento caption fail distinct-anchor guard", () => {
+  const corpus = sourceCorpus({
+    bio: DESERTMSK_LIVE_PROFILE.bio,
+    captions: DESERTMSK_LIVE_CAPTIONS,
+    transcriptions: [],
+  });
+  const bento = {
+    title: "Сборка бенто из птичьего молока",
+    format: "Reels 30с · процесс",
+    duration_sec: 30,
+    hook_options: ["Бенто из птичьего молока без сливочного масла"],
+    teleprompter_script:
+      "0–3с: Бенто «Клубника со сливками» без сливочного масла.\n3–16с: Птичье молоко, клубничный слой, не торопись.\n16–24с: Сахар и жиры уменьшены.\n24–30с: Сохрани сборку.",
+    caption: "Бенто из птичьего молока без сливочного масла.",
+    cta: "Сохрани",
+  };
+  const strategy = normalizeStrategy({
+    niche: "Десерты",
+    target_audience: "Кондитеры",
+    content_pillars: [{ title: "Бенто", description: "Сборка" }],
+    profile_audit_tips: [],
+    scripts: [anchoredZefirScript, bento, { ...bento, title: "Миф про тот же бенто" }],
+  });
+  assert.throws(
+    () => assertStrategyAnchored(strategy, corpus.texts),
+    (error: Error) =>
+      error.name === "SourceAnchorError" && /повторяют один продукт/i.test(error.message),
+  );
 });
 
 test("empty transcriptions inject a captions-only audit tip", () => {

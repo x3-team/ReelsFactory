@@ -220,16 +220,54 @@ export function extractAnchorPhrases(texts: string[]): string[] {
     const clean = item.replace(/[«»]/g, "").trim();
     if (clean && !phrases.includes(clean)) phrases.push(clean);
   }
-  const seen = new Set<string>();
-  for (const token of contentTokens(blob)) {
-    if (token.length < 6 && !/^\d/.test(token)) continue;
+  const ranked = contentTokens(blob)
+    .filter((token) => token.length >= 6)
+    .sort((a, b) => b.length - a.length || a.localeCompare(b, "ru"));
+  const seen = new Set(phrases.map((item) => stemToken(item.split(/\s+/)[0] || item)));
+  for (const token of ranked) {
     const key = stemToken(token);
     if (seen.has(key)) continue;
     seen.add(key);
     phrases.push(token);
-    if (phrases.length >= 16) break;
+    if (phrases.length >= 20) break;
   }
-  return phrases.slice(0, 16);
+  return phrases.slice(0, 20);
+}
+
+function stemSet(tokens: string[]): Set<string> {
+  return new Set(tokens.map(stemToken));
+}
+
+export function scriptStrongStems(
+  script: Pick<GeneratedScript, "title" | "hook_options" | "teleprompter_script" | "caption">,
+  sourceTexts: string[],
+): Set<string> {
+  return stemSet(
+    scriptSourceHits(script, sourceTexts).filter(
+      (token) => token.length >= 7 || /^\d/.test(token),
+    ),
+  );
+}
+
+export function assertDistinctScriptAnchors(
+  strategy: StrategyPayload,
+  sourceTexts: string[],
+): void {
+  const sets = strategy.scripts.map((script) => scriptStrongStems(script, sourceTexts));
+  for (let i = 0; i < sets.length; i += 1) {
+    for (let j = i + 1; j < sets.length; j += 1) {
+      const left = sets[i]!;
+      const right = sets[j]!;
+      if (left.size === 0 || right.size === 0) continue;
+      const inter = [...left].filter((item) => right.has(item));
+      const union = new Set([...left, ...right]);
+      if (inter.length >= 3 && inter.length / union.size >= 0.45) {
+        throw new SourceAnchorError(
+          `Сценарии ${strategy.scripts[i]?.duration_sec}с и ${strategy.scripts[j]?.duration_sec}с повторяют один продукт (${inter.slice(0, 6).join(", ")}). Возьми разные якоря из source_anchors.`,
+        );
+      }
+    }
+  }
 }
 
 export function scriptSourceHits(
@@ -287,6 +325,7 @@ export function assertStrategyAnchored(
       `Сценарий без якоря из транскрипта/подписи: ${failed.join("; ")}. Нужен термин, цифра, ошибка или продукт профиля.`,
     );
   }
+  assertDistinctScriptAnchors(strategy, sourceTexts);
 }
 
 export function withVoiceHeardTip(
