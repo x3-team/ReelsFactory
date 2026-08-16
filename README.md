@@ -27,6 +27,16 @@ Open [http://localhost:3000](http://localhost:3000).
 
 With `MOCK_EXTERNAL_APIS=true` (default when AI keys are missing), scraping / Whisper / LLM / YooKassa use realistic demo responses so the full flow works offline.
 
+## Routes
+
+| Route | What it is |
+| --- | --- |
+| `/` | Маркетинговый лендинг (русский, статика). Внутри Telegram сразу уводит на `/app`, сохраняя `tgWebAppData` |
+| `/app` | Mini App: онбординг → анализ → результаты → суфлёр. Принимает `?handle=` с лендинга и `?paid=1` после оплаты |
+
+Дизайн-аудит текущего UI и решения по витрине: [`docs/DESIGN_AUDIT.md`](./docs/DESIGN_AUDIT.md).
+Шрифты (Onest + Unbounded, сабсет с кириллицей) лежат в [`src/app/fonts`](./src/app/fonts).
+
 ## App flow
 
 1. **Onboarding** — social handle, goal, tone, optional offer

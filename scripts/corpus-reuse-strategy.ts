@@ -44,8 +44,7 @@ function platformFor(handle: string, fallback: Platform): Platform {
   if (hit?.platform === "youtube") {
     throw new Error(`YouTube @${handle} не скрейпим`);
   }
-  if (hit?.platform && hit.platform !== "youtube") return hit.platform;
-  return fallback;
+  return hit?.platform ?? fallback;
 }
 
 async function scrapeWithReuseFirst(handle: string, platform: Platform) {
