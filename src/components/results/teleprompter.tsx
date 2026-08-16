@@ -19,10 +19,11 @@ function splitTeleprompter(script: string): Line[] {
     });
 }
 
+const START_OFFSET = 88;
 const SPEEDS = [
-  { id: "slow", label: "Медленнее", pxPerSec: 22 },
-  { id: "normal", label: "Норма", pxPerSec: 38 },
-  { id: "fast", label: "Быстрее", pxPerSec: 62 },
+  { id: "slow", label: "Медленнее", pxPerSec: 12 },
+  { id: "normal", label: "Норма", pxPerSec: 20 },
+  { id: "fast", label: "Быстрее", pxPerSec: 32 },
 ] as const;
 
 export function TeleprompterMode({
@@ -36,27 +37,52 @@ export function TeleprompterMode({
 }) {
   const [playing, setPlaying] = useState(false);
   const [speedId, setSpeedId] = useState<(typeof SPEEDS)[number]["id"]>("normal");
-  const [offset, setOffset] = useState(72);
+  const [offset, setOffset] = useState(START_OFFSET);
   const frame = useRef<number>(0);
   const lastTs = useRef<number>(0);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const lines = useMemo(() => splitTeleprompter(script), [script]);
   const spoken = lines.map((line) => line.text).join(" ").trim();
-  const pxPerSec = SPEEDS.find((item) => item.id === speedId)?.pxPerSec ?? 38;
+  const pxPerSec = SPEEDS.find((item) => item.id === speedId)?.pxPerSec ?? 20;
+
+  function floorOffset() {
+    const view = viewportRef.current?.clientHeight ?? 420;
+    const content = contentRef.current?.scrollHeight ?? 0;
+    const readingY = view * 0.36;
+    return Math.min(START_OFFSET, readingY - content + 48);
+  }
 
   useEffect(() => {
     if (!playing) {
       lastTs.current = 0;
       return;
     }
+    let stopped = false;
     const tick = (ts: number) => {
+      if (stopped) return;
       if (!lastTs.current) lastTs.current = ts;
       const delta = (ts - lastTs.current) / 1000;
       lastTs.current = ts;
-      setOffset((value) => value - pxPerSec * delta);
-      frame.current = window.requestAnimationFrame(tick);
+      const floor = floorOffset();
+      setOffset((value) => {
+        const next = value - pxPerSec * delta;
+        if (next <= floor) {
+          stopped = true;
+          setPlaying(false);
+          return floor;
+        }
+        return next;
+      });
+      if (!stopped) {
+        frame.current = window.requestAnimationFrame(tick);
+      }
     };
     frame.current = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(frame.current);
+    return () => {
+      stopped = true;
+      window.cancelAnimationFrame(frame.current);
+    };
   }, [playing, pxPerSec]);
 
   return (
@@ -78,12 +104,13 @@ export function TeleprompterMode({
         </button>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden px-5">
+      <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden px-5">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-[#0C0A09] to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-[#0C0A09] to-transparent" />
-        <div className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-px -translate-y-8 bg-[#E07A5F]/70" />
+        <div className="pointer-events-none absolute inset-x-4 top-[36%] z-10 h-px bg-[#E07A5F]/70" />
         <div
-          className="px-1"
+          ref={contentRef}
+          className="px-1 pb-40"
           style={{ transform: `translateY(${offset}px)` }}
         >
           {spoken ? (
@@ -147,7 +174,7 @@ export function TeleprompterMode({
             type="button"
             className="flex size-14 items-center justify-center rounded-full border border-white/15 text-white"
             onClick={() => {
-              setOffset(72);
+              setOffset(START_OFFSET);
               setPlaying(false);
             }}
             aria-label="Сначала"
