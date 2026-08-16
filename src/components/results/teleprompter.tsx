@@ -51,7 +51,9 @@ export function TeleprompterMode({
           className="whitespace-pre-wrap text-center text-3xl font-semibold leading-relaxed tracking-tight transition-transform"
           style={{ transform: `translateY(${80 - offset}px)` }}
         >
-          {script}
+          {script.trim()
+            ? script
+            : "Текст суфлёра пустой. Закройте экран и запустите анализ ещё раз."}
         </div>
       </div>
 

@@ -16,6 +16,13 @@ export function isApifyHardLimitBody(status: number, body: string) {
   );
 }
 
+/** Production gate: 403/402 → reuse last SUCCEEDED dataset, not a mock profile. */
+export function shouldAttemptApifyReuse(status: number, body: string) {
+  const code = Number(status);
+  if (code === 403 || code === 402) return true;
+  return isApifyHardLimitBody(code, body);
+}
+
 export function bareApifyHandle(input: string) {
   return (input || "")
     .trim()

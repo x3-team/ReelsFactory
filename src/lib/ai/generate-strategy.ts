@@ -3,6 +3,11 @@ import {
   llmModelForPlan,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
+import {
+  extractChatContent,
+  normalizeStrategy,
+  parseStrategyJson,
+} from "@/lib/ai/normalize-strategy";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
@@ -55,12 +60,14 @@ export async function generateStrategy(input: {
 
   if (shouldUseMockAi()) {
     return {
-      strategy: mockStrategy({
-        handle: input.profile.handle,
-        goal: input.goal,
-        tone: input.tone,
-        offerSummary: input.offerSummary,
-      }),
+      strategy: normalizeStrategy(
+        mockStrategy({
+          handle: input.profile.handle,
+          goal: input.goal,
+          tone: input.tone,
+          offerSummary: input.offerSummary,
+        }),
+      ),
       mocked: true,
       model: "mock",
     };
@@ -110,34 +117,15 @@ export async function generateStrategy(input: {
     temperature: 0.75,
   });
 
-  const content = completion.choices[0]?.message?.content;
+  const { text: content, finishReason } = extractChatContent(completion);
   if (!content) {
     throw new Error(
-      `Пустой ответ LLM через AITunnel (model=${model}, finish=${completion.choices[0]?.finish_reason || "?"})`,
+      `Пустой ответ LLM через AITunnel (model=${model}, finish=${finishReason})`,
     );
   }
   return {
-    strategy: parseStrategyJson(content),
+    strategy: normalizeStrategy(parseStrategyJson(content)),
     mocked: false,
     model: completion.model || model,
   };
-}
-
-function parseStrategyJson(raw: string): StrategyPayload {
-  const cleaned = raw
-    .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/, "");
-  const parsed = JSON.parse(cleaned) as StrategyPayload;
-  if (
-    !parsed.niche ||
-    !parsed.target_audience ||
-    !Array.isArray(parsed.content_pillars) ||
-    !Array.isArray(parsed.profile_audit_tips) ||
-    !Array.isArray(parsed.scripts)
-  ) {
-    throw new Error("LLM JSON не содержит обязательных полей");
-  }
-  return parsed;
 }
