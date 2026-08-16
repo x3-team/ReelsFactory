@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,17 +44,20 @@ const TONES = [
 
 export function OnboardingForm({
   userName,
+  initialHandle,
   loading,
   submitError,
   onSubmit,
 }: {
   userName: string;
+  /** Ник, введённый на витрине: /app?handle=… */
+  initialHandle?: string;
   loading?: boolean;
   submitError?: string | null;
   onSubmit: (values: OnboardingValues) => Promise<void> | void;
 }) {
   const [step, setStep] = useState(0);
-  const [socialHandle, setSocialHandle] = useState("");
+  const [socialHandle, setSocialHandle] = useState(initialHandle ?? "");
   const [profileGoal, setProfileGoal] =
     useState<OnboardingValues["profileGoal"]>("GROW_AUDIENCE");
   const [toneOfVoice, setToneOfVoice] =
@@ -62,6 +65,10 @@ export function OnboardingForm({
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [offerSummary, setOfferSummary] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialHandle) setSocialHandle((value) => value || initialHandle);
+  }, [initialHandle]);
 
   async function next() {
     setError(null);

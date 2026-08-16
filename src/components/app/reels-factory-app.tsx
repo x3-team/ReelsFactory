@@ -54,6 +54,14 @@ export function ReelsFactoryApp() {
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [analysisElapsedSec, setAnalysisElapsedSec] = useState(0);
   const [onboardingBusy, setOnboardingBusy] = useState(false);
+  const [prefillHandle, setPrefillHandle] = useState("");
+
+  useEffect(() => {
+    const fromLanding = new URLSearchParams(window.location.search).get(
+      "handle",
+    );
+    if (fromLanding) setPrefillHandle(fromLanding);
+  }, []);
 
   const displayName = useMemo(() => {
     if (user?.firstName) {
@@ -122,7 +130,7 @@ export function ReelsFactoryApp() {
       if (refreshed.latestAnalysis?.status === "COMPLETED") {
         setAnalysis(refreshed.latestAnalysis);
         setScreen("results");
-        window.history.replaceState({}, "", "/");
+        window.history.replaceState({}, "", "/app");
         return;
       }
     }
@@ -315,6 +323,7 @@ export function ReelsFactoryApp() {
         <TelegramBackButton show={false} />
         <OnboardingForm
           userName={displayName}
+          initialHandle={prefillHandle}
           loading={onboardingBusy}
           submitError={error}
           onSubmit={handleOnboarding}
