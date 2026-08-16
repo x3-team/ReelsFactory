@@ -1,6 +1,10 @@
 import { lookupCorpus } from "@/lib/test-corpus";
 
 export type Platform = "instagram" | "tiktok" | "youtube";
+export type SupportedPlatform = "instagram" | "tiktok";
+
+export const YOUTUBE_UNSUPPORTED_MESSAGE =
+  "YouTube пока не разбираем. Укажите открытый Instagram или TikTok.";
 
 export function detectPlatform(input: string): Platform {
   const value = input.trim().toLowerCase();
@@ -18,6 +22,23 @@ export function detectPlatform(input: string): Platform {
     return "youtube";
   }
   return "instagram";
+}
+
+export function isSupportedPlatform(
+  platform: string | null | undefined,
+): platform is SupportedPlatform {
+  return platform === "instagram" || platform === "tiktok";
+}
+
+export function assertSupportedPlatform(
+  platform: string | null | undefined,
+): asserts platform is SupportedPlatform {
+  if (platform === "youtube") {
+    throw new Error(YOUTUBE_UNSUPPORTED_MESSAGE);
+  }
+  if (!isSupportedPlatform(platform)) {
+    throw new Error(YOUTUBE_UNSUPPORTED_MESSAGE);
+  }
 }
 
 export function normalizeHandle(input: string, platform: Platform): string {

@@ -43,10 +43,9 @@ export const REFERRAL_RENEWAL_COMMISSION_RATE = 0.1;
 /** @deprecated use REFERRAL_FIRST_COMMISSION_RATE */
 export const REFERRAL_COMMISSION_RATE = REFERRAL_FIRST_COMMISSION_RATE;
 
+/** Default true: live scrape/LLM only when MOCK_EXTERNAL_APIS=false. */
 export function isMockMode() {
-  if (process.env.MOCK_EXTERNAL_APIS === "true") return true;
-  if (process.env.MOCK_EXTERNAL_APIS === "false") return false;
-  return !process.env.AITUNNEL_API_KEY && !process.env.OPENAI_API_KEY;
+  return process.env.MOCK_EXTERNAL_APIS !== "false";
 }
 
 export function botUsername() {

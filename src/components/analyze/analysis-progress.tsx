@@ -163,7 +163,8 @@ export function AnalysisProgress({
               : `${activeStep.label} · обычно ещё ~${etaSec} сек`}
         </p>
         <p className="text-xs text-muted-foreground">
-          Живой анализ Instagram занимает 1–2 минуты. Прошло {elapsedSec} сек.
+          Живой анализ Instagram / TikTok занимает 1–2 минуты. Прошло {elapsedSec}{" "}
+          сек.
         </p>
       </div>
 

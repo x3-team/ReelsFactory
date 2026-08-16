@@ -75,8 +75,9 @@ export function validateTelegramInitData(
 
 /**
  * Resolves Telegram identity for API routes.
- * - With TELEGRAM_BOT_TOKEN + initData → verified user
- * - Without token in non-production / mock → trust body (local browser demo)
+ * - With TELEGRAM_BOT_TOKEN + initData → verified Mini App user
+ * - Web витрина (без Telegram) — telegramId из тела / localStorage
+ * - REQUIRE_TELEGRAM_AUTH=true запрещает веб-вход без initData
  */
 export function resolveTelegramAuth(input: {
   initData?: string | null;
@@ -89,9 +90,7 @@ export function resolveTelegramAuth(input: {
   startParam?: string | null;
 }) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const requireAuth =
-    process.env.REQUIRE_TELEGRAM_AUTH === "true" ||
-    (process.env.NODE_ENV === "production" && Boolean(botToken));
+  const requireAuth = process.env.REQUIRE_TELEGRAM_AUTH === "true";
 
   if (input.initData && botToken) {
     const validated = validateTelegramInitData(input.initData, botToken);
@@ -117,7 +116,7 @@ export function resolveTelegramAuth(input: {
   }
 
   if (!input.telegramId) {
-    throw new Error("telegramId обязателен в режиме разработки");
+    throw new Error("telegramId обязателен вне Telegram Mini App");
   }
 
   return {

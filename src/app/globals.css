@@ -54,9 +54,12 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* Prefer Telegram theme vars when Mini App CSS vars are bound */
+    min-height: 100dvh;
+  }
+
+  body.telegram-app {
+    /* Telegram theme vars only inside Mini App — not on the public web vitrina */
     background: var(--tg-theme-bg-color, hsl(var(--background)));
     color: var(--tg-theme-text-color, hsl(var(--foreground)));
-    min-height: 100dvh;
   }
 }

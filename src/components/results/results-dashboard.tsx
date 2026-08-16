@@ -172,6 +172,15 @@ export function ResultsDashboard({
           ))}
         </div>
 
+        {analysis.scripts.length === 0 && (
+          <Card>
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Сценарии не сохранились. Запустите анализ ещё раз — суфлёр должен
+              содержать каркас хук → проблема → демо → CTA.
+            </CardContent>
+          </Card>
+        )}
+
         {selected && (
           <ScriptViewer
             script={selected}

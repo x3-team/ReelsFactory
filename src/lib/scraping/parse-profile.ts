@@ -1,7 +1,12 @@
 import { isMockMode } from "@/lib/config";
 import { CAPTION_VIDEOS_LIMIT } from "@/lib/content/scrape-limits";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
-import { normalizeHandle, type Platform } from "@/lib/platform";
+import {
+  assertSupportedPlatform,
+  normalizeHandle,
+  YOUTUBE_UNSUPPORTED_MESSAGE,
+  type Platform,
+} from "@/lib/platform";
 import {
   fetchInstagramViaApify,
   fetchTikTokViaApify,
@@ -21,6 +26,7 @@ export async function parseProfile(input: {
   handle: string;
   platform: Platform;
 }): Promise<ScrapedProfile> {
+  assertSupportedPlatform(input.platform);
   const handle = normalizeHandle(input.handle, input.platform);
 
   if (isMockMode() || !hasScrapingCredentials()) {
@@ -57,10 +63,9 @@ export async function parseProfile(input: {
     return fetchTikTokViaApify(handle);
   }
 
-  throw new Error(
-    "YouTube пока не разбираем. Укажите открытый Instagram или TikTok.",
-  );
+  throw new Error(YOUTUBE_UNSUPPORTED_MESSAGE);
 }
+
 
 async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile> {
   const host = process.env.RAPIDAPI_HOST || "instagram-scraper-api2.p.rapidapi.com";

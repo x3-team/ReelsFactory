@@ -37,9 +37,18 @@ export function useTelegram() {
   return useContext(TelegramContext);
 }
 
+function detectTelegramWebView() {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp ||
+      window.location.hash.includes("tgWebAppData") ||
+      window.location.search.includes("tgWebAppData"),
+  );
+}
+
 /**
- * Client-only Telegram Mini App wrapper.
- * Initializes SDK (viewport, theme CSS vars, BackButton) and exposes initData.
+ * Telegram Mini App wrapper. SDK/theme CSS vars только внутри Telegram —
+ * иначе веб-витрина получает чёрный фон от пустых --tg-theme-*.
  */
 export function TelegramProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -48,22 +57,23 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   const initData = useSignal(initDataState);
 
   useEffect(() => {
-    initTelegramApp();
-    try {
-      setRawInitData(retrieveRawInitData() || undefined);
-    } catch {
-      setRawInitData(undefined);
-    }
-    const inTelegram =
-      typeof window !== "undefined" &&
-      Boolean(
-        (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram
-          ?.WebApp ||
-          window.location.hash.includes("tgWebAppData") ||
-          window.location.search.includes("tgWebAppData"),
-      );
+    const inTelegram = detectTelegramWebView();
     setIsTelegram(inTelegram);
+    if (inTelegram) {
+      document.body.classList.add("telegram-app");
+      initTelegramApp();
+      try {
+        setRawInitData(retrieveRawInitData() || undefined);
+      } catch {
+        setRawInitData(undefined);
+      }
+    } else {
+      document.body.classList.remove("telegram-app");
+    }
     setReady(true);
+    return () => {
+      document.body.classList.remove("telegram-app");
+    };
   }, []);
 
   const value = useMemo<TelegramContextValue>(
