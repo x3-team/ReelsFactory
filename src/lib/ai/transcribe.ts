@@ -1,21 +1,39 @@
 import { shouldUseMockAi, getAiTunnelClient, whisperModel } from "@/lib/ai/aitunnel";
 import { mockTranscription } from "@/lib/mocks/demo-data";
 
-function mediaDownloadHeaders(url: string): HeadersInit | undefined {
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    if (!host.includes("tiktok")) return undefined;
-  } catch {
-    return undefined;
-  }
-  return {
+const DEFAULT_WHISPER_TIMEOUT_MS = 30_000;
+const MAX_MEDIA_BYTES = 20 * 1024 * 1024;
+
+function mediaDownloadHeaders(url: string): HeadersInit {
+  const headers: Record<string, string> = {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    Referer: "https://www.tiktok.com/",
   };
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("tiktok")) {
+      headers.Referer = "https://www.tiktok.com/";
+    } else if (
+      host.includes("instagram") ||
+      host.includes("cdninstagram") ||
+      host.includes("fbcdn")
+    ) {
+      headers.Referer = "https://www.instagram.com/";
+    }
+  } catch {
+    // keep default UA
+  }
+  return headers;
+}
+
+function whisperTimeoutMs() {
+  return Number(process.env.WHISPER_TIMEOUT_MS || DEFAULT_WHISPER_TIMEOUT_MS);
 }
 
 async function fileFromMediaBlob(blob: Blob, url: string) {
+  if (blob.size > MAX_MEDIA_BYTES) {
+    throw new Error(`Медиа слишком большое для Whisper (${blob.size} bytes)`);
+  }
   const buf = await blob.arrayBuffer();
   const bytes = new Uint8Array(buf);
   const isId3 = bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33;
@@ -39,6 +57,34 @@ async function fileFromMediaBlob(blob: Blob, url: string) {
   return new File([buf], "audio.mp3", { type: type || "audio/mpeg" });
 }
 
+async function transcribeOnce(input: {
+  audioUrl: string;
+  hint?: string;
+  signal: AbortSignal;
+}): Promise<{ text: string; mocked: boolean }> {
+  const openai = getAiTunnelClient();
+  const audioRes = await fetch(input.audioUrl, {
+    signal: input.signal,
+    headers: mediaDownloadHeaders(input.audioUrl),
+  });
+  if (!audioRes.ok) {
+    throw new Error(`Не удалось скачать аудио (${audioRes.status})`);
+  }
+
+  const blob = await audioRes.blob();
+  const file = await fileFromMediaBlob(blob, input.audioUrl);
+
+  const result = await openai.audio.transcriptions.create(
+    {
+      file,
+      model: whisperModel(),
+    },
+    { signal: input.signal, timeout: whisperTimeoutMs() },
+  );
+
+  return { text: result.text, mocked: false };
+}
+
 export async function transcribeAudio(input: {
   audioUrl: string;
   hint?: string;
@@ -48,29 +94,10 @@ export async function transcribeAudio(input: {
   }
 
   try {
-    const openai = getAiTunnelClient();
-    const audioRes = await fetch(input.audioUrl, {
-      // Instagram CDN часто тормозит — не блокируем пайплайн навечно
-      signal: AbortSignal.timeout(
-        Number(process.env.WHISPER_DOWNLOAD_TIMEOUT_MS || 20_000),
-      ),
-      headers: mediaDownloadHeaders(input.audioUrl),
-    });
-    if (!audioRes.ok) {
-      throw new Error(`Не удалось скачать аудио (${audioRes.status})`);
-    }
-
-    const blob = await audioRes.blob();
-    const file = await fileFromMediaBlob(blob, input.audioUrl);
-
-    const result = await openai.audio.transcriptions.create({
-      file,
-      model: whisperModel(),
-    });
-
-    return { text: result.text, mocked: false };
+    const signal = AbortSignal.timeout(whisperTimeoutMs());
+    return await transcribeOnce({ ...input, signal });
   } catch (error) {
-    // Без реального audio URL (mock-скрапинг) не роняем пайплайн —
+    // Без реального audio URL / при таймауте CDN не роняем пайплайн —
     // стратегия всё равно генерируется живой LLM на био + captions.
     console.warn(
       "Whisper/AITunnel unavailable, using caption fallback:",

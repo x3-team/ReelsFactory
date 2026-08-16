@@ -175,7 +175,7 @@ export function ReelsFactoryApp() {
 
   async function pollAnalysis(analysisId: string, startedAt: number) {
     const terminal = new Set(["COMPLETED", "FAILED"]);
-    const maxMs = 180_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
+    const maxMs = 240_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
     for (;;) {
       const elapsed = Date.now() - startedAt;
       setAnalysisElapsedSec(Math.floor(elapsed / 1000));

@@ -108,7 +108,7 @@ async function main() {
   console.log("queued", analysisId, asRecord(started.body.analysis).status);
 
   const terminal = new Set(["COMPLETED", "FAILED"]);
-  const deadline = Date.now() + 180_000;
+  const deadline = Date.now() + 240_000;
   let analysis: Json = asRecord(started.body.analysis);
   while (!terminal.has(String(analysis.status))) {
     if (Date.now() > deadline) {

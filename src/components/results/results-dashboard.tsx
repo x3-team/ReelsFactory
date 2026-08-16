@@ -185,14 +185,8 @@ export function ResultsDashboard({
           <ScriptViewer
             script={selected}
             referralUrl={referralUrl}
-            lockedTeleprompter={isFree && selected.isTeaser}
-            onOpenTeleprompter={() => {
-              if (isFree && selected.isTeaser) {
-                setPaywallOpen(true);
-                return;
-              }
-              setTeleprompterOpen(true);
-            }}
+            lockedTeleprompter={false}
+            onOpenTeleprompter={() => setTeleprompterOpen(true)}
             onUnlock={() => setPaywallOpen(true)}
           />
         )}
