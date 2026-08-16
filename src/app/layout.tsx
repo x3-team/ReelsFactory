@@ -11,10 +11,38 @@ const geistSans = localFont({
   weight: "100 900",
 });
 
+const onest = localFont({
+  src: "./fonts/Onest-latin-cyrillic.woff2",
+  variable: "--font-onest",
+  weight: "300 800",
+  display: "swap",
+});
+
+const unbounded = localFont({
+  src: "./fonts/Unbounded-latin-cyrillic.woff2",
+  variable: "--font-unbounded",
+  weight: "400 800",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "ReelsFactory",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  ),
+  title: {
+    default: "ReelsFactory — вставил профиль, получил текст в камеру",
+    template: "%s · ReelsFactory",
+  },
   description:
-    "Вставил Instagram или TikTok — получил сценарии, которые можно читать с суфлёра в камеру.",
+    "Разбираем твои рилсы в Instagram и TikTok и отдаём три сценария — 15, 30 и 45 секунд. Их не надо переписывать: включаешь суфлёр и читаешь с экрана.",
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    siteName: "ReelsFactory",
+    title: "ReelsFactory — вставил профиль, получил текст в камеру",
+    description:
+      "Разбор твоего профиля, три сценария на 15/30/45 секунд и суфлёр, с которого можно читать прямо в камеру.",
+  },
 };
 
 export const viewport: Viewport = {
@@ -36,7 +64,7 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body
-        className={`${geistSans.variable} min-h-dvh font-sans antialiased`}
+        className={`${onest.variable} ${unbounded.variable} ${geistSans.variable} min-h-dvh font-sans antialiased`}
       >
         <TelegramProvider>{children}</TelegramProvider>
       </body>
