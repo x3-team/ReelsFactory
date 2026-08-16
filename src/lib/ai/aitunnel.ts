@@ -29,14 +29,14 @@ export function shouldUseMockAi() {
 }
 
 /**
- * Базовая модель: лучший баланс цена/качество для JSON-сценариев.
- * deepseek-v4-flash ≈ 18/36 ₽ за 1M (AITunnel) — сильно дешевле gpt-4o при хорошей структуре.
+ * Базовая модель Free/Start: gpt-5.6-luna (~20/120 ₽ за 1M).
+ * Не ставим nano / haiku / flash-lite — ломают JSON-сценарии.
  */
 export function llmModel() {
   return (
     process.env.AITUNNEL_LLM_MODEL ||
     process.env.OPENAI_MODEL ||
-    "deepseek-v4-flash"
+    "gpt-5.6-luna"
   );
 }
 

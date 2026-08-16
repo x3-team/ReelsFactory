@@ -11,7 +11,9 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:apify-reuse": "tsx --tsconfig tsconfig.json scripts/check-apify-reuse.ts",
+    "scrape:resume": "tsx --tsconfig tsconfig.json scripts/resume-scrape.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -47,6 +49,7 @@
     "postcss": "^8",
     "prisma": "^6.19.3",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

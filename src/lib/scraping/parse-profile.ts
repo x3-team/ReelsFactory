@@ -3,6 +3,7 @@ import { mockScrapedProfile } from "@/lib/mocks/demo-data";
 import { normalizeHandle, type Platform } from "@/lib/platform";
 import {
   fetchInstagramViaApify,
+  fetchTikTokViaApify,
   hasApifyCredentials,
 } from "@/lib/scraping/apify";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
@@ -46,8 +47,18 @@ export async function parseProfile(input: {
     }
   }
 
-  // TikTok/YouTube — пока mock, пока нет отдельного актора
-  return mockScrapedProfile(handle, input.platform);
+  if (input.platform === "tiktok") {
+    if (!hasApifyCredentials()) {
+      throw new Error(
+        "TikTok без APIFY_TOKEN не разбираем — иначе получится демо-профиль.",
+      );
+    }
+    return fetchTikTokViaApify(handle);
+  }
+
+  throw new Error(
+    "YouTube пока не разбираем. Укажите открытый Instagram или TikTok.",
+  );
 }
 
 async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile> {
