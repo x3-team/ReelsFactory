@@ -8,6 +8,13 @@ import {
   normalizeStrategy,
   parseStrategyJson,
 } from "@/lib/ai/normalize-strategy";
+import {
+  SourceAnchorError,
+  assertStrategyAnchored,
+  extractAnchorPhrases,
+  sourceCorpus,
+  withVoiceHeardTip,
+} from "@/lib/ai/source-anchors";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
@@ -51,10 +58,14 @@ export const STRATEGY_SYSTEM_PROMPT = `Ты пишешь сценарии кор
 3) hook_options: 3 штуки, каждая ≤ 12 слов, разные углы (боль / любопытство / результат).
 4) НЕ копируй цены, «1300 рублей», «обучение в шапке» в каждый ролик. Цену/оффер — максимум в 1 из 3, только если уместно цели.
 5) Не клонируй фразы между сценариями.
-6) Опирайся на реальные темы профиля, не пересказывай дословно транскрипт.
-7) niche / tips — по-человечески, без корпоративного тона.`;
+6) ЯКОРЬ: каждый из 3 сценариев ОБЯЗАН содержать опознаваемый факт из transcriptions или captions — цитату, цифру, термин, ошибку или продукт ЭТОГО профиля. Без якоря сценарий — брак. Не уходи в общую нишу.
+7) Не копируй транскрипт целиком и не делай закадровый пересказ ролика. Возьми якорь и собери НОВЫЙ устный каркас хук → проблема → демо → CTA.
+8) Три якоря — три разных продукта/приёма из source_anchors. Не повторяй один десерт в 30с и 45с, если в профиле есть другие.
+9) Не выдумывай технологию, которой нет во входе: «температура сиропа», «завиток», «агар», «термометр» — только если эти слова есть в transcriptions/captions.
+10) Если transcriptions пустые или голос не разобрали — НЕ притворяйся, что слышала речь. Пиши только из captions/bio. Первой строкой profile_audit_tips скажи, что сценарии по подписям.
+11) niche / tips — по-человечески, без корпоративного тона.`;
 
-export async function generateStrategy(input: {
+export type GenerateStrategyInput = {
   profile: ScrapedProfile;
   transcriptions: string[];
   goal: string;
@@ -63,27 +74,22 @@ export async function generateStrategy(input: {
   websiteUrl?: string | null;
   /** FREE | START | PRO | AGENCY — влияет на модель */
   plan?: string | null;
-}): Promise<{ strategy: StrategyPayload; mocked: boolean; model: string }> {
-  const model = llmModelForPlan(input.plan);
+};
 
-  if (shouldUseMockAi()) {
-    return {
-      strategy: normalizeStrategy(
-        mockStrategy({
-          handle: input.profile.handle,
-          goal: input.goal,
-          tone: input.tone,
-          offerSummary: input.offerSummary,
-          bio: input.profile.bio,
-          transcriptions: input.transcriptions,
-        }),
-      ),
-      mocked: true,
-      model: "mock",
-    };
-  }
+export function strategySourceFromInput(input: GenerateStrategyInput) {
+  return sourceCorpus({
+    bio: input.profile.bio,
+    captions: input.profile.topVideos.map((video) => video.caption || ""),
+    transcriptions: input.transcriptions,
+  });
+}
 
-  const userPrompt = JSON.stringify(
+export function buildStrategyUserPrompt(
+  input: GenerateStrategyInput,
+  source: ReturnType<typeof strategySourceFromInput>,
+): string {
+  const anchors = extractAnchorPhrases(source.texts);
+  return JSON.stringify(
     {
       profile: {
         handle: input.profile.handle,
@@ -97,7 +103,12 @@ export async function generateStrategy(input: {
           durationSec: v.durationSec,
         })),
       },
-      transcriptions: input.transcriptions,
+      transcriptions: source.usableVoice,
+      voice_heard: source.voiceHeard,
+      voice_note: source.voiceHeard
+        ? "Голос разобрали. Якорь можно брать из transcriptions или captions."
+        : "Голос не разобрали (тишина, музыка или чужой язык). НЕ пиши «как в ролике сказано». Только captions/bio. Пометь это в profile_audit_tips.",
+      source_anchors: anchors,
       goal: input.goal,
       tone: input.tone,
       offerSummary: input.offerSummary,
@@ -111,21 +122,39 @@ export async function generateStrategy(input: {
         speakable_teleprompter: true,
         no_director_notes: true,
         three_angles: ["ошибка", "процесс", "миф_или_до_после"],
+        required_anchor_in_each_script: true,
+        distinct_products: true,
+        anchor_rule:
+          "Каждый сценарий обязан содержать хотя бы один якорь из source_anchors (цитата / цифра / приём / продукт). Три сценария — три РАЗНЫХ продукта или приёма. Не делай 30с и 45с про один бенто, если в якорях есть зефир и маршмеллоу.",
       },
     },
     null,
     2,
   );
+}
 
+function finalizeStrategy(
+  raw: unknown,
+  source: ReturnType<typeof strategySourceFromInput>,
+): StrategyPayload {
+  const strategy = withVoiceHeardTip(normalizeStrategy(raw), source.voiceHeard);
+  assertStrategyAnchored(strategy, source.texts);
+  return strategy;
+}
+
+async function requestStrategyJson(input: {
+  model: string;
+  userPrompt: string;
+  isPro: boolean;
+}): Promise<{ parsed: unknown; model: string }> {
   const openai = getAiTunnelClient();
-  const isPro = ["PRO", "AGENCY"].includes((input.plan || "").toUpperCase());
   const completion = await openai.chat.completions.create({
-    model,
+    model: input.model,
     response_format: { type: "json_object" },
-    max_tokens: isPro ? 6000 : 4500,
+    max_tokens: input.isPro ? 6000 : 4500,
     messages: [
       { role: "system", content: STRATEGY_SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
+      { role: "user", content: input.userPrompt },
     ],
     temperature: 0.8,
   });
@@ -133,12 +162,61 @@ export async function generateStrategy(input: {
   const { text: content, finishReason } = extractChatContent(completion);
   if (!content) {
     throw new Error(
-      `Пустой ответ LLM через AITunnel (model=${model}, finish=${finishReason})`,
+      `Пустой ответ LLM через AITunnel (model=${input.model}, finish=${finishReason})`,
     );
   }
   return {
-    strategy: normalizeStrategy(parseStrategyJson(content)),
-    mocked: false,
-    model: completion.model || model,
+    parsed: parseStrategyJson(content),
+    model: completion.model || input.model,
   };
+}
+
+export async function generateStrategy(
+  input: GenerateStrategyInput,
+): Promise<{ strategy: StrategyPayload; mocked: boolean; model: string }> {
+  const model = llmModelForPlan(input.plan);
+  const source = strategySourceFromInput(input);
+
+  if (shouldUseMockAi()) {
+    return {
+      strategy: finalizeStrategy(
+        mockStrategy({
+          handle: input.profile.handle,
+          goal: input.goal,
+          tone: input.tone,
+          offerSummary: input.offerSummary,
+          bio: input.profile.bio,
+          captions: input.profile.topVideos.map((video) => video.caption || ""),
+          transcriptions: source.usableVoice,
+        }),
+        source,
+      ),
+      mocked: true,
+      model: "mock",
+    };
+  }
+
+  const userPrompt = buildStrategyUserPrompt(input, source);
+  const isPro = ["PRO", "AGENCY"].includes((input.plan || "").toUpperCase());
+  const first = await requestStrategyJson({ model, userPrompt, isPro });
+  try {
+    return {
+      strategy: finalizeStrategy(first.parsed, source),
+      mocked: false,
+      model: first.model,
+    };
+  } catch (error) {
+    if (!(error instanceof SourceAnchorError)) throw error;
+    const retryPrompt = `${userPrompt}\n\nПРЕДЫДУЩИЙ JSON ЗАБРАКОВАН: ${error.message}\nВ каждый из 3 сценариев вставь разный якорь из source_anchors. Не уходи в общую нишу.`;
+    const retry = await requestStrategyJson({
+      model,
+      userPrompt: retryPrompt,
+      isPro,
+    });
+    return {
+      strategy: finalizeStrategy(retry.parsed, source),
+      mocked: false,
+      model: retry.model,
+    };
+  }
 }

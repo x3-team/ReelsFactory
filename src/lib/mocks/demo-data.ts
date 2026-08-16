@@ -1,4 +1,8 @@
 import type { GeneratedScript, ScrapedProfile, StrategyPayload } from "@/lib/types";
+import {
+  extractAnchorPhrases,
+  scriptHasSourceAnchor,
+} from "@/lib/ai/source-anchors";
 
 export function mockScrapedProfile(
   handle: string,
@@ -217,27 +221,101 @@ function genericScripts(handle: string, offer: string): GeneratedScript[] {
   ];
 }
 
+function plantSourceAnchors(
+  scripts: GeneratedScript[],
+  sourceTexts: string[],
+): GeneratedScript[] {
+  if (!sourceTexts.some((item) => item.trim())) return scripts;
+  const phrases = extractAnchorPhrases(sourceTexts);
+  return scripts.map((script, index) => {
+    if (scriptHasSourceAnchor(script, sourceTexts).ok) return script;
+    const anchor = phrases[index] || phrases[0];
+    if (!anchor) return script;
+    const lines = script.teleprompter_script.split("\n");
+    if (lines[1]) {
+      lines[1] = lines[1].replace(/^(\d+[–—-]\d+с:\s*)/, `$1${anchor}. `);
+    } else if (lines[0]) {
+      lines[0] = `${lines[0]} ${anchor}`;
+    }
+    return { ...script, teleprompter_script: lines.join("\n") };
+  });
+}
+
+function captionDessertScripts(offer: string, blob: string): GeneratedScript[] {
+  if (!/отсаж|кусочк|птичьего молока|маршмеллоу|пружин/i.test(blob)) {
+    return dessertScripts(offer);
+  }
+  return [
+    {
+      title: "Почему зефир ломается кусочками",
+      format: "Reels 15с · ошибка",
+      duration_sec: 15,
+      hook_options: [
+        "Зефир ломается кусочками? Это хороший знак.",
+        "После отсаживания он должен отламываться.",
+        "Не тяни массу липкой лентой — смотри излом.",
+      ],
+      teleprompter_script:
+        "0–3с: Зефир ломается кусочками? Не спеши считать это ошибкой.\n3–8с: После отсаживания масса должна отламываться, а не тянуться ниткой.\n8–12с: Если растекается — ещё не готова, форму не удержит.\n12–15с: Сохрани признак. Следующую партию проверишь так же.",
+      caption: "После отсаживания зефир отламывается кусочками. Сохрани.",
+      cta: "Сохрани ролик",
+    },
+    {
+      title: "Сборка бенто из птичьего молока",
+      format: "Reels 30с · процесс",
+      duration_sec: 30,
+      hook_options: [
+        "Бенто из птичьего молока без сливочного масла.",
+        "Клубника со сливками — слой тонкий, основа лёгкая.",
+        "Не торопись со сборкой, пока слой не держит.",
+      ],
+      teleprompter_script:
+        "0–3с: Этот бенто воздушный, потому что в рецепте нет сливочного масла.\n3–16с: Проблема: если торопиться со сборкой, клубничный слой поплывёт.\n16–24с: Демо: птичье молоко стабилизировалось — кладу клубнику со сливками тонко.\n24–30с: Напиши «БЕНТО» — разберу фисташку-малину или шоколад-ягоды.",
+      caption: "Бенто из птичьего молока «Клубника со сливками», без сливочного масла.",
+      cta: "Напиши «БЕНТО»",
+    },
+    {
+      title: "Миф о маршмеллоу без белка",
+      format: "Reels 45с · миф",
+      duration_sec: 45,
+      hook_options: [
+        "Маршмеллоу без белка не будет пышным? Будет.",
+        "Пружинки без белка — смотри, какие пышные.",
+        "Двойной вкус, а белок я убрала.",
+      ],
+      teleprompter_script: `0–3с: Миф: без белка маршмеллоу получится плотным.\n3–22с: Проблема в голове, не в белке: эти пружинки как раз без белка и пышные.\n22–38с: Демо: двойной вкус, отсаживаю пружинки, рельеф держит.\n38–45с: Если нужен ${offer} — слово «ПРУЖИНА» в комментарии. Цену в каждый ролик не тащу.`,
+      caption: "Маршмеллоу пружинки без белка. Коммент ПРУЖИНА.",
+      cta: "Напиши «ПРУЖИНА»",
+    },
+  ];
+}
+
 export function mockStrategy(input: {
   handle: string;
   goal: string;
   tone: string;
   offerSummary?: string | null;
   bio?: string | null;
+  captions?: string[] | null;
   transcriptions?: string[] | null;
 }): StrategyPayload {
   const offer = input.offerSummary?.trim() || "короткий чеклист";
   const handle = input.handle.replace(/^@/, "").toLowerCase();
-  const blob = [
-    handle,
+  const contentBlob = [
     input.bio || "",
+    ...(input.captions || []),
     ...(input.transcriptions || []),
   ].join(" ");
+  const blob = [handle, contentBlob].join(" ");
 
-  const scripts = /desert|зефир|zefir|бенто|торт/i.test(blob)
-    ? dessertScripts(offer)
-    : /eugenius|матем|уравнен|икс/i.test(blob)
-      ? mathScripts(offer)
-      : genericScripts(handle, offer);
+  const scripts = plantSourceAnchors(
+    /зефир|zefir|бенто|торт|маршмеллоу|отсаж|кусок/i.test(contentBlob)
+      ? captionDessertScripts(offer, contentBlob)
+      : /eugenius|матем|уравнен|икс/i.test(blob)
+        ? mathScripts(offer)
+        : genericScripts(handle, offer),
+    [input.bio || "", ...(input.captions || []), ...(input.transcriptions || [])],
+  );
 
   for (const script of scripts) {
     if (OFFICE_BANNED.test(script.teleprompter_script)) {
