@@ -82,7 +82,8 @@ function ensureMemoryWorker() {
       (j) => j.status === "waiting",
     );
     if (!next) {
-      setTimeout(() => void tick(), 250);
+      const idle = setTimeout(() => void tick(), 250);
+      idle.unref();
       return;
     }
     next.status = "active";
@@ -100,7 +101,8 @@ function ensureMemoryWorker() {
         },
       });
     }
-    setTimeout(() => void tick(), 50);
+    const again = setTimeout(() => void tick(), 50);
+    again.unref();
   };
   void tick();
 }

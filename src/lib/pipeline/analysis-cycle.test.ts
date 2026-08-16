@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import {
   AnalysisStatus,
   ProfileGoal,
@@ -28,6 +28,10 @@ import { YOUTUBE_UNSUPPORTED_MESSAGE } from "@/lib/platform";
 function dedupeConsecutive(values: string[]) {
   return values.filter((value, index) => index === 0 || value !== values[index - 1]);
 }
+
+after(async () => {
+  await prisma.$disconnect();
+});
 
 async function seedUser(plan: SubscriptionPlan, handle: string, platform: string) {
   const telegramId = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 999));
