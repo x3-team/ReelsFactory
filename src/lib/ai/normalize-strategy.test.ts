@@ -34,7 +34,7 @@ test("array teleprompter is joined, not dropped", () => {
   assert.match(text, /0–3с/);
 });
 
-test("LLM JSON with empty scripts still yields 15/30/45 and a teleprompter", () => {
+test("LLM JSON with empty scripts still yields 15/30/45, teleprompter and visual_cues", () => {
   const raw = parseStrategyJson(`\`\`\`json
 {
   "niche": "Зефир на заказ",
@@ -53,6 +53,9 @@ test("LLM JSON with empty scripts still yields 15/30/45 and a teleprompter", () 
   for (const script of strategy.scripts) {
     assert.equal(isUsableTeleprompter(script.teleprompter_script, script.duration_sec || 30), true);
     assert.ok(script.teleprompter_script.trim().length > 0);
+    assert.ok(script.visual_cues?.start0_3s);
+    assert.ok(script.visual_cues?.midAction);
+    assert.ok(script.visual_cues?.finalCta);
   }
 });
 
