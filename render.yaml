@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+# ReelsFactory — витрина (не мастерская). Секреты не коммитим: sync:false заполняют в Dashboard.
+# Деплой: https://dashboard.render.com/blueprint/new?repo=https://github.com/x3-team/reelsfactory
+
+databases:
+  - name: reelsfactory-db
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: 16
+    databaseName: reelsfactory
+    user: reelsfactory
+
+services:
+  - type: web
+    name: reelsfactory
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    autoDeployTrigger: commit
+    healthCheckPath: /api/health
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    startCommand: bash scripts/start-prod.sh
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MOCK_EXTERNAL_APIS
+        value: "false"
+      - key: REQUIRE_TELEGRAM_AUTH
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reelsfactory-db
+          property: connectionString
+      - key: AITUNNEL_API_KEY
+        sync: false
+      - key: AITUNNEL_BASE_URL
+        sync: false
+      - key: AITUNNEL_LLM_MODEL
+        sync: false
+      - key: AITUNNEL_LLM_MODEL_PRO
+        sync: false
+      - key: AITUNNEL_WHISPER_MODEL
+        sync: false
+      - key: APIFY_TOKEN
+        sync: false
+      - key: YOOKASSA_SHOP_ID
+        sync: false
+      - key: YOOKASSA_SECRET_KEY
+        sync: false
+      - key: YOOKASSA_WEBHOOK_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+        sync: false

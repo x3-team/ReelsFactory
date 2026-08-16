@@ -1,14 +1,49 @@
-import { AnalysisStatus, SubscriptionPlan, type User } from "@prisma/client";
+import { AnalysisStatus, SubscriptionPlan, type Prisma, type User } from "@prisma/client";
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
+import { isUsableTeleprompter } from "@/lib/ai/normalize-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
 import { PLANS } from "@/lib/config";
-import { hasPaidAccess } from "@/lib/users";
+import { videosForWhisper, whisperSourceUrl } from "@/lib/content/scrape-limits";
 import { prisma } from "@/lib/prisma";
-import { videosForWhisper } from "@/lib/content/scrape-limits";
+import { assertSupportedPlatform, type Platform } from "@/lib/platform";
 import { parseProfile } from "@/lib/scraping/parse-profile";
-import type { Platform } from "@/lib/platform";
 import type { ScrapedProfile } from "@/lib/types";
+import { hasPaidAccess } from "@/lib/users";
+
+/** Ожидаемый ход пайплайна (очередь ставит QUEUED отдельно). */
+export const ANALYSIS_STATUS_SEQUENCE = [
+  AnalysisStatus.SCRAPING,
+  AnalysisStatus.TRANSCRIBING,
+  AnalysisStatus.GENERATING,
+  AnalysisStatus.COMPLETED,
+] as const;
+
+type StatusTraceEntry = { analysisId: string; status: AnalysisStatus };
+const statusTrace: StatusTraceEntry[] = [];
+
+export function getAnalysisStatusTrace(analysisId?: string) {
+  if (!analysisId) return statusTrace.map((entry) => entry.status);
+  return statusTrace
+    .filter((entry) => entry.analysisId === analysisId)
+    .map((entry) => entry.status);
+}
+
+export function clearAnalysisStatusTrace() {
+  statusTrace.length = 0;
+}
+
+async function markStatus(
+  analysisId: string,
+  status: AnalysisStatus,
+  data: Prisma.ProfileAnalysisUpdateInput = {},
+) {
+  statusTrace.push({ analysisId, status });
+  return prisma.profileAnalysis.update({
+    where: { id: analysisId },
+    data: { status, ...data },
+  });
+}
 
 function scriptsLimit(user: User) {
   if (!hasPaidAccess(user)) return 1;
@@ -27,13 +62,10 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
   }
 
   try {
-    await prisma.profileAnalysis.update({
-      where: { id: analysisId },
-      data: {
-        status: AnalysisStatus.SCRAPING,
-        socialHandle: user.socialHandle,
-        platform: user.platform,
-      },
+    assertSupportedPlatform(user.platform);
+    await markStatus(analysisId, AnalysisStatus.SCRAPING, {
+      socialHandle: user.socialHandle,
+      platform: user.platform,
     });
 
     const profile = await parseProfile({
@@ -41,18 +73,14 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       platform: user.platform as Platform,
     });
 
-    await prisma.profileAnalysis.update({
-      where: { id: analysisId },
-      data: {
-        status: AnalysisStatus.TRANSCRIBING,
-        rawProfileData: profile as unknown as object,
-      },
+    await markStatus(analysisId, AnalysisStatus.TRANSCRIBING, {
+      rawProfileData: profile as unknown as Prisma.InputJsonValue,
     });
 
-    // Whisper только top-3 с качаемым audio/video; страница tiktok.com не подходит.
+    // Whisper только top-3; остальные ролики идут в LLM как captions.
     const transcriptions: string[] = [];
     for (const video of videosForWhisper(profile.topVideos)) {
-      const audioUrl = video.audioUrl || video.videoUrl;
+      const audioUrl = whisperSourceUrl(video);
       if (!audioUrl) continue;
       const { text } = await transcribeAudio({
         audioUrl,
@@ -61,12 +89,8 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       transcriptions.push(text);
     }
 
-    await prisma.profileAnalysis.update({
-      where: { id: analysisId },
-      data: {
-        status: AnalysisStatus.GENERATING,
-        transcriptions,
-      },
+    await markStatus(analysisId, AnalysisStatus.GENERATING, {
+      transcriptions,
     });
 
     const { strategy } = await generateStrategy({
@@ -82,6 +106,17 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     const paid = hasPaidAccess(user);
     const scriptsToSave = strategy.scripts.slice(0, scriptsLimit(user));
     const pillars = strategy.content_pillars.slice(0, pillarsLimit(user));
+    if (!scriptsToSave.length) {
+      throw new Error("Пайплайн не собрал сценарии");
+    }
+    for (const script of scriptsToSave) {
+      if (
+        !script.teleprompter_script?.trim() ||
+        !isUsableTeleprompter(script.teleprompter_script, script.duration_sec || 30)
+      ) {
+        throw new Error("Пустой суфлёр — анализ не записываем");
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.script.deleteMany({ where: { analysisId } });
@@ -114,11 +149,14 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       }
     });
 
+    statusTrace.push({ analysisId, status: AnalysisStatus.COMPLETED });
+
     return prisma.profileAnalysis.findUniqueOrThrow({
       where: { id: analysisId },
       include: { scripts: { orderBy: { createdAt: "asc" } } },
     });
   } catch (error) {
+    statusTrace.push({ analysisId, status: AnalysisStatus.FAILED });
     await prisma.profileAnalysis.update({
       where: { id: analysisId },
       data: {

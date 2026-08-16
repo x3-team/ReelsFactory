@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  assertSupportedPlatform,
+  detectPlatform,
+  YOUTUBE_UNSUPPORTED_MESSAGE,
+} from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 export type OnboardingValues = {
@@ -40,10 +45,12 @@ const TONES = [
 export function OnboardingForm({
   userName,
   loading,
+  submitError,
   onSubmit,
 }: {
   userName: string;
   loading?: boolean;
+  submitError?: string | null;
   onSubmit: (values: OnboardingValues) => Promise<void> | void;
 }) {
   const [step, setStep] = useState(0);
@@ -59,8 +66,16 @@ export function OnboardingForm({
   async function next() {
     setError(null);
     if (step === 0 && socialHandle.trim().length < 2) {
-      setError("Укажите @username Instagram/TikTok или ссылку на YouTube");
+      setError("Укажите @username Instagram или TikTok");
       return;
+    }
+    if (step === 0) {
+      try {
+        assertSupportedPlatform(detectPlatform(socialHandle));
+      } catch {
+        setError(YOUTUBE_UNSUPPORTED_MESSAGE);
+        return;
+      }
     }
     if (step < 2) {
       setStep((s) => s + 1);
@@ -103,16 +118,16 @@ export function OnboardingForm({
 
       {step === 0 && (
         <section className="space-y-3">
-          <Label htmlFor="handle">Instagram / TikTok / YouTube</Label>
+          <Label htmlFor="handle">Instagram / TikTok</Label>
           <Input
             id="handle"
-            placeholder="@username или ссылка на канал"
+            placeholder="@username Instagram или TikTok"
             value={socialHandle}
             onChange={(e) => setSocialHandle(e.target.value)}
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Мы проанализируем био и топ‑5 видео, чтобы вытащить вирусные хуки.
+            YouTube пока не разбираем. Нужен открытый Instagram или TikTok.
           </p>
         </section>
       )}
@@ -185,7 +200,9 @@ export function OnboardingForm({
         </section>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {(error || submitError) && (
+        <p className="text-sm text-destructive">{error || submitError}</p>
+      )}
 
       <div className="mt-auto flex gap-2">
         {step > 0 && (

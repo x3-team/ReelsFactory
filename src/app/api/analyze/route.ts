@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
+import { assertSupportedPlatform } from "@/lib/platform";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
 
@@ -38,6 +39,14 @@ export async function POST(request: Request) {
     if (!socialHandle || !platform) {
       return NextResponse.json(
         { error: "Сначала завершите онбординг (укажите @username)" },
+        { status: 400 },
+      );
+    }
+    try {
+      assertSupportedPlatform(platform);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Площадка не поддерживается" },
         { status: 400 },
       );
     }

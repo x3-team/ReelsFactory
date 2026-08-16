@@ -111,7 +111,8 @@ export function tiktokWhisperUrl(item: TikTokActorItem | ScrapedVideo) {
     const picked = pickTikTokMediaUrls(item);
     return picked.audioUrl || picked.videoUrl;
   }
-  return firstMediaUrl(item.audioUrl, item.videoUrl);
+  const video = item as ScrapedVideo;
+  return firstMediaUrl(video.audioUrl, video.videoUrl);
 }
 
 export function mapTikTokActorItems(

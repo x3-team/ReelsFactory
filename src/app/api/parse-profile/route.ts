@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { detectPlatform, normalizeHandle } from "@/lib/platform";
+import { detectPlatform, normalizeHandle, assertSupportedPlatform } from "@/lib/platform";
 import {
   hasScrapingCredentials,
   parseProfile,
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
     const platform = body.platform || detectPlatform(body.handle);
+    assertSupportedPlatform(platform);
     const handle = normalizeHandle(body.handle, platform);
     const profile = await parseProfile({ handle, platform });
 

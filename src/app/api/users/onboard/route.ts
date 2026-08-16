@@ -2,7 +2,7 @@ import { ProfileGoal, ToneOfVoice } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { detectPlatform, normalizeHandle } from "@/lib/platform";
+import { assertSupportedPlatform, detectPlatform, normalizeHandle } from "@/lib/platform";
 import { serialize } from "@/lib/serialize";
 import { completeOnboarding } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
@@ -20,6 +20,7 @@ export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
     const platform = detectPlatform(body.socialHandle);
+    assertSupportedPlatform(platform);
     const handle = normalizeHandle(body.socialHandle, platform);
 
     const user = await completeOnboarding(body.userId, {

@@ -11,16 +11,19 @@ import {
 import { ResultsDashboard } from "@/components/results/results-dashboard";
 import { TelegramBackButton } from "@/components/telegram/back-button";
 import { useTelegram } from "@/components/telegram/telegram-provider";
-import {
-  api,
-  type AppAnalysis,
-  type AppUser,
-} from "@/lib/client-api";
+import { api, type AppAnalysis, type AppUser } from "@/lib/client-api";
 import { referralLink, type PlanId } from "@/lib/config";
 
 type Screen = "boot" | "onboarding" | "analyzing" | "results" | "error";
 
 const DEV_TELEGRAM_KEY = "reelsfactory.devTelegramId";
+const IN_PROGRESS = new Set([
+  "PENDING",
+  "QUEUED",
+  "SCRAPING",
+  "TRANSCRIBING",
+  "GENERATING",
+]);
 
 function getDevTelegramId() {
   if (typeof window === "undefined") return "100001";
@@ -49,6 +52,7 @@ export function ReelsFactoryApp() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [analysisElapsedSec, setAnalysisElapsedSec] = useState(0);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
 
   const displayName = useMemo(() => {
     if (user?.firstName) {
@@ -128,6 +132,28 @@ export function ReelsFactoryApp() {
       return;
     }
 
+    if (data.latestAnalysis && IN_PROGRESS.has(data.latestAnalysis.status)) {
+      setScreen("analyzing");
+      setAnalysisStatus(data.latestAnalysis.status);
+      setAnalysisElapsedSec(0);
+      const analysisResult = await pollAnalysis(
+        data.latestAnalysis.id,
+        Date.now(),
+      );
+      setAnalysis(analysisResult);
+      setScreen("results");
+      return;
+    }
+
+    if (data.latestAnalysis?.status === "FAILED") {
+      setError(
+        data.latestAnalysis.errorMessage ||
+          "Последний анализ не удался. Запустите ещё раз.",
+      );
+      setScreen("error");
+      return;
+    }
+
     if (data.user.onboardedAt) {
       setScreen("analyzing");
       await runAnalysis(data.user.id);
@@ -149,7 +175,7 @@ export function ReelsFactoryApp() {
 
   async function pollAnalysis(analysisId: string, startedAt: number) {
     const terminal = new Set(["COMPLETED", "FAILED"]);
-    const maxMs = 180_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
+    const maxMs = 240_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
     for (;;) {
       const elapsed = Date.now() - startedAt;
       setAnalysisElapsedSec(Math.floor(elapsed / 1000));
@@ -201,13 +227,21 @@ export function ReelsFactoryApp() {
 
   async function handleOnboarding(values: OnboardingValues) {
     if (!user) return;
+    setOnboardingBusy(true);
     setError(null);
-    const data = await api<{ user: AppUser }>("/api/users/onboard", {
-      method: "POST",
-      body: JSON.stringify({ userId: user.id, ...values }),
-    });
-    setUser(data.user);
-    await runAnalysis(data.user.id);
+    try {
+      const data = await api<{ user: AppUser }>("/api/users/onboard", {
+        method: "POST",
+        body: JSON.stringify({ userId: user.id, ...values }),
+      });
+      setUser(data.user);
+      await runAnalysis(data.user.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка онбординга");
+      setScreen("onboarding");
+    } finally {
+      setOnboardingBusy(false);
+    }
   }
 
   async function handleSelectPlan(plan: Exclude<PlanId, "FREE">) {
@@ -257,6 +291,15 @@ export function ReelsFactoryApp() {
         >
           Повторить
         </button>
+        {user?.onboardedAt && (
+          <button
+            type="button"
+            className="rounded-md border border-border px-4 py-2 text-sm"
+            onClick={() => void runAnalysis(user.id)}
+          >
+            Запустить анализ ещё раз
+          </button>
+        )}
       </div>
     );
   }
@@ -267,6 +310,8 @@ export function ReelsFactoryApp() {
         <TelegramBackButton show={false} />
         <OnboardingForm
           userName={displayName}
+          loading={onboardingBusy}
+          submitError={error}
           onSubmit={handleOnboarding}
         />
       </>
@@ -308,5 +353,10 @@ export function ReelsFactoryApp() {
     );
   }
 
-  return null;
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 p-4 text-center">
+      <Loader2 className="size-8 animate-spin text-primary" />
+      <p className="text-sm text-muted-foreground">Загружаем ReelsFactory…</p>
+    </div>
+  );
 }

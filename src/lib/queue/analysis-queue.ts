@@ -63,13 +63,10 @@ async function processAnalysisJob(data: AnalysisJobData) {
   await prisma.profileAnalysis.update({
     where: { id: data.analysisId },
     data: {
-      status: AnalysisStatus.SCRAPING,
       clientAccountId: data.clientAccountId || null,
     },
   });
 
-  // runAnalysisPipeline creates its own analysis row — we need a variant that uses existing id.
-  // For queue we call a dedicated runner that updates the pre-created analysis.
   const { runAnalysisForExisting } = await import(
     "@/lib/pipeline/run-analysis"
   );
@@ -85,7 +82,8 @@ function ensureMemoryWorker() {
       (j) => j.status === "waiting",
     );
     if (!next) {
-      setTimeout(() => void tick(), 250);
+      const idle = setTimeout(() => void tick(), 250);
+      idle.unref();
       return;
     }
     next.status = "active";
@@ -103,7 +101,8 @@ function ensureMemoryWorker() {
         },
       });
     }
-    setTimeout(() => void tick(), 50);
+    const again = setTimeout(() => void tick(), 50);
+    again.unref();
   };
   void tick();
 }
