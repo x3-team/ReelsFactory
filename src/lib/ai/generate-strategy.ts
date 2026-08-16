@@ -13,7 +13,7 @@ import {
   assertStrategyAnchored,
   extractAnchorPhrases,
   sourceCorpus,
-  withVoiceHeardTip,
+  withSourceHonestyTips,
 } from "@/lib/ai/source-anchors";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
@@ -62,8 +62,9 @@ export const STRATEGY_SYSTEM_PROMPT = `Ты пишешь сценарии кор
 7) Не копируй транскрипт целиком и не делай закадровый пересказ ролика. Возьми якорь и собери НОВЫЙ устный каркас хук → проблема → демо → CTA.
 8) Три якоря — три разных продукта/приёма из source_anchors. Не повторяй один десерт в 30с и 45с, если в профиле есть другие.
 9) Не выдумывай технологию, которой нет во входе: «температура сиропа», «завиток», «агар», «термометр» — только если эти слова есть в transcriptions/captions.
-10) Если transcriptions пустые или голос не разобрали — НЕ притворяйся, что слышала речь. Пиши только из captions/bio. Первой строкой profile_audit_tips скажи, что сценарии по подписям.
-11) niche / tips — по-человечески, без корпоративного тона.`;
+10) Если transcriptions пустые или голос не разобрали — НЕ притворяйся, что слышала речь. Пиши только из captions/bio. Первой строкой profile_audit_tips скажи, что сценарии по подписям. Музыка, заставка, «Thank you for watching», чужой язык — это не речь.
+11) Если source_strength = weak или empty: подписи пустые, хэштеги или один и тот же копипаст. НЕ пиши, что стратегия «огонь» / сильная / вирусная. НЕ выдумывай упражнения (ноги/пресс/суперсет), граммовки, законы, температуры и приёмы, которых нет во входе. Три коротких сценария строго из bio + этой подписи. Первой строкой tips — что материала мало.
+12) niche / tips — по-человечески, без корпоративного тона.`;
 
 export type GenerateStrategyInput = {
   profile: ScrapedProfile;
@@ -105,9 +106,14 @@ export function buildStrategyUserPrompt(
       },
       transcriptions: source.usableVoice,
       voice_heard: source.voiceHeard,
+      source_strength: source.strength,
       voice_note: source.voiceHeard
         ? "Голос разобрали. Якорь можно брать из transcriptions или captions."
-        : "Голос не разобрали (тишина, музыка или чужой язык). НЕ пиши «как в ролике сказано». Только captions/bio. Пометь это в profile_audit_tips.",
+        : "Голос не разобрали (тишина, музыка, заставка или чужой язык). НЕ пиши «как в ролике сказано». Только captions/bio. Пометь это в profile_audit_tips.",
+      source_note:
+        source.strength === "ok"
+          ? "Подписей достаточно. Не выдумывай технологию, которой нет во входе."
+          : "Подписи пустые или копипаст. Это НЕ «стратегия огонь». Только слова из bio/captions. Без выдуманных упражнений, граммовок, законов и температур.",
       source_anchors: anchors,
       goal: input.goal,
       tone: input.tone,
@@ -137,8 +143,11 @@ function finalizeStrategy(
   raw: unknown,
   source: ReturnType<typeof strategySourceFromInput>,
 ): StrategyPayload {
-  const strategy = withVoiceHeardTip(normalizeStrategy(raw), source.voiceHeard);
-  assertStrategyAnchored(strategy, source.texts);
+  const strategy = withSourceHonestyTips(normalizeStrategy(raw), {
+    voiceHeard: source.voiceHeard,
+    strength: source.strength,
+  });
+  assertStrategyAnchored(strategy, source.texts, source.strength);
   return strategy;
 }
 
@@ -207,16 +216,38 @@ export async function generateStrategy(
     };
   } catch (error) {
     if (!(error instanceof SourceAnchorError)) throw error;
-    const retryPrompt = `${userPrompt}\n\nПРЕДЫДУЩИЙ JSON ЗАБРАКОВАН: ${error.message}\nВ каждый из 3 сценариев вставь разный якорь из source_anchors. Не уходи в общую нишу.`;
+    const retryPrompt = `${userPrompt}\n\nПРЕДЫДУЩИЙ JSON ЗАБРАКОВАН: ${error.message}\nВ каждый из 3 сценариев вставь разный якорь из source_anchors. Не уходи в общую нишу. Если source_strength=weak — не выдумывай детали и не хвали стратегию.`;
     const retry = await requestStrategyJson({
       model,
       userPrompt: retryPrompt,
       isPro,
     });
-    return {
-      strategy: finalizeStrategy(retry.parsed, source),
-      mocked: false,
-      model: retry.model,
-    };
+    try {
+      return {
+        strategy: finalizeStrategy(retry.parsed, source),
+        mocked: false,
+        model: retry.model,
+      };
+    } catch (retryError) {
+      if (!(retryError instanceof SourceAnchorError) || source.strength === "ok") {
+        throw retryError;
+      }
+      return {
+        strategy: finalizeStrategy(
+          mockStrategy({
+            handle: input.profile.handle,
+            goal: input.goal,
+            tone: input.tone,
+            offerSummary: input.offerSummary,
+            bio: input.profile.bio,
+            captions: input.profile.topVideos.map((video) => video.caption || ""),
+            transcriptions: source.usableVoice,
+          }),
+          source,
+        ),
+        mocked: false,
+        model: retry.model,
+      };
+    }
   }
 }

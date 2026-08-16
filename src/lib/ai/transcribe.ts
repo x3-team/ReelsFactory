@@ -85,12 +85,19 @@ async function transcribeOnce(input: {
   return { text: result.text, mocked: false };
 }
 
+export function fallbackTranscription(hint?: string): { text: string; mocked: boolean } {
+  if (shouldUseMockAi()) {
+    return { text: mockTranscription(hint), mocked: true };
+  }
+  return { text: "", mocked: true };
+}
+
 export async function transcribeAudio(input: {
   audioUrl: string;
   hint?: string;
 }): Promise<{ text: string; mocked: boolean }> {
   if (shouldUseMockAi()) {
-    return { text: mockTranscription(input.hint), mocked: true };
+    return fallbackTranscription(input.hint);
   }
 
   try {
@@ -99,10 +106,11 @@ export async function transcribeAudio(input: {
   } catch (error) {
     // Без реального audio URL / при таймауте CDN не роняем пайплайн —
     // стратегия всё равно генерируется живой LLM на био + captions.
+    // В live НЕ подмешиваем mock-суфлёр: иначе «ролик умирает» попадает в якоря.
     console.warn(
       "Whisper/AITunnel unavailable, using caption fallback:",
       error instanceof Error ? error.message : error,
     );
-    return { text: mockTranscription(input.hint), mocked: true };
+    return fallbackTranscription(input.hint);
   }
 }

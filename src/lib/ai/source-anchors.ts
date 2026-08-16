@@ -4,6 +4,23 @@ import type { GeneratedScript, StrategyPayload } from "@/lib/types";
 export const VOICE_MISSING_TIP =
   "Голос роликов не разобрали — сценарии собраны по подписям, не «как будто слышали» речь. Когда появится звук, переснимите хук с фразы из кадра.";
 
+/** Подписи пустые или копипаст — не выдаём «стратегию огонь». */
+export const WEAK_SOURCE_TIP =
+  "Подписи пустые или копипаст — это не «стратегия огонь». Сценарии только из био/подписей, без выдуманных упражнений, граммовок и приёмов.";
+
+export type CaptionSourceStrength = "empty" | "weak" | "ok";
+
+const MOCK_FALLBACK_MARKERS =
+  /ролик умирает после тр[её]х секунд|удар в первой фразе, потом доказательство|люди пишут слово в комментарии, если ты просишь/i;
+
+const VOICE_JUNK =
+  /thank you for watching|like and subscribe|subscribe to (my )?channel|チャンネル登録|登録をお願い|go for the ride|drop top|switching lanes|hey,\s*hey|♪|\[lyrics\]|\blyrics\b|\bchorus\b/i;
+
+const OVEN_CARD = /\d+\s*°\s*[cf]\b|\d+\s*[-–—]\s*\d+\s*分/i;
+
+const SOURCE_HYPE =
+  /стратег\w*\s+огонь|контент\s+огонь|вирусн|контент-машин|сильн(ая|ые|ый)\s+(стратег|контент|тем)/i;
+
 const STOPWORDS = new Set(
   [
     "этот",
@@ -140,19 +157,29 @@ export function profileLooksCyrillic(texts: string[]): boolean {
 
 export function isUsableVoiceText(
   text: string,
-  opts?: { expectCyrillic?: boolean },
+  opts?: { expectCyrillic?: boolean; sourceStems?: Set<string> },
 ): boolean {
   const value = (text || "").trim();
   if (value.length < 8) return false;
-  if (/thank you for watching|like and subscribe|subscribe to (my )?channel/i.test(value)) {
-    return false;
-  }
-  if (/チャンネル登録|登録をお願い/.test(value)) return false;
+  if (value === "." || /^[.…,!?]+$/.test(value)) return false;
+  if (MOCK_FALLBACK_MARKERS.test(value)) return false;
+  if (VOICE_JUNK.test(value)) return false;
+  if (OVEN_CARD.test(value) && !/[а-яё]/i.test(value)) return false;
   const cjk = (value.match(/[\u3040-\u30ff\u3400-\u9fff]/g) || []).length;
   const cyr = (value.match(/[а-яё]/gi) || []).length;
   const lat = (value.match(/[a-z]/gi) || []).length;
   if (cjk > cyr + lat) return false;
   if (opts?.expectCyrillic && value.length >= 12 && cyr === 0) return false;
+  if (cyr === 0 && lat >= 24 && /ride|girl|baby|night|love|dance|party/i.test(value)) {
+    return false;
+  }
+  if (opts?.sourceStems && opts.sourceStems.size >= 6) {
+    const stems = contentStems(value);
+    if (stems.size >= 4) {
+      const overlap = [...stems].filter((stem) => opts.sourceStems!.has(stem)).length;
+      if (overlap === 0) return false;
+    }
+  }
   return true;
 }
 
@@ -161,16 +188,57 @@ export function usableTranscriptions(
   captionsAndBio: string[],
 ): string[] {
   const expectCyrillic = profileLooksCyrillic(captionsAndBio);
+  const sourceStems = contentStems(captionsAndBio.join("\n"));
   return (transcriptions || [])
     .map((item) => item.trim())
-    .filter((item) => isUsableVoiceText(item, { expectCyrillic }));
+    .filter((item) => isUsableVoiceText(item, { expectCyrillic, sourceStems }));
+}
+
+function normalizeCaptionKey(text: string) {
+  return (text || "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/#[\p{L}\p{N}_]+/gu, " ")
+    .replace(/@[\w.]+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function captionSourceStrength(input: {
+  bio?: string | null;
+  captions?: string[] | null;
+}): CaptionSourceStrength {
+  const captions = (input.captions || []).map((item) => item.trim()).filter(Boolean);
+  const bio = (input.bio || "").trim();
+  const unique = new Set(captions.map(normalizeCaptionKey).filter((item) => item.length >= 12));
+  const uniqueTokens = contentStems(captions.join("\n"));
+  if (captions.length === 0 && bio.length < 40) return "empty";
+  if (captions.length >= 3 && unique.size <= 1) return "weak";
+  if (uniqueTokens.size < 8 && bio.length < 160) return "weak";
+  const hashtagOnly = captions.filter((caption) => {
+    const stripped = caption
+      .replace(/#[\p{L}\p{N}_]+/gu, " ")
+      .replace(/@[\w.]+/g, " ")
+      .trim();
+    return contentTokens(stripped).length < 3;
+  }).length;
+  if (captions.length >= 3 && hashtagOnly / captions.length >= 0.7 && uniqueTokens.size < 14) {
+    return "weak";
+  }
+  return "ok";
 }
 
 export function sourceCorpus(input: {
   bio?: string | null;
   captions?: string[] | null;
   transcriptions?: string[] | null;
-}): { voiceHeard: boolean; texts: string[]; usableVoice: string[] } {
+}): {
+  voiceHeard: boolean;
+  texts: string[];
+  usableVoice: string[];
+  strength: CaptionSourceStrength;
+} {
   const captions = (input.captions || []).map((item) => item.trim()).filter(Boolean);
   const bio = (input.bio || "").trim();
   const captionSide = [bio, ...captions].filter(Boolean);
@@ -179,6 +247,7 @@ export function sourceCorpus(input: {
     voiceHeard: usableVoice.length > 0,
     texts: [...usableVoice, ...captionSide],
     usableVoice,
+    strength: captionSourceStrength({ bio, captions }),
   };
 }
 
@@ -252,7 +321,9 @@ export function scriptStrongStems(
 export function assertDistinctScriptAnchors(
   strategy: StrategyPayload,
   sourceTexts: string[],
+  strength: CaptionSourceStrength = "ok",
 ): void {
+  if (strength !== "ok") return;
   const sets = strategy.scripts.map((script) => scriptStrongStems(script, sourceTexts));
   for (let i = 0; i < sets.length; i += 1) {
     for (let j = i + 1; j < sets.length; j += 1) {
@@ -309,6 +380,7 @@ export function scriptHasSourceAnchor(
 export function assertStrategyAnchored(
   strategy: StrategyPayload,
   sourceTexts: string[],
+  strength: CaptionSourceStrength = "ok",
 ): void {
   if (!sourceTexts.some((item) => item.trim())) return;
   const failed: string[] = [];
@@ -325,11 +397,21 @@ export function assertStrategyAnchored(
       `Сценарий без якоря из транскрипта/подписи: ${failed.join("; ")}. Нужен термин, цифра, ошибка или продукт профиля.`,
     );
   }
-  assertDistinctScriptAnchors(strategy, sourceTexts);
+  assertDistinctScriptAnchors(strategy, sourceTexts, strength);
   assertNoUngroundedTerms(strategy, sourceTexts);
+  assertNoHypeWhenWeak(strategy, strength);
+  assertLowInventionWhenWeak(strategy, sourceTexts, strength);
 }
 
-const UNGROUNDED_TERMS = ["сироп", "завиток", "агар", "термометр"] as const;
+const UNGROUNDED_TERMS = [
+  "сироп",
+  "завиток",
+  "агар",
+  "термометр",
+  "суперсет",
+  "калорийн",
+  "эскроу",
+] as const;
 
 export function assertNoUngroundedTerms(
   strategy: StrategyPayload,
@@ -353,6 +435,58 @@ export function assertNoUngroundedTerms(
   }
 }
 
+export function scriptNovelStems(
+  script: Pick<GeneratedScript, "title" | "hook_options" | "teleprompter_script" | "caption">,
+  sourceTexts: string[],
+): string[] {
+  const source = contentStems(sourceTexts.join("\n"));
+  const text = [
+    script.title,
+    ...(script.hook_options || []),
+    script.teleprompter_script,
+    script.caption,
+  ].join("\n");
+  const seen = new Set<string>();
+  const novel: string[] = [];
+  for (const token of contentTokens(text)) {
+    if (token.length < 7) continue;
+    const key = stemToken(token);
+    if (source.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    novel.push(token);
+  }
+  return novel;
+}
+
+export function assertLowInventionWhenWeak(
+  strategy: StrategyPayload,
+  sourceTexts: string[],
+  strength: CaptionSourceStrength,
+): void {
+  if (strength === "ok") return;
+  for (const script of strategy.scripts) {
+    const novel = scriptNovelStems(script, sourceTexts);
+    if (novel.length >= 3) {
+      throw new SourceAnchorError(
+        `Сценарий «${script.title}» выдумал детали (${novel.slice(0, 6).join(", ")}), которых нет в коротких/одинаковых подписях.`,
+      );
+    }
+  }
+}
+
+export function assertNoHypeWhenWeak(
+  strategy: StrategyPayload,
+  strength: CaptionSourceStrength,
+): void {
+  if (strength === "ok") return;
+  const blob = `${strategy.niche}\n${strategy.profile_audit_tips.join("\n")}`;
+  if (SOURCE_HYPE.test(blob)) {
+    throw new SourceAnchorError(
+      "Подписи слабые — нельзя выдавать «стратегию огонь» или вирусный контент-план.",
+    );
+  }
+}
+
 export function withVoiceHeardTip(
   strategy: StrategyPayload,
   voiceHeard: boolean,
@@ -365,4 +499,20 @@ export function withVoiceHeardTip(
     ? strategy.profile_audit_tips
     : [VOICE_MISSING_TIP, ...strategy.profile_audit_tips].slice(0, 6);
   return { ...strategy, profile_audit_tips: tips };
+}
+
+export function withSourceHonestyTips(
+  strategy: StrategyPayload,
+  input: { voiceHeard: boolean; strength: CaptionSourceStrength },
+): StrategyPayload {
+  const withVoice = withVoiceHeardTip(strategy, input.voiceHeard);
+  if (input.strength === "ok") return withVoice;
+  const already = withVoice.profile_audit_tips.some((tip) =>
+    /копипаст|стратегия огонь|подписи пустые/i.test(tip),
+  );
+  if (already) return withVoice;
+  return {
+    ...withVoice,
+    profile_audit_tips: [WEAK_SOURCE_TIP, ...withVoice.profile_audit_tips].slice(0, 6),
+  };
 }

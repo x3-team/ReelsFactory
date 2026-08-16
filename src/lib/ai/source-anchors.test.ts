@@ -7,15 +7,33 @@ import {
   DESERTMSK_LIVE_WHISPER_RAW,
   DESERTMSK_PREVIOUS_LIVE_SCRIPTS,
 } from "@/lib/ai/fixtures/desertmsk-live";
+import {
+  DARIA_BIO,
+  DARIA_CAPTION,
+  DARIA_CAPTIONS,
+  DARIA_WHISPER_RAW,
+  EUGENIUS_BIO,
+  EUGENIUS_CAPTIONS,
+  EUGENIUS_MOCK_FALLBACK,
+  KSENIA_BIO,
+  KSENIA_CAPTIONS,
+  KSENIA_WHISPER_RAW,
+  PRODASHA_BIO,
+  PRODASHA_CAPTIONS,
+  PRODASHA_SONG,
+} from "@/lib/ai/fixtures/cis-corpus-live";
 import { normalizeStrategy } from "@/lib/ai/normalize-strategy";
 import {
   VOICE_MISSING_TIP,
+  WEAK_SOURCE_TIP,
   assertStrategyAnchored,
+  captionSourceStrength,
   extractAnchorPhrases,
   isUsableVoiceText,
   scriptHasSourceAnchor,
   sourceCorpus,
   usableTranscriptions,
+  withSourceHonestyTips,
   withVoiceHeardTip,
 } from "@/lib/ai/source-anchors";
 
@@ -191,3 +209,149 @@ test("empty transcriptions inject a captions-only audit tip", () => {
   );
   assert.equal(strategy.profile_audit_tips[0], VOICE_MISSING_TIP);
 });
+
+test("CIS corpus: junk Whisper and mock fallback are not a heard voice", () => {
+  assert.equal(isUsableVoiceText("."), false);
+  assert.equal(
+    isUsableVoiceText("Go for the ride That would be the best Hey, hey", {
+      expectCyrillic: true,
+    }),
+    false,
+  );
+  assert.equal(
+    isUsableVoiceText(
+      "Riding in the drop top at the top down, saw you switching lanes, girl",
+      { expectCyrillic: true },
+    ),
+    false,
+  );
+  assert.equal(
+    isUsableVoiceText(
+      "Стоп, если ролик умирает после трёх секунд. Тема: 1/0. Дальше один приём: удар в первой фразе, потом доказательство, потом мягкий финал.",
+    ),
+    false,
+  );
+  assert.equal(isUsableVoiceText("200°C-392°F 10-15分"), false);
+
+  const daria = sourceCorpus({
+    bio: DARIA_BIO,
+    captions: DARIA_CAPTIONS,
+    transcriptions: DARIA_WHISPER_RAW,
+  });
+  assert.equal(daria.voiceHeard, false);
+  assert.equal(daria.strength, "weak");
+  assert.equal(captionSourceStrength({ bio: DARIA_BIO, captions: DARIA_CAPTIONS }), "weak");
+  assert.equal(
+    captionSourceStrength({
+      bio: DARIA_BIO,
+      captions: [
+        `${DARIA_CAPTION}\n#fitnessmotivation`,
+        `${DARIA_CAPTION}\n#онлайнтренировки`,
+        `${DARIA_CAPTION}\n#agrefit`,
+      ],
+    }),
+    "weak",
+  );
+
+  const prodasha = sourceCorpus({
+    bio: PRODASHA_BIO,
+    captions: PRODASHA_CAPTIONS,
+    transcriptions: [PRODASHA_SONG],
+  });
+  assert.equal(prodasha.voiceHeard, false);
+  assert.equal(prodasha.strength, "ok");
+
+  const eugenius = sourceCorpus({
+    bio: EUGENIUS_BIO,
+    captions: EUGENIUS_CAPTIONS,
+    transcriptions: [EUGENIUS_MOCK_FALLBACK],
+  });
+  assert.equal(eugenius.voiceHeard, false);
+
+  const ksenia = sourceCorpus({
+    bio: KSENIA_BIO,
+    captions: KSENIA_CAPTIONS,
+    transcriptions: KSENIA_WHISPER_RAW,
+  });
+  assert.equal(ksenia.voiceHeard, true);
+  assert.ok(ksenia.usableVoice.some((item) => /ипотек|ставка/i.test(item)));
+  assert.equal(usableTranscriptions(KSENIA_WHISPER_RAW, [KSENIA_BIO, ...KSENIA_CAPTIONS]).length, 1);
+});
+
+test("weak duplicate fitness captions reject invented split and fire-strategy hype", () => {
+  const corpus = sourceCorpus({
+    bio: DARIA_BIO,
+    captions: DARIA_CAPTIONS,
+    transcriptions: DARIA_WHISPER_RAW,
+  });
+  assert.equal(corpus.strength, "weak");
+
+  const invented = {
+    title: "Почему домашняя тренировка не работает",
+    format: "Reels 15с · ошибка",
+    duration_sec: 15,
+    hook_options: ["Домашние тренировки не работают"],
+    teleprompter_script:
+      "0–3с: Домашние тренировки не работают, если ты просто повторяешь случайные упражнения.\n3–8с: Сегодня ноги, завтра пресс, а между ними — длинный перерыв.\n8–12с: Вместо этого собери короткую последовательность и повторяй её регулярно.\n12–15с: Сохрани, чтобы следующая тренировка дома была не случайной.",
+    caption: "Случайные ноги и пресс.",
+    cta: "Сохрани",
+  };
+  const honest = {
+    title: "Связки упражнений дома после 35",
+    format: "Reels 15с · ошибка",
+    duration_sec: 15,
+    hook_options: ["Связки упражнений дома после 35"],
+    teleprompter_script:
+      "0–3с: Стоп. Связки упражнений, которые можно сделать дома.\n3–8с: Я Даша, тренер с опытом более 15 лет.\n8–12с: После 35 выглядеть на 20 — с домашних тренировок, не с чужого зала.\n12–15с: Сохрани связку.",
+    caption: "Связки упражнений дома. secretagre.",
+    cta: "Сохрани",
+  };
+  const strategy = normalizeStrategy({
+    niche: "Стратегия огонь для фитнеса",
+    target_audience: "Женщины 35+",
+    content_pillars: [{ title: "Дома", description: "Связки" }],
+    profile_audit_tips: ["Контент огонь, вирусный план на месяц."],
+    scripts: [invented, { ...honest, duration_sec: 30 }, { ...honest, title: "Онлайнтренер", duration_sec: 45 }],
+  });
+  assert.throws(
+    () => assertStrategyAnchored(strategy, corpus.texts, corpus.strength),
+    (error: Error) =>
+      error.name === "SourceAnchorError" &&
+      (/огонь|выдумал/i.test(error.message)),
+  );
+
+  const honestStrategy = normalizeStrategy({
+    niche: "Домашние тренировки после 35",
+    target_audience: "Женщины, которым нужен домашний формат",
+    content_pillars: [{ title: "Связки", description: "Упражнения дома" }],
+    profile_audit_tips: ["Подписи одинаковые — не выдумывай программу."],
+    scripts: [
+      honest,
+      {
+        ...honest,
+        title: "Онлайнтренер 15 лет",
+        format: "Reels 30с · процесс",
+        duration_sec: 30,
+        teleprompter_script:
+          "0–3с: Онлайнтренер. Опыт более 15 лет.\n3–16с: Связки упражнений дома, не чужой зал.\n16–24с: После 35 выглядеть на 20 — из био, не из выдумки.\n24–30с: Сохрани.",
+      },
+      {
+        ...honest,
+        title: "secretagre",
+        format: "Reels 45с · миф",
+        duration_sec: 45,
+        teleprompter_script:
+          "0–3с: Миф: без зала нельзя.\n3–22с: В подписи — домашние тренировки и связки упражнений.\n22–38с: secretagre, онлайнтренер, опыт 15 лет.\n38–45с: Сохрани.",
+      },
+    ],
+  });
+  assert.doesNotThrow(() =>
+    assertStrategyAnchored(honestStrategy, corpus.texts, corpus.strength),
+  );
+  const tipped = withSourceHonestyTips(honestStrategy, {
+    voiceHeard: false,
+    strength: "weak",
+  });
+  assert.equal(tipped.profile_audit_tips[0], WEAK_SOURCE_TIP);
+});
+

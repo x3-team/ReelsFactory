@@ -1,5 +1,6 @@
 import type { GeneratedScript, ScrapedProfile, StrategyPayload } from "@/lib/types";
 import {
+  captionSourceStrength,
   extractAnchorPhrases,
   scriptHasSourceAnchor,
 } from "@/lib/ai/source-anchors";
@@ -175,6 +176,63 @@ function mathScripts(offer: string): GeneratedScript[] {
   ];
 }
 
+function spokenSnippet(text: string, max = 90) {
+  const clean = (text || "")
+    .replace(/[\u00a0\u1680\u2000-\u200d\u202f\u205f\u3000]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^[тt]гк\s*:\s*\S+\s*/i, "")
+    .replace(/#[\p{L}\p{N}_]+/gu, " ")
+    .replace(/@[\w.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean) return "";
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return (space > 40 ? cut.slice(0, space) : cut).trim();
+}
+
+function thinSourceScripts(offer: string, sourceTexts: string[]): GeneratedScript[] {
+  const cleaned = [...new Set(
+    (sourceTexts || [])
+      .map((item) => spokenSnippet(item, 140))
+      .filter((item) => item.length >= 12),
+  )];
+  const a = cleaned[0] || "В профиле мало текста";
+  const b = cleaned[1] || cleaned[0] || a;
+  const c = cleaned[2] || cleaned[0] || a;
+  return [
+    {
+      title: spokenSnippet(a, 42) || a,
+      format: "Reels 15с · ошибка",
+      duration_sec: 15,
+      hook_options: [spokenSnippet(a, 48), spokenSnippet(b, 48), "Скажи только то, что уже в профиле"],
+      teleprompter_script: `0–3с: Стоп. ${spokenSnippet(a, 70)}.\n3–8с: ${spokenSnippet(b, 70)}.\n8–12с: Это уже в профиле — без чужой программы.\n12–15с: Сохрани.`,
+      caption: `${spokenSnippet(a, 80)}. Сохрани.`,
+      cta: "Сохрани ролик",
+    },
+    {
+      title: spokenSnippet(b, 42) || b,
+      format: "Reels 30с · процесс",
+      duration_sec: 30,
+      hook_options: [spokenSnippet(b, 48), spokenSnippet(a, 48), spokenSnippet(c, 48)],
+      teleprompter_script: `0–3с: ${spokenSnippet(b, 70)}.\n3–16с: ${spokenSnippet(a, 90)}.\n16–24с: ${spokenSnippet(c, 70)}.\n24–30с: Сохрани.`,
+      caption: `${spokenSnippet(b, 80)}.`,
+      cta: "Сохрани ролик",
+    },
+    {
+      title: spokenSnippet(c, 42) || c,
+      format: "Reels 45с · миф",
+      duration_sec: 45,
+      hook_options: [spokenSnippet(c, 48), spokenSnippet(a, 48), spokenSnippet(b, 48)],
+      teleprompter_script: `0–3с: ${spokenSnippet(c, 70)}.\n3–22с: ${spokenSnippet(a, 90)}.\n22–38с: ${spokenSnippet(b, 70)}. ${offer}.\n38–45с: Сохрани.`,
+      caption: `${spokenSnippet(c, 80)}.`,
+      cta: "Сохрани ролик",
+    },
+  ];
+}
+
 function genericScripts(handle: string, offer: string): GeneratedScript[] {
   return [
     {
@@ -313,7 +371,16 @@ export function mockStrategy(input: {
       ? captionDessertScripts(offer, contentBlob)
       : /eugenius|матем|уравнен|икс/i.test(blob)
         ? mathScripts(offer)
-        : genericScripts(handle, offer),
+        : captionSourceStrength({
+              bio: input.bio,
+              captions: input.captions,
+            }) !== "ok"
+          ? thinSourceScripts(offer, [
+              input.bio || "",
+              ...(input.captions || []),
+              ...(input.transcriptions || []),
+            ])
+          : genericScripts(handle, offer),
     [input.bio || "", ...(input.captions || []), ...(input.transcriptions || [])],
   );
 
