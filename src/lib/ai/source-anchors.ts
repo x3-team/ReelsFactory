@@ -326,6 +326,31 @@ export function assertStrategyAnchored(
     );
   }
   assertDistinctScriptAnchors(strategy, sourceTexts);
+  assertNoUngroundedTerms(strategy, sourceTexts);
+}
+
+const UNGROUNDED_TERMS = ["сироп", "завиток", "агар", "термометр"] as const;
+
+export function assertNoUngroundedTerms(
+  strategy: StrategyPayload,
+  sourceTexts: string[],
+): void {
+  const blob = sourceTexts.join("\n");
+  if (blob.length < 800) return;
+  const source = normalizeToken(blob);
+  const stems = contentStems(blob);
+  for (const script of strategy.scripts) {
+    const text = normalizeToken(
+      `${script.title}\n${script.teleprompter_script}\n${(script.hook_options || []).join("\n")}`,
+    );
+    for (const term of UNGROUNDED_TERMS) {
+      if (!text.includes(term)) continue;
+      if (source.includes(term) || stems.has(stemToken(term))) continue;
+      throw new SourceAnchorError(
+        `Сценарий «${script.title}» выдумал «${term}», которого нет в транскрипте/подписях.`,
+      );
+    }
+  }
 }
 
 export function withVoiceHeardTip(

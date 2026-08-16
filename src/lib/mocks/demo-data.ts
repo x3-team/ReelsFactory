@@ -301,16 +301,16 @@ export function mockStrategy(input: {
 }): StrategyPayload {
   const offer = input.offerSummary?.trim() || "короткий чеклист";
   const handle = input.handle.replace(/^@/, "").toLowerCase();
-  const blob = [
-    handle,
+  const contentBlob = [
     input.bio || "",
     ...(input.captions || []),
     ...(input.transcriptions || []),
   ].join(" ");
+  const blob = [handle, contentBlob].join(" ");
 
   const scripts = plantSourceAnchors(
-    /desert|зефир|zefir|бенто|торт|маршмеллоу/i.test(blob)
-      ? captionDessertScripts(offer, blob)
+    /зефир|zefir|бенто|торт|маршмеллоу|отсаж|кусок/i.test(contentBlob)
+      ? captionDessertScripts(offer, contentBlob)
       : /eugenius|матем|уравнен|икс/i.test(blob)
         ? mathScripts(offer)
         : genericScripts(handle, offer),

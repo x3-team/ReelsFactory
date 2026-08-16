@@ -136,6 +136,48 @@ test("two scripts about the same bento caption fail distinct-anchor guard", () =
   );
 });
 
+test("invented syrup/agar fails when captions never mention them", () => {
+  const corpus = sourceCorpus({
+    bio: DESERTMSK_LIVE_PROFILE.bio,
+    captions: DESERTMSK_LIVE_CAPTIONS,
+    transcriptions: [],
+  });
+  const syrupMyth = {
+    title: "Миф о маршмеллоу без белка",
+    format: "Reels 45с · миф",
+    duration_sec: 45,
+    hook_options: ["Маршмеллоу без белка не будет пышным? Будет."],
+    teleprompter_script: DESERTMSK_PREVIOUS_LIVE_SCRIPTS[2].teleprompter,
+    caption: "Маршмеллоу пружинки без белка.",
+    cta: "Сохрани",
+  };
+  const strategy = normalizeStrategy({
+    niche: "Десерты",
+    target_audience: "Кондитеры",
+    content_pillars: [{ title: "Маршмеллоу", description: "Без белка" }],
+    profile_audit_tips: [],
+    scripts: [
+      anchoredZefirScript,
+      {
+        title: "Плитка из карамельного шоколада с миндалем",
+        format: "Reels 30с · процесс",
+        duration_sec: 30,
+        hook_options: ["Карамельный шоколад с миндалем"],
+        teleprompter_script:
+          "0–3с: Делаем плитку из карамельного шоколада с миндалем.\n3–16с: Миндаль сухой, шоколад карамельный.\n16–24с: Не перегружай форму.\n24–30с: Сохрани.",
+        caption: "Плитка из карамельного шоколада с миндалем.",
+        cta: "Сохрани",
+      },
+      syrupMyth,
+    ],
+  });
+  assert.throws(
+    () => assertStrategyAnchored(strategy, corpus.texts),
+    (error: Error) =>
+      error.name === "SourceAnchorError" && /выдумал «сироп»/i.test(error.message),
+  );
+});
+
 test("empty transcriptions inject a captions-only audit tip", () => {
   const strategy = withVoiceHeardTip(
     {
