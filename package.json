@@ -12,7 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "test": "tsx --tsconfig tsconfig.json --test src/lib/ai/aitunnel.test.ts src/lib/ai/normalize-strategy.test.ts src/lib/ai/generate-strategy.test.ts src/lib/content/scrape-limits.test.ts src/lib/scraping/apify-reuse.test.ts",
+    "test": "tsx --tsconfig tsconfig.json --test src/lib/ai/aitunnel.test.ts src/lib/ai/normalize-strategy.test.ts src/lib/ai/generate-strategy.test.ts src/lib/content/scrape-limits.test.ts src/lib/scraping/apify-reuse.test.ts src/lib/scraping/tiktok-media.test.ts",
     "test:apify-reuse": "tsx --tsconfig tsconfig.json scripts/check-apify-reuse.ts",
     "scrape:resume": "tsx --tsconfig tsconfig.json scripts/resume-scrape.ts"
   },

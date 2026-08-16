@@ -13,7 +13,11 @@ import { dirname, join } from "node:path";
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { llmModel } from "@/lib/ai/aitunnel";
 import { transcribeAudio } from "@/lib/ai/transcribe";
-import { WHISPER_MAX_VIDEOS } from "@/lib/content/scrape-limits";
+import {
+  WHISPER_MAX_VIDEOS,
+  videosForWhisper,
+  whisperSourceUrl,
+} from "@/lib/content/scrape-limits";
 import { lookupCorpus } from "@/lib/test-corpus";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
@@ -152,7 +156,9 @@ function profileSummary(profile: ScrapedProfile) {
     postsCount: profile.postsCount ?? null,
     scrapeMode: profile.scrapeMode || "live-run",
     videos: profile.topVideos.length,
-    videosWithAudio: profile.topVideos.filter((video) => Boolean(video.audioUrl)).length,
+    videosWithAudio: profile.topVideos.filter((video) =>
+      Boolean(whisperSourceUrl(video)),
+    ).length,
     topVideos: profile.topVideos.map((video) => ({
       id: video.id,
       url: video.url,
@@ -160,7 +166,7 @@ function profileSummary(profile: ScrapedProfile) {
       likes: video.likes ?? null,
       durationSec: video.durationSec ?? null,
       caption: (video.caption || "").slice(0, 180),
-      hasAudio: Boolean(video.audioUrl),
+      hasAudio: Boolean(whisperSourceUrl(video)),
     })),
   };
 }
@@ -172,8 +178,8 @@ async function runOne(handle: string, whisperBudget: number) {
   const whisperLimit = Math.min(WHISPER_MAX_VIDEOS, whisperBudget);
   const transcriptions: Array<{ source: string; mocked: boolean; text: string }> = [];
 
-  for (const video of profile.topVideos.slice(0, whisperLimit)) {
-    const audio = video.audioUrl || "";
+  for (const video of videosForWhisper(profile.topVideos).slice(0, whisperLimit)) {
+    const audio = whisperSourceUrl(video) || "";
     if (!audio) {
       transcriptions.push({
         source: "caption",

@@ -49,11 +49,13 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       },
     });
 
-    // Whisper только top-3; остальные ролики идут в LLM как captions.
+    // Whisper только top-3 с качаемым audio/video; страница tiktok.com не подходит.
     const transcriptions: string[] = [];
     for (const video of videosForWhisper(profile.topVideos)) {
+      const audioUrl = video.audioUrl || video.videoUrl;
+      if (!audioUrl) continue;
       const { text } = await transcribeAudio({
-        audioUrl: video.audioUrl || video.url,
+        audioUrl,
         hint: video.caption,
       });
       transcriptions.push(text);

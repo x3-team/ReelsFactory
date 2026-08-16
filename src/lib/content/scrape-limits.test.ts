@@ -21,3 +21,35 @@ test("Whisper stays on top-3, not every reel", () => {
   assert.equal(videosForWhisper(undefined).length, 0);
   assert.equal(videosForWhisper([]).length, 0);
 });
+
+test("TikTok top-3 for Whisper matches IG: first ranked with media", () => {
+  const ig = Array.from({ length: 8 }, (_, i) => ({
+    id: `ig${i + 1}`,
+    audioUrl: `https://cdn.example/ig${i + 1}.mp4`,
+  }));
+  const tt = Array.from({ length: 8 }, (_, i) => ({
+    id: `tt${i + 1}`,
+    audioUrl: `https://v16m.tiktokcdn-us.com/audio${i + 1}`,
+  }));
+  assert.deepEqual(
+    videosForWhisper(ig).map((v) => v.id),
+    ["ig1", "ig2", "ig3"],
+  );
+  assert.deepEqual(
+    videosForWhisper(tt).map((v) => v.id),
+    ["tt1", "tt2", "tt3"],
+  );
+});
+
+test("videosForWhisper prefers rows with audio/video over watch-page-only", () => {
+  const mixed = [
+    { id: "page", url: "https://www.tiktok.com/@eugenius_official/video/1" },
+    { id: "audio", audioUrl: "https://v16m.tiktokcdn-us.com/a.mp3" },
+    { id: "file", videoUrl: "https://v16-webapp-prime.tiktok.com/v.mp4" },
+    { id: "later", audioUrl: "https://sf16.tiktokcdn-us.com/b.mp3" },
+  ];
+  assert.deepEqual(
+    videosForWhisper(mixed).map((v) => v.id),
+    ["audio", "file", "later"],
+  );
+});
