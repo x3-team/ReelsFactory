@@ -41,4 +41,6 @@ export type ScrapedProfile = {
   following?: number;
   postsCount?: number;
   topVideos: ScrapedVideo[];
+  /** live-run = new Apify actor run; apify-reuse = paid dataset after 403 */
+  scrapeMode?: "live-run" | "apify-reuse";
 };

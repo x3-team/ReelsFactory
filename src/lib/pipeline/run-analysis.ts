@@ -5,6 +5,7 @@ import { transcribeAudio } from "@/lib/ai/transcribe";
 import { PLANS } from "@/lib/config";
 import { hasPaidAccess } from "@/lib/users";
 import { prisma } from "@/lib/prisma";
+import { WHISPER_MAX_VIDEOS } from "@/lib/content/scrape-limits";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
 import type { ScrapedProfile } from "@/lib/types";
@@ -50,7 +51,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
 
     // 3 ролика достаточно для стратегии; 5 × Whisper сильно раздувают ожидание
     const transcriptions: string[] = [];
-    for (const video of profile.topVideos.slice(0, 3)) {
+    for (const video of profile.topVideos.slice(0, WHISPER_MAX_VIDEOS)) {
       const { text } = await transcribeAudio({
         audioUrl: video.audioUrl || video.url,
         hint: video.caption,

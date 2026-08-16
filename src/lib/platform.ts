@@ -1,8 +1,12 @@
+import { lookupCorpus } from "@/lib/test-corpus";
+
 export type Platform = "instagram" | "tiktok" | "youtube";
 
 export function detectPlatform(input: string): Platform {
   const value = input.trim().toLowerCase();
-  if (value.includes("tiktok.com") || value.startsWith("@") && value.includes("tiktok")) {
+  const corpus = lookupCorpus(value);
+  if (corpus?.platform) return corpus.platform;
+  if (value.includes("tiktok.com") || (value.startsWith("@") && value.includes("tiktok"))) {
     return "tiktok";
   }
   if (
