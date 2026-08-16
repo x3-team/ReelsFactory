@@ -134,6 +134,26 @@ test("memory queue reaches COMPLETED with a non-empty teleprompter", async () =>
   assert.ok(scripts.every((script) => script.teleprompterScript.trim().length > 0));
 });
 
+test("FREE keeps 15/30/45 cards and unlocks only the first teleprompter", async () => {
+  process.env.MOCK_EXTERNAL_APIS = "true";
+  const user = await seedUser(SubscriptionPlan.FREE, "desertmsk", "instagram");
+  const analysis = await prisma.profileAnalysis.create({
+    data: {
+      userId: user.id,
+      socialHandle: user.socialHandle!,
+      platform: user.platform!,
+      status: AnalysisStatus.QUEUED,
+    },
+  });
+  const done = await runAnalysisForExisting(user, analysis.id);
+  assert.equal(done.status, AnalysisStatus.COMPLETED);
+  assert.equal(done.scripts.length, 3);
+  assert.equal(done.scripts[0]?.isTeaser, false);
+  assert.equal(done.scripts[1]?.isTeaser, true);
+  assert.equal(done.scripts[2]?.isTeaser, true);
+  assert.ok(done.scripts[0]?.teleprompterScript.trim().length > 0);
+});
+
 test("YouTube analysis is refused before scrape", async () => {
   process.env.MOCK_EXTERNAL_APIS = "true";
   const user = await seedUser(SubscriptionPlan.START, "linguamarina", "youtube");

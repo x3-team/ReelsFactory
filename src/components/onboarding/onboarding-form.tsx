@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Clapperboard } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,21 +25,21 @@ export type OnboardingValues = {
 const GOALS = [
   {
     id: "GROW_AUDIENCE" as const,
-    title: "Рост аудитории",
-    description: "Больше подписчиков, сохранений и охватов",
+    title: "Хочу больше людей",
+    description: "Чтобы ролик досматривали и подписывались",
   },
   {
     id: "SELL_PRODUCT" as const,
-    title: "Продажа продукта / услуги",
-    description: "Сценарии, которые ведут к комментариям и сообщениям",
+    title: "Хочу продажи",
+    description: "Чтобы писали в директ или оставляли коммент",
   },
 ];
 
 const TONES = [
-  { id: "DIRECT" as const, label: "Прямой" },
-  { id: "HUMOROUS" as const, label: "Юмор" },
-  { id: "EXPERT" as const, label: "Эксперт" },
-  { id: "STORYTELLING" as const, label: "Сторителлинг" },
+  { id: "DIRECT" as const, label: "Прямо" },
+  { id: "HUMOROUS" as const, label: "С шуткой" },
+  { id: "EXPERT" as const, label: "Как эксперт" },
+  { id: "STORYTELLING" as const, label: "Как историю" },
 ];
 
 export function OnboardingForm({
@@ -66,7 +66,7 @@ export function OnboardingForm({
   async function next() {
     setError(null);
     if (step === 0 && socialHandle.trim().length < 2) {
-      setError("Укажите @username Instagram или TikTok");
+      setError("Вставь @username Instagram или TikTok");
       return;
     }
     if (step === 0) {
@@ -91,19 +91,19 @@ export function OnboardingForm({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 p-4 pb-8">
-      <header className="pt-2">
-        <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Clapperboard className="size-5" />
-        </div>
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 p-5 pb-8">
+      <header className="pt-3">
         <p className="text-sm text-muted-foreground">Привет, {userName}</p>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Настроим контент-машину
+        <h1 className="font-display mt-2 text-[2rem] font-semibold">
+          Вставь профиль — получишь текст в камеру
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+          Разберём рилсы и напишем, что говорить. Не лозунг, не «мы №1».
+        </p>
+        <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Шаг {step + 1} из 3
         </p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-2 flex gap-2">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
@@ -118,23 +118,25 @@ export function OnboardingForm({
 
       {step === 0 && (
         <section className="space-y-3">
-          <Label htmlFor="handle">Instagram / TikTok</Label>
+          <Label htmlFor="handle">Instagram или TikTok</Label>
           <Input
             id="handle"
-            placeholder="@username Instagram или TikTok"
+            placeholder="@username"
             value={socialHandle}
             onChange={(e) => setSocialHandle(e.target.value)}
             autoFocus
+            className="h-12 rounded-2xl text-base"
           />
-          <p className="text-xs text-muted-foreground">
-            YouTube пока не разбираем. Нужен открытый Instagram или TikTok.
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            YouTube не берём — не угадываем площадку. Нужен открытый Instagram
+            или TikTok.
           </p>
         </section>
       )}
 
       {step === 1 && (
         <section className="space-y-3">
-          <Label>Цель профиля</Label>
+          <Label>Зачем снимаешь</Label>
           <div className="grid gap-2">
             {GOALS.map((goal) => (
               <button
@@ -142,21 +144,21 @@ export function OnboardingForm({
                 type="button"
                 onClick={() => setProfileGoal(goal.id)}
                 className={cn(
-                  "rounded-xl border p-4 text-left transition",
+                  "rounded-2xl border p-4 text-left transition",
                   profileGoal === goal.id
-                    ? "border-primary bg-primary/5"
-                    : "border-border",
+                    ? "border-primary bg-accent"
+                    : "border-border bg-card",
                 )}
               >
-                <div className="font-medium">{goal.title}</div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-base font-medium">{goal.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">
                   {goal.description}
                 </div>
               </button>
             ))}
           </div>
 
-          <Label className="pt-2">Тон голоса</Label>
+          <Label className="pt-2">Как говоришь</Label>
           <div className="grid grid-cols-2 gap-2">
             {TONES.map((tone) => (
               <button
@@ -164,10 +166,10 @@ export function OnboardingForm({
                 type="button"
                 onClick={() => setToneOfVoice(tone.id)}
                 className={cn(
-                  "rounded-xl border px-3 py-3 text-sm font-medium",
+                  "rounded-2xl border px-3 py-3 text-sm font-medium",
                   toneOfVoice === tone.id
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border",
+                    : "border-border bg-card",
                 )}
               >
                 {tone.label}
@@ -180,12 +182,13 @@ export function OnboardingForm({
       {step === 2 && (
         <section className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="offer">Оффер (необязательно)</Label>
+            <Label htmlFor="offer">Что даёшь людям (необязательно)</Label>
             <Textarea
               id="offer"
-              placeholder="Бесплатный чеклист, консультация, курс…"
+              placeholder="Чеклист, консультация, курс…"
               value={offerSummary}
               onChange={(e) => setOfferSummary(e.target.value)}
+              className="rounded-2xl"
             />
           </div>
           <div className="space-y-2">
@@ -195,6 +198,7 @@ export function OnboardingForm({
               placeholder="https://"
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
+              className="h-12 rounded-2xl"
             />
           </div>
         </section>
@@ -209,7 +213,7 @@ export function OnboardingForm({
           <Button
             type="button"
             variant="outline"
-            className="flex-1"
+            className="h-12 flex-1 rounded-2xl"
             onClick={() => setStep((s) => s - 1)}
             disabled={loading}
           >
@@ -218,15 +222,15 @@ export function OnboardingForm({
         )}
         <Button
           type="button"
-          className="flex-1"
+          className="h-12 flex-1 rounded-2xl text-base"
           onClick={() => void next()}
           disabled={loading}
         >
           {step === 2
             ? loading
-              ? "Запускаем…"
-              : "Анализировать профиль"
-            : "Продолжить"}
+              ? "Собираем…"
+              : "Собрать сценарии"
+            : "Дальше"}
           <ArrowRight className="size-4" />
         </Button>
       </div>

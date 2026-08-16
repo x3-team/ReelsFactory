@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Gift, Crown } from "lucide-react";
+import { Check, Copy, Gift } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,15 +42,14 @@ export function PaywallDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-3xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Crown className="size-5" />
-            Открыть все сценарии
+          <DialogTitle className="font-display text-2xl">
+            Один суфлёр бесплатно
           </DialogTitle>
-          <DialogDescription>
-            В бесплатной версии — аудит и 1 тизер. Подписка даёт полный доступ к
-            суфлёру.
+          <DialogDescription className="text-[15px] leading-relaxed">
+            Остальные 30 и 45 секунд — на тарифе. Читаешь с экрана, как с
+            телесуфлёра.
           </DialogDescription>
         </DialogHeader>
 
@@ -65,31 +64,31 @@ export function PaywallDrawer({
                 disabled={!!loadingPlan || active}
                 onClick={() => void onSelectPlan(planId)}
                 className={cn(
-                  "w-full rounded-xl border p-4 text-left transition",
-                  planId === "PRO" || planId === "AGENCY"
-                    ? "border-primary bg-primary/5"
-                    : "border-border",
+                  "w-full rounded-2xl border p-4 text-left transition",
+                  planId === "PRO"
+                    ? "border-primary bg-accent"
+                    : "border-border bg-card",
                   active && "opacity-70",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="font-semibold">{plan.name}</div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-base font-semibold">{plan.name}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
                       {plan.description}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-semibold">{plan.priceRub} ₽</div>
+                    <div className="text-xl font-semibold">{plan.priceRub} ₽</div>
                     <div className="text-xs text-muted-foreground">/ месяц</div>
                   </div>
                 </div>
-                <div className="mt-3 text-sm font-medium">
+                <div className="mt-3 text-sm font-medium text-primary">
                   {active
-                    ? "Текущий план"
+                    ? "Твой тариф"
                     : loadingPlan === planId
-                      ? "Создаём оплату…"
-                      : "Выбрать план"}
+                      ? "Открываем оплату…"
+                      : "Выбрать"}
                 </div>
               </button>
             );
@@ -98,13 +97,14 @@ export function PaywallDrawer({
 
         <Separator />
 
-        <div className="space-y-3 rounded-xl border p-4">
+        <div className="space-y-3 rounded-2xl border bg-card p-4">
           <div className="flex items-center gap-2 font-medium">
-            <Gift className="size-4" />
-            Реферальная программа
+            <Gift className="size-4 text-primary" />
+            Реферал 30 / 10
           </div>
           <p className="text-sm text-muted-foreground">
-            30% с первой оплаты друга и 10% с каждого продления.
+            30% с первой оплаты друга и 10% с каждого продления. Не кэшбек-лозунг —
+            просто ссылка.
           </p>
           <p className="text-sm">
             Баланс: <span className="font-semibold">{referralBalance} ₽</span>
@@ -112,7 +112,7 @@ export function PaywallDrawer({
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="h-11 w-full rounded-2xl"
             onClick={() => void copyReferral()}
           >
             {copied ? (
@@ -121,7 +121,7 @@ export function PaywallDrawer({
               </>
             ) : (
               <>
-                <Copy className="size-4" /> Скопировать реферальную ссылку
+                <Copy className="size-4" /> Скопировать ссылку
               </>
             )}
           </Button>

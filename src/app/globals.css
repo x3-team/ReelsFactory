@@ -4,62 +4,79 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 222 47% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 222 47% 20%;
-    --radius: 0.75rem;
+    /* Тёплый off-white + чернила + terracotta. Не indigo shadcn. */
+    --background: 36 38% 96%;
+    --foreground: 24 22% 10%;
+    --card: 36 45% 98%;
+    --card-foreground: 24 22% 10%;
+    --popover: 36 45% 98%;
+    --popover-foreground: 24 22% 10%;
+    --primary: 12 62% 48%;
+    --primary-foreground: 36 40% 98%;
+    --secondary: 32 28% 90%;
+    --secondary-foreground: 24 18% 18%;
+    --muted: 34 24% 91%;
+    --muted-foreground: 24 10% 38%;
+    --accent: 16 42% 92%;
+    --accent-foreground: 12 50% 28%;
+    --destructive: 4 72% 46%;
+    --destructive-foreground: 36 40% 98%;
+    --border: 30 18% 84%;
+    --input: 30 18% 84%;
+    --ring: 12 62% 48%;
+    --linen: 32 28% 90%;
+    --ink: 24 22% 10%;
+    --radius: 1.15rem;
   }
 
   .dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 222 47% 20%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 83%;
+    --background: 24 16% 8%;
+    --foreground: 36 30% 96%;
+    --card: 24 14% 11%;
+    --card-foreground: 36 30% 96%;
+    --popover: 24 14% 11%;
+    --popover-foreground: 36 30% 96%;
+    --primary: 14 68% 58%;
+    --primary-foreground: 24 20% 10%;
+    --secondary: 24 12% 16%;
+    --secondary-foreground: 36 30% 96%;
+    --muted: 24 12% 16%;
+    --muted-foreground: 30 12% 68%;
+    --accent: 16 22% 18%;
+    --accent-foreground: 36 30% 96%;
+    --destructive: 4 62% 48%;
+    --destructive-foreground: 36 30% 96%;
+    --border: 24 10% 20%;
+    --input: 24 10% 20%;
+    --ring: 14 68% 58%;
+    --linen: 24 12% 12%;
+    --ink: 36 30% 96%;
   }
 
   * {
     @apply border-border;
   }
 
+  html {
+    font-size: 17px;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     min-height: 100dvh;
+    font-feature-settings: "kern" 1, "liga" 1;
   }
 
   body.telegram-app {
     /* Telegram theme vars only inside Mini App — not on the public web vitrina */
     background: var(--tg-theme-bg-color, hsl(var(--background)));
     color: var(--tg-theme-text-color, hsl(var(--foreground)));
+  }
+}
+
+@layer utilities {
+  .font-display {
+    letter-spacing: -0.038em;
+    line-height: 1.12;
   }
 }

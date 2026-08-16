@@ -17,7 +17,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "test": "MOCK_EXTERNAL_APIS=true DATABASE_URL=\"${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:5432/reelsfactory?schema=public}\" tsx --tsconfig tsconfig.json --test src/lib/ai/aitunnel.test.ts src/lib/ai/normalize-strategy.test.ts src/lib/ai/generate-strategy.test.ts src/lib/content/scrape-limits.test.ts src/lib/scraping/apify-reuse.test.ts src/lib/scraping/tiktok-media.test.ts src/lib/platform.test.ts src/lib/config.test.ts src/lib/pipeline/analysis-cycle.test.ts",
+    "test": "MOCK_EXTERNAL_APIS=true DATABASE_URL=\"${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:5432/reelsfactory?schema=public}\" tsx --tsconfig tsconfig.json --test src/lib/ai/aitunnel.test.ts src/lib/ai/normalize-strategy.test.ts src/lib/ai/generate-strategy.test.ts src/lib/content/scrape-limits.test.ts src/lib/scraping/apify-reuse.test.ts src/lib/scraping/tiktok-media.test.ts src/lib/platform.test.ts src/lib/config.test.ts src/lib/script-meta.test.ts src/lib/pipeline/analysis-cycle.test.ts",
     "test:http": "tsx --tsconfig tsconfig.json scripts/http-cycle.ts",
     "test:apify-reuse": "tsx --tsconfig tsconfig.json scripts/check-apify-reuse.ts",
     "scrape:resume": "tsx --tsconfig tsconfig.json scripts/resume-scrape.ts"

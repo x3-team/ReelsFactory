@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { generateStrategy } from "@/lib/ai/generate-strategy";
+import {
+  generateStrategy,
+  STRATEGY_SYSTEM_PROMPT,
+} from "@/lib/ai/generate-strategy";
 import { isUsableTeleprompter } from "@/lib/ai/normalize-strategy";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
 
@@ -29,9 +32,19 @@ test("mock generateStrategy never ships an empty teleprompter", async () => {
         isUsableTeleprompter(script.teleprompter_script, script.duration_sec || 30),
         true,
       );
+      assert.doesNotMatch(script.teleprompter_script, /произнесите|покажите на экране/i);
+      assert.doesNotMatch(script.teleprompter_script, /контент-машин|viral hooks/i);
     }
+    assert.match(result.strategy.scripts[0]!.teleprompter_script, /зефир|агар|сироп/i);
   } finally {
     if (prev === undefined) delete process.env.MOCK_EXTERNAL_APIS;
     else process.env.MOCK_EXTERNAL_APIS = prev;
   }
+});
+
+test("strategy prompt asks for spoken teleprompter, not office slogans", () => {
+  assert.match(STRATEGY_SYSTEM_PROMPT, /устн/i);
+  assert.match(STRATEGY_SYSTEM_PROMPT, /режиссёрские ремарки/i);
+  assert.match(STRATEGY_SYSTEM_PROMPT, /три РАЗНЫХ угла/i);
+  assert.doesNotMatch(STRATEGY_SYSTEM_PROMPT, /nano|haiku|gemini|flash-lite/i);
 });
