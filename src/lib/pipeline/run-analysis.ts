@@ -2,6 +2,7 @@ import { AnalysisStatus, SubscriptionPlan, type Prisma, type User } from "@prism
 
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { isUsableTeleprompter } from "@/lib/ai/normalize-strategy";
+import { contentStems, isUsableVoiceText, profileLooksCyrillic } from "@/lib/ai/source-anchors";
 import { transcribeAudio } from "@/lib/ai/transcribe";
 import { videosForWhisper, whisperSourceUrl } from "@/lib/content/scrape-limits";
 import { prisma } from "@/lib/prisma";
@@ -74,16 +75,29 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       rawProfileData: profile as unknown as Prisma.InputJsonValue,
     });
 
-    // Whisper только top-3; остальные ролики идут в LLM как captions.
+    // Whisper только top-3; мусор (заставка/песня/mock) в LLM не идёт.
+    const captionSide = [
+      profile.bio || "",
+      ...profile.topVideos.map((video) => video.caption || ""),
+    ];
+    const expectCyrillic = profileLooksCyrillic(captionSide);
+    const sourceStems = contentStems(captionSide.join("\n"));
     const transcriptions: string[] = [];
     for (const video of videosForWhisper(profile.topVideos)) {
       const audioUrl = whisperSourceUrl(video);
       if (!audioUrl) continue;
-      const { text } = await transcribeAudio({
+      const { text, mocked } = await transcribeAudio({
         audioUrl,
         hint: video.caption,
       });
-      transcriptions.push(text);
+      if (!text.trim()) continue;
+      if (mocked) {
+        transcriptions.push(text);
+        continue;
+      }
+      if (isUsableVoiceText(text, { expectCyrillic, sourceStems })) {
+        transcriptions.push(text);
+      }
     }
 
     await markStatus(analysisId, AnalysisStatus.GENERATING, {
