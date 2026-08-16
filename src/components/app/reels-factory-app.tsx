@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { AnalysisProgress } from "@/components/analyze/analysis-progress";
+import { AppShell } from "@/components/app/app-shell";
 import {
   OnboardingForm,
   type OnboardingValues,
@@ -272,41 +273,45 @@ export function ReelsFactoryApp() {
 
   if (screen === "boot" || !ready) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-primary" />
-      </div>
+      <AppShell>
+        <div className="flex min-h-dvh items-center justify-center">
+          <Loader2 className="size-8 animate-spin text-primary" />
+        </div>
+      </AppShell>
     );
   }
 
   if (screen === "error") {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4 text-center">
-        <TelegramBackButton show={false} />
-        <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
-        <p className="text-sm text-muted-foreground">{error}</p>
-        <button
-          type="button"
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-          onClick={() => void bootstrap()}
-        >
-          Повторить
-        </button>
-        {user?.onboardedAt && (
+      <AppShell>
+        <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-5 text-center">
+          <TelegramBackButton show={false} />
+          <h1 className="font-display text-2xl font-semibold">Не вышло</h1>
+          <p className="text-sm text-muted-foreground">{error}</p>
           <button
             type="button"
-            className="rounded-md border border-border px-4 py-2 text-sm"
-            onClick={() => void runAnalysis(user.id)}
+            className="h-12 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground"
+            onClick={() => void bootstrap()}
           >
-            Запустить анализ ещё раз
+            Повторить
           </button>
-        )}
-      </div>
+          {user?.onboardedAt && (
+            <button
+              type="button"
+              className="h-12 rounded-2xl border border-border px-4 text-sm"
+              onClick={() => void runAnalysis(user.id)}
+            >
+              Собрать сценарии ещё раз
+            </button>
+          )}
+        </div>
+      </AppShell>
     );
   }
 
   if (screen === "onboarding") {
     return (
-      <>
+      <AppShell>
         <TelegramBackButton show={false} />
         <OnboardingForm
           userName={displayName}
@@ -314,26 +319,26 @@ export function ReelsFactoryApp() {
           submitError={error}
           onSubmit={handleOnboarding}
         />
-      </>
+      </AppShell>
     );
   }
 
   if (screen === "analyzing") {
     return (
-      <>
+      <AppShell>
         <TelegramBackButton show={false} />
         <AnalysisProgress
           status={analysisStatus}
           elapsedSec={analysisElapsedSec}
           failedMessage={null}
         />
-      </>
+      </AppShell>
     );
   }
 
   if (screen === "results" && user && analysis) {
     return (
-      <>
+      <AppShell>
         <TelegramBackButton show={false} />
         <ResultsDashboard
           user={user}
@@ -349,14 +354,16 @@ export function ReelsFactoryApp() {
             if (user) void runAnalysis(user.id, clientAccountId);
           }}
         />
-      </>
+      </AppShell>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 p-4 text-center">
-      <Loader2 className="size-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">Загружаем ReelsFactory…</p>
-    </div>
+    <AppShell>
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 p-5 text-center">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Открываем ReelsFactory…</p>
+      </div>
+    </AppShell>
   );
 }

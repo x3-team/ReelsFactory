@@ -3,7 +3,6 @@ import { AnalysisStatus, SubscriptionPlan, type Prisma, type User } from "@prism
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { isUsableTeleprompter } from "@/lib/ai/normalize-strategy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
-import { PLANS } from "@/lib/config";
 import { videosForWhisper, whisperSourceUrl } from "@/lib/content/scrape-limits";
 import { prisma } from "@/lib/prisma";
 import { assertSupportedPlatform, type Platform } from "@/lib/platform";
@@ -45,10 +44,8 @@ async function markStatus(
   });
 }
 
-function scriptsLimit(user: User) {
-  if (!hasPaidAccess(user)) return 1;
-  return PLANS[user.subscriptionPlan]?.scriptsPerMonth ?? 12;
-}
+/** Один анализ всегда даёт пакет 15/30/45. Free читает первый суфлёр, остальные — paywall. */
+const SCRIPT_PACK_SIZE = 3;
 
 function pillarsLimit(user: User) {
   if (user.subscriptionPlan === SubscriptionPlan.START) return 1;
@@ -104,7 +101,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     });
 
     const paid = hasPaidAccess(user);
-    const scriptsToSave = strategy.scripts.slice(0, scriptsLimit(user));
+    const scriptsToSave = strategy.scripts.slice(0, SCRIPT_PACK_SIZE);
     const pillars = strategy.content_pillars.slice(0, pillarsLimit(user));
     if (!scriptsToSave.length) {
       throw new Error("Пайплайн не собрал сценарии");
@@ -132,7 +129,9 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
         },
       });
 
-      for (const script of scriptsToSave) {
+      for (let index = 0; index < scriptsToSave.length; index += 1) {
+        const script = scriptsToSave[index];
+        if (!script) continue;
         await tx.script.create({
           data: {
             userId: user.id,
@@ -143,7 +142,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
             teleprompterScript: script.teleprompter_script,
             caption: script.caption,
             cta: script.cta,
-            isTeaser: !paid,
+            isTeaser: !paid && index > 0,
           },
         });
       }

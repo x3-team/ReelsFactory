@@ -151,6 +151,17 @@ async function main() {
     throw new Error("EXPECT_LIVE=true but scrapeMode is not live/reuse (mock cycle)");
   }
 
+  const scriptDump = scripts.map((item) => {
+    const script = asRecord(item);
+    return {
+      title: script.title,
+      format: script.format,
+      cta: script.cta,
+      hooks: script.hookOptions,
+      teleprompter: script.teleprompterScript,
+    };
+  });
+
   console.log(
     JSON.stringify(
       {
@@ -165,6 +176,7 @@ async function main() {
         teleprompterChars: scripts.map((item) =>
           String(asRecord(item).teleprompterScript || "").length,
         ),
+        scriptDump,
       },
       null,
       2,

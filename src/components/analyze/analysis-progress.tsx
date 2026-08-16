@@ -6,29 +6,25 @@ import { Check, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-/**
- * Реальные этапы пайплайна и ожидаемое время (сек) внутри этапа.
- * Шкала заполняется по статусу с сервера + плавный рост внутри этапа.
- */
 const STEPS = [
   {
     key: "SCRAPING",
-    label: "Сканируем профиль",
-    detail: "Забираем био и топ‑рилсы из Instagram",
+    label: "Смотрим профиль",
+    detail: "Био и топ‑рилсы Instagram или TikTok",
     expectedSec: 35,
     range: [5, 40] as const,
   },
   {
     key: "TRANSCRIBING",
-    label: "Разбираем рилсы",
-    detail: "Слушаем аудио и вытаскиваем хуки",
+    label: "Слушаем, как говоришь",
+    detail: "Три ролика — оттуда крючки, не общие фразы",
     expectedSec: 45,
     range: [40, 75] as const,
   },
   {
     key: "GENERATING",
-    label: "Пишем сценарии",
-    detail: "Собираем столпы, хуки и суфлёр",
+    label: "Пишем текст в камеру",
+    detail: "Три сценария: 15, 30 и 45 секунд",
     expectedSec: 25,
     range: [75, 97] as const,
   },
@@ -72,7 +68,6 @@ function percentForStatus(
   const step = STEPS[idx as 0 | 1 | 2];
   if (!step) return 5;
   const [from, to] = step.range;
-  // Асимптота к верхней границе этапа — не «прыгает» на 100% раньше времени
   const t = 1 - Math.exp(-stageElapsedSec / Math.max(8, step.expectedSec * 0.55));
   return Math.round(from + (to - from) * t);
 }
@@ -110,7 +105,6 @@ export function AnalysisProgress({
       setStageElapsed(stageSec);
       const target = percentForStatus(status, stageSec);
       setDisplayPercent((prev) => {
-        // Плавное догоняние без рывков назад
         if (target < prev) return prev;
         return prev + Math.max(0.3, (target - prev) * 0.35);
       });
@@ -140,12 +134,12 @@ export function AnalysisProgress({
   }, [failedMessage, status, index, stageElapsed]);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 p-4">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 p-5">
       <div className="relative mx-auto flex size-28 items-center justify-center">
         <div className="absolute inset-0 animate-ping rounded-full bg-primary/10" />
-        <div className="absolute inset-2 rounded-full bg-primary/10" />
+        <div className="absolute inset-2 rounded-full bg-accent" />
         <div className="relative flex flex-col items-center justify-center">
-          <span className="text-3xl font-semibold tabular-nums tracking-tight">
+          <span className="font-display text-3xl font-semibold tabular-nums">
             {percent}%
           </span>
           <Loader2 className="mt-1 size-4 animate-spin text-primary" />
@@ -153,19 +147,18 @@ export function AnalysisProgress({
       </div>
 
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Анализируем профиль
+        <h1 className="font-display text-[1.85rem] font-semibold">
+          Пишем, что говорить
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-[15px] text-muted-foreground">
           {failedMessage
-            ? "Не удалось завершить анализ"
+            ? "Не вышло дописать сценарии"
             : status === "COMPLETED"
-              ? "Готово"
-              : `${activeStep.label} · обычно ещё ~${etaSec} сек`}
+              ? "Готово — можно снимать"
+              : `${activeStep.label} · ещё ~${etaSec} сек`}
         </p>
-        <p className="text-xs text-muted-foreground">
-          Живой анализ Instagram / TikTok занимает 1–2 минуты. Прошло {elapsedSec}{" "}
-          сек.
+        <p className="text-sm text-muted-foreground">
+          Обычно 1–2 минуты. Прошло {elapsedSec} сек.
         </p>
       </div>
 
@@ -179,7 +172,7 @@ export function AnalysisProgress({
             {percent}%
           </span>
         </div>
-        <Progress value={percent} />
+        <Progress value={percent} className="h-2.5" />
       </div>
 
       <ul className="space-y-3">
@@ -200,8 +193,8 @@ export function AnalysisProgress({
             <li
               key={step.key}
               className={cn(
-                "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
-                state === "active" && "border-primary bg-primary/5",
+                "flex items-start gap-3 rounded-2xl border bg-card px-4 py-3 text-sm",
+                state === "active" && "border-primary bg-accent",
                 state === "done" && "opacity-80",
                 state === "failed" && "border-destructive text-destructive",
               )}

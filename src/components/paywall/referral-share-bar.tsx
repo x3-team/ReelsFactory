@@ -17,15 +17,21 @@ export function ReferralShareBar({ referralUrl }: { referralUrl: string }) {
 
   const shareHref = telegramShareUrl(
     referralUrl,
-    "Собери сценарии для Reels за минуты — ReelsFactory",
+    "Вставил профиль — получил текст в камеру. ReelsFactory",
   );
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-xl border bg-secondary/40 p-3">
+    <div className="flex flex-wrap gap-2 rounded-2xl border bg-secondary/50 p-3">
       <p className="w-full text-xs text-muted-foreground">
-        Приведи друга: 30% с первой оплаты, 10% с продлений
+        Кинь другу: 30% с первой оплаты, 10% с продления
       </p>
-      <Button type="button" size="sm" variant="outline" onClick={() => void copy()}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="rounded-full"
+        onClick={() => void copy()}
+      >
         {copied ? (
           <>
             <Check className="size-3.5" /> Скопировано
@@ -36,9 +42,9 @@ export function ReferralShareBar({ referralUrl }: { referralUrl: string }) {
           </>
         )}
       </Button>
-      <Button type="button" size="sm" asChild>
+      <Button type="button" size="sm" className="rounded-full" asChild>
         <a href={shareHref} target="_blank" rel="noreferrer">
-          <Share2 className="size-3.5" /> Поделиться в Telegram
+          <Share2 className="size-3.5" /> В Telegram
         </a>
       </Button>
     </div>
