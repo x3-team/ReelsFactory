@@ -128,6 +128,12 @@ async function runApifyActor<T>(
     throw new Error("APIFY_TOKEN не задан");
   }
 
+  if (process.env.APIFY_REUSE_ONLY === "true") {
+    const reused = await reuseSucceededDataset<T>(actor, input);
+    if (reused?.length) return { items: reused, reused: true };
+    throw new Error("APIFY_REUSE_ONLY: нет SUCCEEDED датасета для этого хендла");
+  }
+
   const timeoutNum = Number(timeoutSecs || process.env.APIFY_TIMEOUT_SECS || 120);
   const url = new URL(
     `https://api.apify.com/v2/acts/${actorPath(actor)}/run-sync-get-dataset-items`,

@@ -5,8 +5,13 @@ import {
   generateStrategy,
   STRATEGY_SYSTEM_PROMPT,
 } from "@/lib/ai/generate-strategy";
+import {
+  DESERTMSK_LIVE_PROFILE,
+  DESERTMSK_LIVE_WHISPER_RAW,
+} from "@/lib/ai/fixtures/desertmsk-live";
 import { isUsableTeleprompter } from "@/lib/ai/normalize-strategy";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
+import { scriptHasSourceAnchor, sourceCorpus } from "@/lib/ai/source-anchors";
 
 test("mock generateStrategy never ships an empty teleprompter", async () => {
   const prev = process.env.MOCK_EXTERNAL_APIS;
@@ -46,5 +51,42 @@ test("strategy prompt asks for spoken teleprompter, not office slogans", () => {
   assert.match(STRATEGY_SYSTEM_PROMPT, /устн/i);
   assert.match(STRATEGY_SYSTEM_PROMPT, /режиссёрские ремарки/i);
   assert.match(STRATEGY_SYSTEM_PROMPT, /три РАЗНЫХ угла/i);
+  assert.match(STRATEGY_SYSTEM_PROMPT, /ЯКОРЬ/i);
+  assert.match(STRATEGY_SYSTEM_PROMPT, /НЕ притворяйся/i);
+  assert.doesNotMatch(STRATEGY_SYSTEM_PROMPT, /не пересказывай дословно транскрипт/i);
   assert.doesNotMatch(STRATEGY_SYSTEM_PROMPT, /nano|haiku|gemini|flash-lite/i);
+});
+
+test("mock generateStrategy on live desertmsk fixture keeps caption anchors", async () => {
+  const prev = process.env.MOCK_EXTERNAL_APIS;
+  process.env.MOCK_EXTERNAL_APIS = "true";
+  try {
+    const result = await generateStrategy({
+      profile: DESERTMSK_LIVE_PROFILE,
+      transcriptions: DESERTMSK_LIVE_WHISPER_RAW.map((item) => item.text),
+      goal: "GROW_AUDIENCE",
+      tone: "EXPERT",
+      plan: "START",
+    });
+    assert.equal(result.mocked, true);
+    const corpus = sourceCorpus({
+      bio: DESERTMSK_LIVE_PROFILE.bio,
+      captions: DESERTMSK_LIVE_PROFILE.topVideos.map((video) => video.caption || ""),
+      transcriptions: DESERTMSK_LIVE_WHISPER_RAW.map((item) => item.text),
+    });
+    assert.equal(corpus.voiceHeard, false);
+    assert.match(result.strategy.profile_audit_tips[0] || "", /подпис/i);
+    for (const script of result.strategy.scripts) {
+      assert.equal(scriptHasSourceAnchor(script, corpus.texts).ok, true);
+    }
+    const blob = result.strategy.scripts
+      .map((script) => script.teleprompter_script)
+      .join("\n");
+    assert.match(blob, /отсаж|кусочк/i);
+    assert.match(blob, /птичьего молока|сливочного масла/i);
+    assert.match(blob, /маршмеллоу|пружин/i);
+  } finally {
+    if (prev === undefined) delete process.env.MOCK_EXTERNAL_APIS;
+    else process.env.MOCK_EXTERNAL_APIS = prev;
+  }
 });
