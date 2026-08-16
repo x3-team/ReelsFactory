@@ -48,9 +48,12 @@ export function TeleprompterMode({
 
   function floorOffset() {
     const view = viewportRef.current?.clientHeight ?? 420;
-    const content = contentRef.current?.scrollHeight ?? 0;
-    const readingY = view * 0.36;
-    return Math.min(START_OFFSET, readingY - content + 48);
+    const last = contentRef.current?.querySelector(
+      "[data-last-line]",
+    ) as HTMLElement | null;
+    const lastTop = last?.offsetTop ?? contentRef.current?.scrollHeight ?? 0;
+    const readingY = view * 0.38;
+    return Math.min(START_OFFSET, readingY - lastTop);
   }
 
   useEffect(() => {
@@ -110,13 +113,17 @@ export function TeleprompterMode({
         <div className="pointer-events-none absolute inset-x-4 top-[36%] z-10 h-px bg-[#E07A5F]/70" />
         <div
           ref={contentRef}
-          className="px-1 pb-40"
+          className="px-1 pb-24"
           style={{ transform: `translateY(${offset}px)` }}
         >
           {spoken ? (
             <div className="space-y-9">
               {lines.map((line, index) => (
-                <p key={`${line.clock}-${index}`} className="text-center">
+                <p
+                  key={`${line.clock}-${index}`}
+                  data-last-line={index === lines.length - 1 ? "1" : undefined}
+                  className="text-center"
+                >
                   {line.clock ? (
                     <span className="mb-2 block text-[13px] font-medium tracking-[0.16em] text-white/35">
                       {line.clock}
