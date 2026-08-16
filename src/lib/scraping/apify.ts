@@ -7,6 +7,10 @@ import {
   handleFromApifyInput,
   shouldAttemptApifyReuse,
 } from "@/lib/scraping/apify-reuse";
+import {
+  mapTikTokActorItems,
+  type TikTokActorItem,
+} from "@/lib/scraping/tiktok-media";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
 
 const DEFAULT_IG_PROFILE_ACTOR = "apify/instagram-profile-scraper";
@@ -37,29 +41,7 @@ type ApifyIgProfile = {
   errorDescription?: string;
 };
 
-type ApifyTtItem = {
-  id?: string;
-  text?: string;
-  webVideoUrl?: string;
-  playCount?: number;
-  diggCount?: number;
-  videoUrl?: string;
-  videoMeta?: { duration?: number };
-  authorMeta?: {
-    name?: string;
-    nickName?: string;
-    signature?: string;
-    fans?: number;
-    following?: number;
-    video?: number;
-  };
-  author?: {
-    uniqueId?: string;
-    nickname?: string;
-    signature?: string;
-  };
-  stats?: { playCount?: number; diggCount?: number };
-};
+type ApifyTtItem = TikTokActorItem;
 
 function apifyToken() {
   return process.env.APIFY_TOKEN || process.env.APIFY_API_TOKEN || "";
@@ -267,6 +249,8 @@ export async function fetchInstagramViaApify(
 /**
  * TikTok profile + latest videos via Apify.
  * Default actor `clockworks/tiktok-profile-scraper` (override with APIFY_TIKTOK_ACTOR).
+ * Whisper URL берём из musicMeta.playUrl / mediaUrls / downloadAddr — не из videoUrl
+ * (при shouldDownloadVideos=false videoUrl пустой, см. tiktok-media.ts).
  */
 export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfile> {
   const { items, reused } = await runApifyActor<ApifyTtItem>(ttActorId(), {
@@ -282,23 +266,7 @@ export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfil
   }
 
   const author = items[0]?.authorMeta || items[0]?.author;
-  const topVideos = items
-    .map((item, index) => {
-      const views = item.playCount || item.stats?.playCount || 0;
-      return {
-        id: String(item.id || `tt-${index}`),
-        url:
-          item.webVideoUrl ||
-          `https://www.tiktok.com/@${handle}/video/${item.id || index}`,
-        caption: item.text || "",
-        views,
-        likes: item.diggCount || item.stats?.diggCount,
-        audioUrl: item.videoUrl,
-        durationSec: item.videoMeta?.duration,
-      } satisfies ScrapedVideo;
-    })
-    .sort((a, b) => b.views - a.views)
-    .slice(0, CAPTION_VIDEOS_LIMIT);
+  const topVideos = mapTikTokActorItems(items, handle);
 
   const name =
     (author && "name" in author ? author.name : undefined) ||

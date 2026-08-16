@@ -20,6 +20,7 @@ const bodySchema = z.object({
         views: z.number(),
         likes: z.number().optional(),
         audioUrl: z.string().optional(),
+        videoUrl: z.string().optional(),
         durationSec: z.number().optional(),
       }),
     ),

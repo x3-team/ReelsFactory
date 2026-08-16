@@ -29,6 +29,8 @@ export type ScrapedVideo = {
   views: number;
   likes?: number;
   audioUrl?: string;
+  /** Прямой файл видео (TT: mediaUrls / downloadAddr), если актор его отдал */
+  videoUrl?: string;
   durationSec?: number;
 };
 
