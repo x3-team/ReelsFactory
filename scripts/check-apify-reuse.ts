@@ -5,6 +5,7 @@ import {
   bareApifyHandle,
   handleFromApifyInput,
   isApifyHardLimitBody,
+  shouldAttemptApifyReuse,
 } from "../src/lib/scraping/apify-reuse";
 
 assert.equal(bareApifyHandle("@Ksenia_Makarchuk__"), "ksenia_makarchuk__");
@@ -21,5 +22,8 @@ assert.equal(isApifyHardLimitBody(403, '{"error":{"type":"platform-feature-disab
 assert.equal(isApifyHardLimitBody(402, "hard limit"), true);
 assert.equal(isApifyHardLimitBody(500, "oops"), false);
 assert.equal(isApifyHardLimitBody(403, "forbidden for another reason"), false);
+assert.equal(shouldAttemptApifyReuse(403, "forbidden for another reason"), true);
+assert.equal(shouldAttemptApifyReuse(402, ""), true);
+assert.equal(shouldAttemptApifyReuse(500, "oops"), false);
 
 console.log("apify-reuse checks ok");

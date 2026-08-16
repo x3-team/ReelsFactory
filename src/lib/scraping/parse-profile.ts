@@ -1,4 +1,5 @@
 import { isMockMode } from "@/lib/config";
+import { CAPTION_VIDEOS_LIMIT } from "@/lib/content/scrape-limits";
 import { mockScrapedProfile } from "@/lib/mocks/demo-data";
 import { normalizeHandle, type Platform } from "@/lib/platform";
 import {
@@ -133,7 +134,7 @@ async function fetchInstagramViaRapidApi(handle: string): Promise<ScrapedProfile
         } satisfies ScrapedVideo;
       })
       .sort((a, b) => b.views - a.views)
-      .slice(0, 5);
+      .slice(0, CAPTION_VIDEOS_LIMIT);
   }
 
   return {

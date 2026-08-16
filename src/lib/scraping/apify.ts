@@ -5,20 +5,12 @@ import {
 import {
   apifyInputMentionsHandle,
   handleFromApifyInput,
-  isApifyHardLimitBody,
+  shouldAttemptApifyReuse,
 } from "@/lib/scraping/apify-reuse";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
 
 const DEFAULT_IG_PROFILE_ACTOR = "apify/instagram-profile-scraper";
 const DEFAULT_TT_PROFILE_ACTOR = "clockworks/tiktok-profile-scraper";
-
-let apifyReuseHits = 0;
-
-export function consumeApifyReuseFlag() {
-  const reused = apifyReuseHits > 0;
-  apifyReuseHits = 0;
-  return reused;
-}
 
 type ApifyIgPost = {
   id?: string;
@@ -135,7 +127,6 @@ async function reuseSucceededDataset<T>(
     if (!apifyInputMentionsHandle(runInput, handle)) continue;
     const items = await apifyGet<T[]>(`datasets/${run.defaultDatasetId}/items`);
     if (Array.isArray(items) && items.length > 0) {
-      apifyReuseHits += 1;
       console.info(
         `Apify ${actor}: reuse SUCCEEDED dataset for @${handle} (new run blocked)`,
       );
@@ -149,7 +140,7 @@ async function runApifyActor<T>(
   actor: string,
   input: unknown,
   timeoutSecs?: number,
-): Promise<T[]> {
+): Promise<{ items: T[]; reused: boolean }> {
   const token = apifyToken();
   if (!token) {
     throw new Error("APIFY_TOKEN не задан");
@@ -176,11 +167,10 @@ async function runApifyActor<T>(
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     const status = Number(res.status);
-    const hardLimit = isApifyHardLimitBody(status, body) || status === 403;
-    if (hardLimit) {
+    if (shouldAttemptApifyReuse(status, body)) {
       try {
         const reused = await reuseSucceededDataset<T>(actor, input);
-        if (reused?.length) return reused;
+        if (reused?.length) return { items: reused, reused: true };
       } catch (error) {
         console.warn(
           "Apify dataset reuse failed",
@@ -198,7 +188,7 @@ async function runApifyActor<T>(
   if (!Array.isArray(items)) {
     throw new Error(`Apify ${actor}: неожиданный ответ`);
   }
-  return items;
+  return { items, reused: false };
 }
 
 function isVideoPost(post: ApifyIgPost) {
@@ -243,7 +233,7 @@ function mapPosts(posts: ApifyIgPost[]): ScrapedVideo[] {
 export async function fetchInstagramViaApify(
   handle: string,
 ): Promise<ScrapedProfile> {
-  const items = await runApifyActor<ApifyIgProfile>(igActorId(), {
+  const { items, reused } = await runApifyActor<ApifyIgProfile>(igActorId(), {
     usernames: [handle],
     resultsLimit: SCRAPE_POSTS_LIMIT,
   });
@@ -259,7 +249,7 @@ export async function fetchInstagramViaApify(
   }
 
   const topVideos = mapPosts(profile.latestPosts || []);
-  const scrapeMode = consumeApifyReuseFlag() ? "apify-reuse" : "live-run";
+  const scrapeMode = reused ? "apify-reuse" : "live-run";
 
   return {
     handle: profile.username || handle,
@@ -279,7 +269,7 @@ export async function fetchInstagramViaApify(
  * Default actor `clockworks/tiktok-profile-scraper` (override with APIFY_TIKTOK_ACTOR).
  */
 export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfile> {
-  const items = await runApifyActor<ApifyTtItem>(ttActorId(), {
+  const { items, reused } = await runApifyActor<ApifyTtItem>(ttActorId(), {
     profiles: [handle],
     resultsPerPage: SCRAPE_POSTS_LIMIT,
     shouldDownloadVideos: false,
@@ -335,6 +325,6 @@ export async function fetchTikTokViaApify(handle: string): Promise<ScrapedProfil
     following,
     postsCount,
     topVideos,
-    scrapeMode: consumeApifyReuseFlag() ? "apify-reuse" : "live-run",
+    scrapeMode: reused ? "apify-reuse" : "live-run",
   };
 }

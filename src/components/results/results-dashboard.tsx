@@ -262,7 +262,9 @@ function ScriptViewer({
             Текст для суфлёра
           </p>
           <pre className="whitespace-pre-wrap rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed">
-            {script.teleprompterScript}
+            {script.teleprompterScript?.trim()
+              ? script.teleprompterScript
+              : "Суфлёр пустой — запустите анализ ещё раз."}
           </pre>
         </div>
 
