@@ -2,7 +2,13 @@ import { PaymentProvider, PaymentStatus, SubscriptionPlan } from "@prisma/client
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { PLANS } from "@/lib/config";
+import {
+  AGENCY_NOT_FOR_SALE_MESSAGE,
+  CHECKOUT_PLANS,
+  PLANS,
+  paymentsEnabled,
+  PAYMENTS_UNAVAILABLE_MESSAGE,
+} from "@/lib/config";
 import { createYooKassaPayment } from "@/lib/payments/yookassa";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
@@ -15,6 +21,13 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = bodySchema.parse(await request.json());
+    if (!CHECKOUT_PLANS.includes(body.plan)) {
+      return NextResponse.json({ error: AGENCY_NOT_FOR_SALE_MESSAGE }, { status: 400 });
+    }
+    if (!paymentsEnabled()) {
+      return NextResponse.json({ error: PAYMENTS_UNAVAILABLE_MESSAGE }, { status: 503 });
+    }
+
     const user = await prisma.user.findUnique({ where: { id: body.userId } });
     if (!user) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });

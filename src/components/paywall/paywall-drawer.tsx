@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { PLANS, type PlanId } from "@/lib/config";
+import { PLANS, type PlanId, CHECKOUT_PLANS } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 export function PaywallDrawer({
@@ -23,6 +23,7 @@ export function PaywallDrawer({
   currentPlan,
   onSelectPlan,
   loadingPlan,
+  paymentsEnabled = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,6 +32,7 @@ export function PaywallDrawer({
   currentPlan: PlanId;
   onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
   loadingPlan?: string | null;
+  paymentsEnabled?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -49,19 +51,24 @@ export function PaywallDrawer({
           </DialogTitle>
           <DialogDescription className="text-[15px] leading-relaxed">
             Остальные 30 и 45 секунд — на тарифе. Читаешь с экрана, как с
-            телесуфлёра.
+            телесуфлёра. Агентство пока не продаём.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          {(["START", "PRO", "AGENCY"] as const).map((planId) => {
+          {!paymentsEnabled && (
+            <p className="rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              Оплата временно недоступна. Напишите в поддержку — карту не списываем.
+            </p>
+          )}
+          {CHECKOUT_PLANS.map((planId) => {
             const plan = PLANS[planId];
             const active = currentPlan === planId;
             return (
               <button
                 key={planId}
                 type="button"
-                disabled={!!loadingPlan || active}
+                disabled={!!loadingPlan || active || !paymentsEnabled}
                 onClick={() => void onSelectPlan(planId)}
                 className={cn(
                   "w-full rounded-2xl border p-4 text-left transition",
@@ -86,6 +93,8 @@ export function PaywallDrawer({
                 <div className="mt-3 text-sm font-medium text-primary">
                   {active
                     ? "Твой тариф"
+                    : !paymentsEnabled
+                      ? "Оплата недоступна"
                     : loadingPlan === planId
                       ? "Открываем оплату…"
                       : "Выбрать"}

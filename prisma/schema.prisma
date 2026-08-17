@@ -35,6 +35,8 @@ enum AnalysisStatus {
   SCRAPING
   TRANSCRIBING
   GENERATING
+  /// Подписи слабые — ждём 3 факта от пользователя, сценарии не выдаём
+  NEEDS_FACTS
   COMPLETED
   FAILED
 }
@@ -143,6 +145,10 @@ model ProfileAnalysis {
   rawProfileData   Json?
   /// Whisper transcriptions for top videos
   transcriptions   Json?
+  /// empty | weak | ok
+  sourceStrength   String?
+  /// string[] — 3 факта от пользователя, если подписи слабые
+  sourceFacts      Json?
   errorMessage     String?
 
   scripts Script[]

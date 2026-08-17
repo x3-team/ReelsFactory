@@ -86,7 +86,9 @@ export async function completeOnboarding(
   });
 }
 
-export function hasPaidAccess(user: User) {
+export function hasPaidAccess(
+  user: Pick<{ subscriptionPlan: SubscriptionPlan; subscriptionExpiresAt: Date | null }, "subscriptionPlan" | "subscriptionExpiresAt">,
+) {
   if (user.subscriptionPlan === SubscriptionPlan.FREE) return false;
   if (!user.subscriptionExpiresAt) return true;
   return user.subscriptionExpiresAt.getTime() > Date.now();

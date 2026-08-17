@@ -31,6 +31,7 @@ import {
   extractAnchorPhrases,
   isUsableVoiceText,
   scriptHasSourceAnchor,
+  shouldPauseForFacts,
   sourceCorpus,
   usableTranscriptions,
   withSourceHonestyTips,
@@ -353,5 +354,35 @@ test("weak duplicate fitness captions reject invented split and fire-strategy hy
     strength: "weak",
   });
   assert.equal(tipped.profile_audit_tips[0], WEAK_SOURCE_TIP);
+});
+
+test("weak captions without 3 facts must pause; 3 facts unlock generation", () => {
+  assert.equal(
+    shouldPauseForFacts({
+      strength: "weak",
+      facts: [],
+      offerSummary: "",
+    }),
+    true,
+  );
+  assert.equal(
+    shouldPauseForFacts({
+      strength: "ok",
+      facts: [],
+      offerSummary: "",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldPauseForFacts({
+      strength: "weak",
+      facts: [
+        "Онлайн-тренировки дома без зала и тренажёров",
+        "После 35 клиентки бросают через неделю без плана",
+        "Связки по 20 минут, стаж тренера 15 лет",
+      ],
+    }),
+    false,
+  );
 });
 

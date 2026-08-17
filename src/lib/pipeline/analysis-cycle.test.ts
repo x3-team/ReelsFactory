@@ -19,9 +19,11 @@ import { checkDbHealth } from "@/lib/db-health";
 import {
   ANALYSIS_STATUS_SEQUENCE,
   clearAnalysisStatusTrace,
+  continueAnalysisWithFacts,
   getAnalysisStatusTrace,
   runAnalysisForExisting,
 } from "@/lib/pipeline/run-analysis";
+import { assertAnalysisQuota, QuotaError } from "@/lib/billing/quota";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { YOUTUBE_UNSUPPORTED_MESSAGE } from "@/lib/platform";
 
@@ -173,4 +175,50 @@ test("YouTube analysis is refused before scrape", async () => {
     where: { id: analysis.id },
   });
   assert.equal(failed.status, AnalysisStatus.FAILED);
+});
+
+test("weak duplicate captions pause on NEEDS_FACTS until 3 facts arrive", async () => {
+  process.env.MOCK_EXTERNAL_APIS = "true";
+  const user = await seedUser(SubscriptionPlan.START, "agre_daria_fit", "instagram");
+  const analysis = await prisma.profileAnalysis.create({
+    data: {
+      userId: user.id,
+      socialHandle: user.socialHandle!,
+      platform: user.platform!,
+      status: AnalysisStatus.QUEUED,
+    },
+  });
+  const paused = await runAnalysisForExisting(user, analysis.id);
+  assert.equal(paused.status, AnalysisStatus.NEEDS_FACTS);
+  assert.equal(paused.scripts.length, 0);
+
+  const done = await continueAnalysisWithFacts({
+    user,
+    analysisId: analysis.id,
+    facts: [
+      "Онлайн-тренировки дома без зала и тренажёров",
+      "После 35 клиентки бросают через неделю без плана",
+      "Связки по 20 минут, стаж тренера 15 лет",
+    ],
+  });
+  assert.equal(done.status, AnalysisStatus.COMPLETED);
+  assert.equal(done.scripts.length, 3);
+  assert.ok(done.scripts.every((script) => script.teleprompterScript.trim().length > 0));
+});
+
+test("FREE quota is 1 pack per month", async () => {
+  process.env.MOCK_EXTERNAL_APIS = "true";
+  const user = await seedUser(SubscriptionPlan.FREE, "desertmsk", "instagram");
+  const analysis = await prisma.profileAnalysis.create({
+    data: {
+      userId: user.id,
+      socialHandle: user.socialHandle!,
+      platform: user.platform!,
+      status: AnalysisStatus.QUEUED,
+    },
+  });
+  await runAnalysisForExisting(user, analysis.id);
+  await assert.rejects(() => assertAnalysisQuota(user), (error: Error) => {
+    return error instanceof QuotaError && error.packsUsed >= 1 && error.packsLimit === 1;
+  });
 });

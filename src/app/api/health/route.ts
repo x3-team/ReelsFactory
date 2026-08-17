@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { paymentsEnabled } from "@/lib/config";
 import { checkDbHealth } from "@/lib/db-health";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export async function GET() {
     {
       ok: db.ok,
       db: db.db,
+      payments: paymentsEnabled() ? "up" : "unavailable",
       service: "reelsfactory",
       latencyMs: Date.now() - started,
     },

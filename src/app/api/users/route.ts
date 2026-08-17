@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { referralLink } from "@/lib/config";
+import { referralLink, paymentsEnabled } from "@/lib/config";
+import { getQuotaSnapshot } from "@/lib/billing/quota";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
 import { resolveTelegramAuth } from "@/lib/telegram/auth";
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
       orderBy: { createdAt: "asc" },
     });
 
+    const quota = await getQuotaSnapshot(user);
+
     return NextResponse.json(
       serialize({
         user,
@@ -40,6 +43,8 @@ export async function POST(request: Request) {
         clientAccounts,
         referralLink: referralLink(user.telegramId.toString()),
         authVerified: auth.verified,
+        paymentsEnabled: paymentsEnabled(),
+        quota,
       }),
     );
   } catch (error) {

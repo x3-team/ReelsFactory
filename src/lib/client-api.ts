@@ -35,6 +35,15 @@ export type AppUser = {
   onboardedAt?: string | null;
 };
 
+export type QuotaSnapshot = {
+  planId: AppUser["subscriptionPlan"];
+  planName: string;
+  packsUsed: number;
+  packsLimit: number;
+  packsRemaining: number;
+  scriptsLimit: number;
+};
+
 export type VisualCues = {
   start0_3s?: string;
   midAction?: string;
@@ -63,5 +72,7 @@ export type AppAnalysis = {
   socialHandle: string;
   platform: string;
   errorMessage?: string | null;
+  sourceStrength?: string | null;
+  sourceFacts?: string[] | null;
   scripts: AppScript[];
 };
