@@ -1,4 +1,5 @@
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
+import { VIRAL_SKELETONS } from "@/lib/ai/viral-skeletons";
 
 export const SCRIPT_DURATIONS = [15, 30, 45] as const;
 
@@ -92,6 +93,20 @@ export function ensureTeleprompter(
   });
 }
 
+function normalizeVisualCues(raw: unknown, index: number) {
+  const angle = index === 0 ? "error" : index === 1 ? "process" : "myth_or_contrast";
+  const defaultCue = VIRAL_SKELETONS[angle].visualCue;
+  if (!raw || typeof raw !== "object") {
+    return defaultCue;
+  }
+  const rec = raw as Record<string, unknown>;
+  return {
+    start0_3s: asString(rec.start0_3s || rec.start || rec.hook, defaultCue.start0_3s),
+    midAction: asString(rec.midAction || rec.mid || rec.demo, defaultCue.midAction),
+    finalCta: asString(rec.finalCta || rec.final || rec.cta, defaultCue.finalCta),
+  };
+}
+
 function normalizeScript(
   script: Partial<GeneratedScript> | undefined,
   index: number,
@@ -119,6 +134,7 @@ function normalizeScript(
       `${title}. Сохраните, чтобы снять по каркасу хук → проблема → демо → CTA.`,
     ),
     cta,
+    visual_cues: normalizeVisualCues(script?.visual_cues, index),
   };
 }
 

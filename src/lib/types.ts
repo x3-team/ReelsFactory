@@ -3,6 +3,12 @@ export type ContentPillar = {
   description: string;
 };
 
+export type VisualCues = {
+  start0_3s?: string;
+  midAction?: string;
+  finalCta?: string;
+};
+
 export type GeneratedScript = {
   title: string;
   format: string;
@@ -12,6 +18,7 @@ export type GeneratedScript = {
   teleprompter_script: string;
   caption: string;
   cta: string;
+  visual_cues?: VisualCues;
 };
 
 export type StrategyPayload = {

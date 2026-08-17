@@ -35,6 +35,12 @@ export type AppUser = {
   onboardedAt?: string | null;
 };
 
+export type VisualCues = {
+  start0_3s?: string;
+  midAction?: string;
+  finalCta?: string;
+};
+
 export type AppScript = {
   id: string;
   title: string;
@@ -44,6 +50,7 @@ export type AppScript = {
   caption: string;
   cta: string;
   isTeaser: boolean;
+  visualCues?: VisualCues | null;
 };
 
 export type AppAnalysis = {

@@ -3,6 +3,7 @@ import {
   llmModelForPlan,
   shouldUseMockAi,
 } from "@/lib/ai/aitunnel";
+import { extractFactAnchors, selectVariableSlotsForAngle } from "@/lib/ai/fact-extractor";
 import {
   extractChatContent,
   normalizeStrategy,
@@ -15,11 +16,17 @@ import {
   sourceCorpus,
   withSourceHonestyTips,
 } from "@/lib/ai/source-anchors";
+import { VIRAL_SKELETONS } from "@/lib/ai/viral-skeletons";
 import { mockStrategy } from "@/lib/mocks/demo-data";
 import type { ScrapedProfile, StrategyPayload } from "@/lib/types";
 
 export const STRATEGY_SYSTEM_PROMPT = `Ты пишешь сценарии коротких рилсов для камеры. Рынок РФ/СНГ.
 Пиши ВСЕ строки JSON на русском. Верни ТОЛЬКО валидный JSON без markdown.
+
+SYSTEM PROMPT GUARDRAIL:
+You are a strict data-driven video script writer. You MUST NOT invent stats, facts, prices, or technical details not present in the provided context.
+All product claims and numbers must be rooted strictly in the provided fact_anchors.
+Always base the hook structure and teleprompter skeleton on the provided viral_skeletons.
 
 Схема:
 {
@@ -34,7 +41,12 @@ export const STRATEGY_SYSTEM_PROMPT = `Ты пишешь сценарии кор
     "hook_options": string[],
     "teleprompter_script": string,
     "caption": string,
-    "cta": string
+    "cta": string,
+    "visual_cues": {
+      "start0_3s": string,
+      "midAction": string,
+      "finalCta": string
+    }
   }]
 }
 
@@ -64,7 +76,8 @@ export const STRATEGY_SYSTEM_PROMPT = `Ты пишешь сценарии кор
 9) Не выдумывай технологию, которой нет во входе: «температура сиропа», «завиток», «агар», «термометр» — только если эти слова есть в transcriptions/captions.
 10) Если transcriptions пустые или голос не разобрали — НЕ притворяйся, что слышала речь. Пиши только из captions/bio. Первой строкой profile_audit_tips скажи, что сценарии по подписям. Музыка, заставка, «Thank you for watching», чужой язык — это не речь.
 11) Если source_strength = weak или empty: подписи пустые, хэштеги или один и тот же копипаст. НЕ пиши, что стратегия «огонь» / сильная / вирусная. НЕ выдумывай упражнения (ноги/пресс/суперсет), граммовки, законы, температуры и приёмы, которых нет во входе. Три коротких сценария строго из bio + этой подписи. Первой строкой tips — что материала мало.
-12) niche / tips — по-человечески, без корпоративного тона.`;
+12) visual_cues: дай 3 короткие подсказки по кадру (0-3с, середина, CTA) без загромождения текста суфлера.
+13) niche / tips — по-человечески, без корпоративного тона.`;
 
 export type GenerateStrategyInput = {
   profile: ScrapedProfile;
@@ -90,6 +103,35 @@ export function buildStrategyUserPrompt(
   source: ReturnType<typeof strategySourceFromInput>,
 ): string {
   const anchors = extractAnchorPhrases(source.texts);
+  const factAnchors = extractFactAnchors({
+    bio: input.profile.bio,
+    captions: input.profile.topVideos.map((v) => v.caption || ""),
+    transcriptions: source.usableVoice,
+    offerSummary: input.offerSummary,
+    strength: source.strength,
+  });
+
+  const skeletons = [
+    {
+      angle: "error",
+      duration_sec: 15,
+      skeleton: VIRAL_SKELETONS.error,
+      variables: selectVariableSlotsForAngle(factAnchors, 0),
+    },
+    {
+      angle: "process",
+      duration_sec: 30,
+      skeleton: VIRAL_SKELETONS.process,
+      variables: selectVariableSlotsForAngle(factAnchors, 1),
+    },
+    {
+      angle: "myth_or_contrast",
+      duration_sec: 45,
+      skeleton: VIRAL_SKELETONS.myth_or_contrast,
+      variables: selectVariableSlotsForAngle(factAnchors, 2),
+    },
+  ];
+
   return JSON.stringify(
     {
       profile: {
@@ -115,6 +157,8 @@ export function buildStrategyUserPrompt(
           ? "Подписей достаточно. Не выдумывай технологию, которой нет во входе."
           : "Подписи пустые или копипаст. Это НЕ «стратегия огонь». Только слова из bio/captions. Без выдуманных упражнений, граммовок, законов и температур.",
       source_anchors: anchors,
+      extracted_facts: factAnchors,
+      viral_reference_skeletons: skeletons,
       goal: input.goal,
       tone: input.tone,
       offerSummary: input.offerSummary,
@@ -130,6 +174,7 @@ export function buildStrategyUserPrompt(
         three_angles: ["ошибка", "процесс", "миф_или_до_после"],
         required_anchor_in_each_script: true,
         distinct_products: true,
+        visual_cues_required: true,
         anchor_rule:
           "Каждый сценарий обязан содержать хотя бы один якорь из source_anchors (цитата / цифра / приём / продукт). Три сценария — три РАЗНЫХ продукта или приёма. Не делай 30с и 45с про один бенто, если в якорях есть зефир и маршмеллоу.",
       },

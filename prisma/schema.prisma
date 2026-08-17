@@ -170,6 +170,8 @@ model Script {
   teleprompterScript String  @db.Text
   caption            String  @db.Text
   cta                String
+  /// { start0_3s?: string, midAction?: string, finalCta?: string }
+  visualCues         Json?
   /// Free-plan teaser (1 script) vs full unlocked script
   isTeaser           Boolean @default(false)
 

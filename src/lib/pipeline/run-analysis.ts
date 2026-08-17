@@ -156,6 +156,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
             teleprompterScript: script.teleprompter_script,
             caption: script.caption,
             cta: script.cta,
+            visualCues: script.visual_cues as unknown as Prisma.InputJsonValue,
             isTeaser: !paid && index > 0,
           },
         });
