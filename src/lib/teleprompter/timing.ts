@@ -24,6 +24,11 @@ export function formatTeleprompterClock(remainingSec: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+export function reelDurationSec(value: number): 15 | 30 | 45 {
+  if (value === 15 || value === 30 || value === 45) return value;
+  return 15;
+}
+
 export function clampRemainingSec(elapsedMs: number, durationSec: number) {
   const remaining = durationSec - elapsedMs / 1000;
   return Math.max(0, remaining);

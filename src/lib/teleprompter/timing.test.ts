@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   clampRemainingSec,
   formatTeleprompterClock,
+  reelDurationSec,
   teleprompterScrollPxPerSec,
 } from "@/lib/teleprompter/timing";
 
@@ -20,6 +21,13 @@ test("remaining clock is the reel length, not scroll speed", () => {
   assert.equal(clampRemainingSec(5000, 15), 10);
   assert.equal(clampRemainingSec(15000, 15), 0);
   assert.equal(clampRemainingSec(20000, 15), 0);
+});
+
+test("invalid duration falls back to 15", () => {
+  assert.equal(reelDurationSec(15), 15);
+  assert.equal(reelDurationSec(45), 45);
+  assert.equal(reelDurationSec(0), 15);
+  assert.equal(reelDurationSec(12), 15);
 });
 
 test("normal scroll finishes in durationSec", () => {

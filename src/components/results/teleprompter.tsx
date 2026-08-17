@@ -7,6 +7,7 @@ import {
   TELEPROMPTER_SPEEDS,
   clampRemainingSec,
   formatTeleprompterClock,
+  reelDurationSec,
   teleprompterScrollPxPerSec,
   type TeleprompterSpeedId,
 } from "@/lib/teleprompter/timing";
@@ -45,11 +46,12 @@ export function TeleprompterMode({
   } | null;
   onClose: () => void;
 }) {
+  const reelSec = reelDurationSec(durationSec);
   const [playing, setPlaying] = useState(false);
   const [speedId, setSpeedId] = useState<TeleprompterSpeedId>("normal");
   const [showCues, setShowCues] = useState(false);
   const [offset, setOffset] = useState(START_OFFSET);
-  const [remainingSec, setRemainingSec] = useState(durationSec);
+  const [remainingSec, setRemainingSec] = useState(reelSec);
   const frame = useRef<number>(0);
   const lastTs = useRef<number>(0);
   const elapsedMs = useRef<number>(0);
@@ -73,15 +75,15 @@ export function TeleprompterMode({
   function resetClock() {
     elapsedMs.current = 0;
     lastTs.current = 0;
-    setRemainingSec(durationSec);
+    setRemainingSec(reelSec);
     setOffset(START_OFFSET);
     setPlaying(false);
   }
 
   useEffect(() => {
-    setRemainingSec(durationSec);
+    setRemainingSec(reelSec);
     elapsedMs.current = 0;
-  }, [durationSec]);
+  }, [reelSec]);
 
   useEffect(() => {
     if (!playing) {
@@ -92,10 +94,10 @@ export function TeleprompterMode({
     const tick = (ts: number) => {
       if (stopped) return;
       if (!lastTs.current) lastTs.current = ts;
-      const delta = (ts - lastTs.current) / 1000;
+      const delta = Math.min(0.05, (ts - lastTs.current) / 1000);
       lastTs.current = ts;
       elapsedMs.current += delta * 1000;
-      const remaining = clampRemainingSec(elapsedMs.current, durationSec);
+      const remaining = clampRemainingSec(elapsedMs.current, reelSec);
       setRemainingSec(remaining);
       if (remaining <= 0) {
         stopped = true;
@@ -107,7 +109,7 @@ export function TeleprompterMode({
       const distance = Math.max(0, START_OFFSET - floor);
       const pxPerSec = teleprompterScrollPxPerSec({
         distancePx: distance,
-        durationSec,
+        durationSec: reelSec,
         scrollFactor,
       });
       setOffset((value) => {
@@ -122,14 +124,14 @@ export function TeleprompterMode({
       stopped = true;
       window.cancelAnimationFrame(frame.current);
     };
-  }, [playing, scrollFactor, durationSec]);
+  }, [playing, scrollFactor, reelSec]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0C0A09] text-[#F6F0E8]">
       <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-5">
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/40">
-            Суфлёр · {durationSec} сек
+            Суфлёр · {reelSec} сек
           </p>
           <h2 className="mt-1 truncate text-sm text-white/70">{title}</h2>
         </div>
