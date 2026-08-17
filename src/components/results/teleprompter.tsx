@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, X } from "lucide-react";
 
+import {
+  TELEPROMPTER_SPEEDS,
+  clampRemainingSec,
+  formatTeleprompterClock,
+  reelDurationSec,
+  teleprompterScrollPxPerSec,
+  type TeleprompterSpeedId,
+} from "@/lib/teleprompter/timing";
 import { cn } from "@/lib/utils";
 
 type Line = { clock: string | null; text: string };
@@ -20,20 +28,17 @@ function splitTeleprompter(script: string): Line[] {
 }
 
 const START_OFFSET = 88;
-const SPEEDS = [
-  { id: "slow", label: "Медленнее", pxPerSec: 12 },
-  { id: "normal", label: "Норма", pxPerSec: 20 },
-  { id: "fast", label: "Быстрее", pxPerSec: 32 },
-] as const;
 
 export function TeleprompterMode({
   title,
   script,
+  durationSec,
   visualCues,
   onClose,
 }: {
   title: string;
   script: string;
+  durationSec: number;
   visualCues?: {
     start0_3s?: string;
     midAction?: string;
@@ -41,17 +46,21 @@ export function TeleprompterMode({
   } | null;
   onClose: () => void;
 }) {
+  const reelSec = reelDurationSec(durationSec);
   const [playing, setPlaying] = useState(false);
-  const [speedId, setSpeedId] = useState<(typeof SPEEDS)[number]["id"]>("normal");
+  const [speedId, setSpeedId] = useState<TeleprompterSpeedId>("normal");
   const [showCues, setShowCues] = useState(false);
   const [offset, setOffset] = useState(START_OFFSET);
+  const [remainingSec, setRemainingSec] = useState(reelSec);
   const frame = useRef<number>(0);
   const lastTs = useRef<number>(0);
+  const elapsedMs = useRef<number>(0);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lines = useMemo(() => splitTeleprompter(script), [script]);
   const spoken = lines.map((line) => line.text).join(" ").trim();
-  const pxPerSec = SPEEDS.find((item) => item.id === speedId)?.pxPerSec ?? 20;
+  const scrollFactor =
+    TELEPROMPTER_SPEEDS.find((item) => item.id === speedId)?.scrollFactor ?? 1;
 
   function floorOffset() {
     const view = viewportRef.current?.clientHeight ?? 420;
@@ -63,6 +72,19 @@ export function TeleprompterMode({
     return Math.min(START_OFFSET, readingY - lastTop);
   }
 
+  function resetClock() {
+    elapsedMs.current = 0;
+    lastTs.current = 0;
+    setRemainingSec(reelSec);
+    setOffset(START_OFFSET);
+    setPlaying(false);
+  }
+
+  useEffect(() => {
+    setRemainingSec(reelSec);
+    elapsedMs.current = 0;
+  }, [reelSec]);
+
   useEffect(() => {
     if (!playing) {
       lastTs.current = 0;
@@ -72,35 +94,44 @@ export function TeleprompterMode({
     const tick = (ts: number) => {
       if (stopped) return;
       if (!lastTs.current) lastTs.current = ts;
-      const delta = (ts - lastTs.current) / 1000;
+      const delta = Math.min(0.05, (ts - lastTs.current) / 1000);
       lastTs.current = ts;
+      elapsedMs.current += delta * 1000;
+      const remaining = clampRemainingSec(elapsedMs.current, reelSec);
+      setRemainingSec(remaining);
+      if (remaining <= 0) {
+        stopped = true;
+        setPlaying(false);
+        setOffset(floorOffset());
+        return;
+      }
       const floor = floorOffset();
+      const distance = Math.max(0, START_OFFSET - floor);
+      const pxPerSec = teleprompterScrollPxPerSec({
+        distancePx: distance,
+        durationSec: reelSec,
+        scrollFactor,
+      });
       setOffset((value) => {
         const next = value - pxPerSec * delta;
-        if (next <= floor) {
-          stopped = true;
-          setPlaying(false);
-          return floor;
-        }
+        if (next <= floor) return floor;
         return next;
       });
-      if (!stopped) {
-        frame.current = window.requestAnimationFrame(tick);
-      }
+      frame.current = window.requestAnimationFrame(tick);
     };
     frame.current = window.requestAnimationFrame(tick);
     return () => {
       stopped = true;
       window.cancelAnimationFrame(frame.current);
     };
-  }, [playing, pxPerSec]);
+  }, [playing, scrollFactor, reelSec]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0C0A09] text-[#F6F0E8]">
-      <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-5">
+      <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-2 pt-5">
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/40">
-            Суфлёр
+            Суфлёр · {reelSec} сек
           </p>
           <h2 className="mt-1 truncate text-sm text-white/70">{title}</h2>
         </div>
@@ -127,6 +158,13 @@ export function TeleprompterMode({
           </button>
         </div>
       </div>
+
+      <p
+        className="shrink-0 px-5 pb-1 text-center font-display text-[2.6rem] font-bold tabular-nums tracking-tight text-[#E07A5F]"
+        aria-live="polite"
+      >
+        {formatTeleprompterClock(remainingSec)}
+      </p>
 
       {showCues && visualCues && (
         <div className="mx-5 mb-2 rounded-2xl border border-white/15 bg-white/5 p-3 text-xs text-white/80 backdrop-blur">
@@ -179,9 +217,9 @@ export function TeleprompterMode({
         </div>
       </div>
 
-      <div className="space-y-3 px-5 pb-7 pt-3">
+      <div className="shrink-0 space-y-3 px-5 pb-7 pt-3">
         <div className="flex items-center justify-center gap-2">
-          {SPEEDS.map((speed) => (
+          {TELEPROMPTER_SPEEDS.map((speed) => (
             <button
               key={speed.id}
               type="button"
@@ -216,10 +254,7 @@ export function TeleprompterMode({
           <button
             type="button"
             className="flex size-14 items-center justify-center rounded-full border border-white/15 text-white"
-            onClick={() => {
-              setOffset(START_OFFSET);
-              setPlaying(false);
-            }}
+            onClick={resetClock}
             aria-label="Сначала"
           >
             <RotateCcw className="size-5" />

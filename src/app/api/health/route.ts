@@ -17,6 +17,7 @@ export async function GET() {
       ok: db.ok,
       db: db.db,
       payments: paymentsEnabled() ? "up" : "unavailable",
+      telegram: process.env.TELEGRAM_BOT_TOKEN ? "up" : "unset",
       service: "reelsfactory",
       latencyMs: Date.now() - started,
     },

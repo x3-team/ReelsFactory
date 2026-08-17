@@ -1,12 +1,10 @@
 import type { GeneratedScript, StrategyPayload } from "@/lib/types";
+import {
+  VOICE_MISSING_TIP,
+  WEAK_SOURCE_TIP,
+} from "@/lib/ai/honesty-copy";
 
-/** Первая строка tips, если голос не разобрали. */
-export const VOICE_MISSING_TIP =
-  "Голос роликов не разобрали — сценарии собраны по подписям, не «как будто слышали» речь. Когда появится звук, переснимите хук с фразы из кадра.";
-
-/** Подписи пустые или копипаст — не выдаём «стратегию огонь». */
-export const WEAK_SOURCE_TIP =
-  "Подписи пустые или копипаст — это не «стратегия огонь». Сценарии только из био/подписей, без выдуманных упражнений, граммовок и приёмов.";
+export { VOICE_MISSING_TIP, WEAK_SOURCE_TIP, shouldShowVoiceBanner } from "@/lib/ai/honesty-copy";
 
 export type CaptionSourceStrength = "empty" | "weak" | "ok";
 

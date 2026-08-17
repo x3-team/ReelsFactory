@@ -86,6 +86,7 @@ async function persistStrategy(input: {
   user: User;
   analysisId: string;
   strategy: StrategyPayload;
+  voiceHeard: boolean;
 }) {
   const paid = hasPaidAccess(input.user);
   const scriptsToSave = input.strategy.scripts.slice(0, SCRIPT_PACK_SIZE);
@@ -112,6 +113,7 @@ async function persistStrategy(input: {
         targetAudience: input.strategy.target_audience,
         contentPillars: pillars,
         profileAuditTips: input.strategy.profile_audit_tips,
+        voiceHeard: input.voiceHeard,
         errorMessage: null,
       },
     });
@@ -233,7 +235,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       plan: user.subscriptionPlan,
     });
 
-    await persistStrategy({ user, analysisId, strategy });
+    await persistStrategy({ user, analysisId, strategy, voiceHeard: source.voiceHeard });
 
     return prisma.profileAnalysis.findUniqueOrThrow({
       where: { id: analysisId },
@@ -303,6 +305,14 @@ export async function continueAnalysisWithFacts(input: {
       sourceFacts: facts,
     });
 
+    const source = sourceCorpus({
+      bio: profile.bio,
+      captions: profile.topVideos.map((video) => video.caption || ""),
+      transcriptions,
+      extraFacts: facts,
+      offerSummary: input.user.offerSummary,
+    });
+
     const { strategy } = await generateStrategy({
       profile,
       transcriptions,
@@ -318,6 +328,7 @@ export async function continueAnalysisWithFacts(input: {
       user: input.user,
       analysisId: input.analysisId,
       strategy,
+      voiceHeard: source.voiceHeard,
     });
 
     return prisma.profileAnalysis.findUniqueOrThrow({
