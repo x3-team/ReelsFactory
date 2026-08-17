@@ -2,12 +2,19 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  ApifyBlockedError,
   apifyInputMentionsHandle,
   bareApifyHandle,
   handleFromApifyInput,
   isApifyHardLimitBody,
   shouldAttemptApifyReuse,
+  shouldFallbackToRapidApi,
 } from "@/lib/scraping/apify-reuse";
+import {
+  APIFY_HARD_LIMIT_NO_REUSE_MESSAGE,
+  APIFY_REUSE_TIP,
+  shouldShowReuseBanner,
+} from "@/lib/ai/honesty-copy";
 
 test("403/402 always attempt reuse, even without the monthly-limit phrase", () => {
   assert.equal(
@@ -45,5 +52,22 @@ test("reuse matching is per-handle, not the previous actor run", () => {
   assert.equal(
     apifyInputMentionsHandle({ usernames: ["desertmsk"] }, "prodasha_live"),
     false,
+  );
+});
+
+test("403 without reuse is a refusal, not RapidAPI or mock success", () => {
+  const limit = new ApifyBlockedError({ status: 403, hardLimit: true });
+  assert.equal(limit.message, APIFY_HARD_LIMIT_NO_REUSE_MESSAGE);
+  assert.equal(shouldFallbackToRapidApi(limit), false);
+  assert.equal(shouldFallbackToRapidApi(new Error("timeout")), true);
+  assert.match(limit.message, /не «разбор прошёл»/);
+});
+
+test("reuse banner only for apify-reuse, not a live run", () => {
+  assert.equal(shouldShowReuseBanner({ scrapeMode: "apify-reuse" }), true);
+  assert.equal(shouldShowReuseBanner({ scrapeMode: "live-run" }), false);
+  assert.equal(
+    shouldShowReuseBanner({ scrapeMode: null, profileAuditTips: [APIFY_REUSE_TIP] }),
+    true,
   );
 });

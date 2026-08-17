@@ -78,5 +78,6 @@ export type AppAnalysis = {
   sourceStrength?: string | null;
   sourceFacts?: string[] | null;
   voiceHeard?: boolean | null;
+  scrapeMode?: string | null;
   scripts: AppScript[];
 };

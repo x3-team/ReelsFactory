@@ -9,7 +9,7 @@ import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { TeleprompterMode } from "@/components/results/teleprompter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { VOICE_MISSING_TIP, shouldShowVoiceBanner } from "@/lib/ai/honesty-copy";
+import { APIFY_REUSE_TIP, VOICE_MISSING_TIP, shouldShowReuseBanner, shouldShowVoiceBanner } from "@/lib/ai/honesty-copy";
 import { api, type AppAnalysis, type AppScript, type AppUser } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
 import { PLANS } from "@/lib/config";
@@ -54,6 +54,7 @@ export function ResultsDashboard({
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<string | null>(null);
+  const [shotPrompt, setShotPrompt] = useState(false);
 
   useEffect(() => {
     setScripts(analysis.scripts);
@@ -71,6 +72,7 @@ export function ResultsDashboard({
   const planLabel = PLANS[user.subscriptionPlan]?.name || user.subscriptionPlan;
   const selectedLocked = Boolean(isFree && selected?.isTeaser);
   const voiceBanner = shouldShowVoiceBanner(analysis);
+  const reuseBanner = shouldShowReuseBanner(analysis);
 
   async function markLifecycle(action: "shot" | "published" | "ready") {
     if (!selected || selectedLocked) return;
@@ -125,6 +127,12 @@ export function ResultsDashboard({
       {voiceBanner ? (
         <div className="rounded-2xl border border-primary/30 bg-accent/50 p-4 text-sm leading-relaxed">
           {VOICE_MISSING_TIP}
+        </div>
+      ) : null}
+
+      {reuseBanner ? (
+        <div className="rounded-2xl border border-border bg-muted/60 p-4 text-sm leading-relaxed">
+          {APIFY_REUSE_TIP}
         </div>
       ) : null}
 
@@ -278,9 +286,47 @@ export function ResultsDashboard({
             scripts.findIndex((item) => item.id === selected.id),
           )}
           visualCues={selected.visualCues}
-          onClose={() => setTeleprompterOpen(false)}
+          onMarkShot={() => void markLifecycle("shot")}
+          onClose={(info) => {
+            setTeleprompterOpen(false);
+            if (info.markedShot) return;
+            if (info.started && selected && !selected.shotAt && !selectedLocked) {
+              setShotPrompt(true);
+            }
+          }}
         />
       )}
+
+      {shotPrompt && selected && !selected.shotAt ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md p-5">
+          <div className="rounded-3xl border bg-card p-5 shadow-lg">
+            <p className="font-display text-lg font-semibold">Отметить снятым?</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Суфлёр закрыт. Если ролик уже в камере — отметьте, чтобы бот не
+              напоминал.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button
+                className="h-11 rounded-2xl"
+                disabled={Boolean(lifecycleBusy)}
+                onClick={() => {
+                  setShotPrompt(false);
+                  void markLifecycle("shot");
+                }}
+              >
+                Снял
+              </Button>
+              <Button
+                variant="outline"
+                className="h-11 rounded-2xl"
+                onClick={() => setShotPrompt(false)}
+              >
+                Пока нет
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <PaywallDrawer
         open={paywallOpen}
