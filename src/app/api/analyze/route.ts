@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
+import { QuotaError, assertAnalysisQuota } from "@/lib/billing/quota";
 import { assertSupportedPlatform } from "@/lib/platform";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/serialize";
@@ -49,6 +50,22 @@ export async function POST(request: Request) {
         { error: error instanceof Error ? error.message : "Площадка не поддерживается" },
         { status: 400 },
       );
+    }
+
+    try {
+      await assertAnalysisQuota(user);
+    } catch (error) {
+      if (error instanceof QuotaError) {
+        return NextResponse.json(
+          {
+            error: error.message,
+            packsUsed: error.packsUsed,
+            packsLimit: error.packsLimit,
+          },
+          { status: error.statusCode },
+        );
+      }
+      throw error;
     }
 
     const queued = await enqueueAnalysis({

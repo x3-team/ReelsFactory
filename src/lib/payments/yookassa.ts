@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "crypto";
 
-import { appUrl, isMockMode, PLANS, type PlanId } from "@/lib/config";
+import { appUrl, isMockMode, mockPaymentsAllowed, PAYMENTS_UNAVAILABLE_MESSAGE, PLANS, type PlanId } from "@/lib/config";
 
 export type YooKassaPayment = {
   id: string;
@@ -23,6 +23,9 @@ export async function createYooKassaPayment(input: {
     !process.env.YOOKASSA_SHOP_ID ||
     !process.env.YOOKASSA_SECRET_KEY
   ) {
+    if (!mockPaymentsAllowed()) {
+      throw new Error(PAYMENTS_UNAVAILABLE_MESSAGE);
+    }
     const id = `mock_${randomUUID()}`;
     return {
       mocked: true,

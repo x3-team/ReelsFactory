@@ -229,10 +229,43 @@ export function captionSourceStrength(input: {
   return "ok";
 }
 
+export function normalizeUserFacts(facts?: string[] | null): string[] {
+  const unique: string[] = [];
+  for (const raw of facts || []) {
+    const value = (raw || "").replace(/\s+/g, " ").trim();
+    if (value.length < 8) continue;
+    if (unique.some((item) => item.toLowerCase() === value.toLowerCase())) continue;
+    unique.push(value);
+    if (unique.length >= 5) break;
+  }
+  return unique;
+}
+
+export function hasEnoughUserFacts(input: {
+  facts?: string[] | null;
+  offerSummary?: string | null;
+}): boolean {
+  if (normalizeUserFacts(input.facts).length >= 3) return true;
+  const offer = (input.offerSummary || "").trim();
+  return offer.length >= 48 && contentStems(offer).size >= 8;
+}
+
+/** Слабые/пустые подписи без 3 фактов — не выдаём «готовый» суфлёр. */
+export function shouldPauseForFacts(input: {
+  strength: CaptionSourceStrength;
+  facts?: string[] | null;
+  offerSummary?: string | null;
+}): boolean {
+  if (input.strength === "ok") return false;
+  return !hasEnoughUserFacts(input);
+}
+
 export function sourceCorpus(input: {
   bio?: string | null;
   captions?: string[] | null;
   transcriptions?: string[] | null;
+  extraFacts?: string[] | null;
+  offerSummary?: string | null;
 }): {
   voiceHeard: boolean;
   texts: string[];
@@ -241,11 +274,15 @@ export function sourceCorpus(input: {
 } {
   const captions = (input.captions || []).map((item) => item.trim()).filter(Boolean);
   const bio = (input.bio || "").trim();
+  const extra = [
+    ...(input.offerSummary ? [input.offerSummary] : []),
+    ...normalizeUserFacts(input.extraFacts),
+  ];
   const captionSide = [bio, ...captions].filter(Boolean);
   const usableVoice = usableTranscriptions(input.transcriptions, captionSide);
   return {
     voiceHeard: usableVoice.length > 0,
-    texts: [...usableVoice, ...captionSide],
+    texts: [...usableVoice, ...captionSide, ...extra],
     usableVoice,
     strength: captionSourceStrength({ bio, captions }),
   };

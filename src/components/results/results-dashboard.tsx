@@ -22,6 +22,8 @@ export function ResultsDashboard({
   clientAccounts = [],
   onSelectPlan,
   loadingPlan,
+  paymentsEnabled = true,
+  quota,
   onReanalyze,
   onAnalyzeClient,
 }: {
@@ -36,6 +38,12 @@ export function ResultsDashboard({
   }>;
   onSelectPlan: (plan: Exclude<PlanId, "FREE">) => Promise<void> | void;
   loadingPlan?: string | null;
+  paymentsEnabled?: boolean;
+  quota?: {
+    packsUsed: number;
+    packsLimit: number;
+    packsRemaining: number;
+  } | null;
   onReanalyze: () => void;
   onAnalyzeClient?: (clientAccountId: string) => void;
 }) {
@@ -67,6 +75,9 @@ export function ResultsDashboard({
           </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
             Три длины — 15, 30 и 45 секунд. Жми «Снимать» и читай с экрана.
+            {quota
+              ? ` Осталось ${quota.packsRemaining} из ${quota.packsLimit} разборов в этом месяце.`
+              : ""}
           </p>
         </div>
         <Badge variant="secondary" className="rounded-full">
@@ -220,6 +231,7 @@ export function ResultsDashboard({
         currentPlan={user.subscriptionPlan}
         onSelectPlan={onSelectPlan}
         loadingPlan={loadingPlan}
+        paymentsEnabled={paymentsEnabled}
       />
     </div>
   );

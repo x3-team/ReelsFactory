@@ -85,6 +85,7 @@ export type GenerateStrategyInput = {
   goal: string;
   tone: string;
   offerSummary?: string | null;
+  extraFacts?: string[] | null;
   websiteUrl?: string | null;
   /** FREE | START | PRO | AGENCY — влияет на модель */
   plan?: string | null;
@@ -95,6 +96,8 @@ export function strategySourceFromInput(input: GenerateStrategyInput) {
     bio: input.profile.bio,
     captions: input.profile.topVideos.map((video) => video.caption || ""),
     transcriptions: input.transcriptions,
+    extraFacts: input.extraFacts,
+    offerSummary: input.offerSummary,
   });
 }
 
@@ -107,7 +110,9 @@ export function buildStrategyUserPrompt(
     bio: input.profile.bio,
     captions: input.profile.topVideos.map((v) => v.caption || ""),
     transcriptions: source.usableVoice,
-    offerSummary: input.offerSummary,
+    offerSummary: [input.offerSummary, ...(input.extraFacts || [])]
+      .filter(Boolean)
+      .join("\n"),
     strength: source.strength,
   });
 
@@ -241,6 +246,7 @@ export async function generateStrategy(
           offerSummary: input.offerSummary,
           bio: input.profile.bio,
           captions: input.profile.topVideos.map((video) => video.caption || ""),
+          extraFacts: input.extraFacts,
           transcriptions: source.usableVoice,
         }),
         source,
@@ -286,6 +292,7 @@ export async function generateStrategy(
             offerSummary: input.offerSummary,
             bio: input.profile.bio,
             captions: input.profile.topVideos.map((video) => video.caption || ""),
+            extraFacts: input.extraFacts,
             transcriptions: source.usableVoice,
           }),
           source,

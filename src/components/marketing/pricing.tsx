@@ -2,38 +2,32 @@ import { Check } from "lucide-react";
 
 import { CtaLink, Section, SectionHeading } from "@/components/marketing/primitives";
 import {
+  AGENCY_NOT_FOR_SALE_MESSAGE,
   PLANS,
   REFERRAL_FIRST_COMMISSION_RATE,
   REFERRAL_RENEWAL_COMMISSION_RATE,
-  type PlanId,
 } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
-const FEATURES: Record<PlanId, string[]> = {
+const FEATURES = {
   FREE: [
-    "Разбор профиля целиком",
-    "Один сценарий с суфлёром",
+    "1 разбор профиля в месяц",
+    "Один полный суфлёр, остальные закрыты",
     "Полный текст, а не обрывок",
   ],
   START: [
-    `${PLANS.START.scriptsPerMonth} сценариев в месяц`,
+    "4 разбора · 12 сценариев в месяц",
     "Все три длины: 15 / 30 / 45",
     "Суфлёр без ограничений",
   ],
   PRO: [
-    `${PLANS.PRO.scriptsPerMonth} сценариев в месяц`,
+    "10 разборов · 30 сценариев в месяц",
     "Модель помощнее на разборе и тексте",
     "Всё из «Старта»",
   ],
-  AGENCY: [
-    `${PLANS.AGENCY.scriptsPerMonth} сценариев в месяц`,
-    `До ${PLANS.AGENCY.maxClientAccounts} клиентских аккаунтов`,
-    "Свой разбор под каждый аккаунт",
-    "Всё из «Про»",
-  ],
-};
+} as const;
 
-const ORDER: PlanId[] = ["FREE", "START", "PRO", "AGENCY"];
+const ORDER = ["FREE", "START", "PRO"] as const;
 
 export function Pricing() {
   return (
@@ -44,7 +38,7 @@ export function Pricing() {
         lead="Начинаешь с бесплатного разбора. Тариф нужен, когда одного суфлёра в месяц уже мало."
       />
 
-      <div className="mt-12 grid gap-4 lg:grid-cols-4">
+      <div className="mt-12 grid gap-4 lg:grid-cols-3">
         {ORDER.map((planId) => {
           const plan = PLANS[planId];
           const highlighted = planId === "PRO";
@@ -121,6 +115,10 @@ export function Pricing() {
           );
         })}
       </div>
+
+      <p className="mt-5 text-center text-[0.9rem] leading-relaxed text-ink/45">
+        {AGENCY_NOT_FOR_SALE_MESSAGE}
+      </p>
 
       <div className="mt-5 grid gap-6 rounded-[1.8rem] border border-ink/12 bg-cream p-7 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-10 lg:p-9">
         <p className="font-display text-[3rem] font-bold leading-none tracking-[-0.05em] text-primary">

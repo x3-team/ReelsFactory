@@ -1,3 +1,4 @@
+import { DARIA_BIO, DARIA_CAPTIONS } from "@/lib/ai/fixtures/cis-corpus-live";
 import type { GeneratedScript, ScrapedProfile, StrategyPayload } from "@/lib/types";
 import {
   captionSourceStrength,
@@ -10,6 +11,23 @@ export function mockScrapedProfile(
   platform: ScrapedProfile["platform"],
 ): ScrapedProfile {
   const clean = handle.replace(/^@/, "");
+  if (/agre_daria_fit/i.test(clean)) {
+    return {
+      handle: clean,
+      platform,
+      displayName: "Agre Daria Fit",
+      bio: DARIA_BIO,
+      followers: 12000,
+      topVideos: DARIA_CAPTIONS.map((caption, index) => ({
+        id: `daria-${index}`,
+        url: `https://${platform}.com/${clean}/video/${index}`,
+        caption,
+        views: 8000 - index * 200,
+        audioUrl: `https://example.com/audio/daria-${index}.mp3`,
+        durationSec: 15,
+      })),
+    };
+  }
   return {
     handle: clean,
     platform,
@@ -355,13 +373,16 @@ export function mockStrategy(input: {
   offerSummary?: string | null;
   bio?: string | null;
   captions?: string[] | null;
+  extraFacts?: string[] | null;
   transcriptions?: string[] | null;
 }): StrategyPayload {
   const offer = input.offerSummary?.trim() || "короткий чеклист";
   const handle = input.handle.replace(/^@/, "").toLowerCase();
+  const extraFacts = (input.extraFacts || []).map((item) => item.trim()).filter(Boolean);
   const contentBlob = [
     input.bio || "",
     ...(input.captions || []),
+    ...extraFacts,
     ...(input.transcriptions || []),
   ].join(" ");
   const blob = [handle, contentBlob].join(" ");
@@ -378,10 +399,16 @@ export function mockStrategy(input: {
           ? thinSourceScripts(offer, [
               input.bio || "",
               ...(input.captions || []),
+              ...extraFacts,
               ...(input.transcriptions || []),
             ])
           : genericScripts(handle, offer),
-    [input.bio || "", ...(input.captions || []), ...(input.transcriptions || [])],
+    [
+      input.bio || "",
+      ...(input.captions || []),
+      ...extraFacts,
+      ...(input.transcriptions || []),
+    ],
   );
 
   for (const script of scripts) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { FactsForm } from "@/components/analyze/facts-form";
 import { AnalysisProgress } from "@/components/analyze/analysis-progress";
 import { AppShell } from "@/components/app/app-shell";
 import {
@@ -12,10 +13,10 @@ import {
 import { ResultsDashboard } from "@/components/results/results-dashboard";
 import { TelegramBackButton } from "@/components/telegram/back-button";
 import { useTelegram } from "@/components/telegram/telegram-provider";
-import { api, type AppAnalysis, type AppUser } from "@/lib/client-api";
+import { api, type AppAnalysis, type AppUser, type QuotaSnapshot } from "@/lib/client-api";
 import { referralLink, type PlanId } from "@/lib/config";
 
-type Screen = "boot" | "onboarding" | "analyzing" | "results" | "error";
+type Screen = "boot" | "onboarding" | "analyzing" | "needs_facts" | "results" | "error";
 
 const DEV_TELEGRAM_KEY = "reelsfactory.devTelegramId";
 const IN_PROGRESS = new Set([
@@ -54,6 +55,9 @@ export function ReelsFactoryApp() {
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [analysisElapsedSec, setAnalysisElapsedSec] = useState(0);
   const [onboardingBusy, setOnboardingBusy] = useState(false);
+  const [factsBusy, setFactsBusy] = useState(false);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(true);
+  const [quota, setQuota] = useState<QuotaSnapshot | null>(null);
   const [prefillHandle, setPrefillHandle] = useState("");
 
   useEffect(() => {
@@ -97,6 +101,8 @@ export function ReelsFactoryApp() {
       user: AppUser;
       latestAnalysis: AppAnalysis | null;
       referralLink: string;
+      paymentsEnabled?: boolean;
+      quota?: QuotaSnapshot;
       clientAccounts?: Array<{
         id: string;
         socialHandle: string;
@@ -111,6 +117,8 @@ export function ReelsFactoryApp() {
     setUser(data.user);
     setReferralUrl(data.referralLink || referralLink(data.user.telegramId));
     setClientAccounts(data.clientAccounts || []);
+    setPaymentsEnabled(data.paymentsEnabled !== false);
+    if (data.quota) setQuota(data.quota);
 
     const paidFlag =
       typeof window !== "undefined" &&
@@ -141,6 +149,12 @@ export function ReelsFactoryApp() {
       return;
     }
 
+    if (data.latestAnalysis?.status === "NEEDS_FACTS") {
+      setAnalysis(data.latestAnalysis);
+      setScreen("needs_facts");
+      return;
+    }
+
     if (data.latestAnalysis && IN_PROGRESS.has(data.latestAnalysis.status)) {
       setScreen("analyzing");
       setAnalysisStatus(data.latestAnalysis.status);
@@ -150,7 +164,7 @@ export function ReelsFactoryApp() {
         Date.now(),
       );
       setAnalysis(analysisResult);
-      setScreen("results");
+      setScreen(analysisResult.status === "NEEDS_FACTS" ? "needs_facts" : "results");
       return;
     }
 
@@ -183,7 +197,7 @@ export function ReelsFactoryApp() {
   }, [ready, bootstrap]);
 
   async function pollAnalysis(analysisId: string, startedAt: number) {
-    const terminal = new Set(["COMPLETED", "FAILED"]);
+    const terminal = new Set(["COMPLETED", "FAILED", "NEEDS_FACTS"]);
     const maxMs = 240_000; // Apify + Whisper + LLM ≈ 1–2 мин, запас 3 мин
     for (;;) {
       const elapsed = Date.now() - startedAt;
@@ -227,7 +241,7 @@ export function ReelsFactoryApp() {
       setAnalysisStatus(data.analysis.status);
       const analysisResult = await pollAnalysis(data.analysis.id, startedAt);
       setAnalysis(analysisResult);
-      setScreen("results");
+      setScreen(analysisResult.status === "NEEDS_FACTS" ? "needs_facts" : "results");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка анализа");
       setScreen("error");
@@ -250,6 +264,32 @@ export function ReelsFactoryApp() {
       setScreen("onboarding");
     } finally {
       setOnboardingBusy(false);
+    }
+  }
+
+  async function handleFacts(facts: string[]) {
+    if (!user || !analysis) return;
+    setFactsBusy(true);
+    setError(null);
+    setScreen("analyzing");
+    setAnalysisStatus("GENERATING");
+    try {
+      const data = await api<{ analysis: AppAnalysis }>("/api/analyze/facts", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.id,
+          analysisId: analysis.id,
+          facts,
+          offerSummary: user.offerSummary,
+        }),
+      });
+      setAnalysis(data.analysis);
+      setScreen("results");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось собрать сценарии");
+      setScreen("needs_facts");
+    } finally {
+      setFactsBusy(false);
     }
   }
 
@@ -345,6 +385,20 @@ export function ReelsFactoryApp() {
     );
   }
 
+  if (screen === "needs_facts" && analysis) {
+    return (
+      <AppShell>
+        <TelegramBackButton show={false} />
+        <FactsForm
+          handle={analysis.socialHandle}
+          loading={factsBusy}
+          error={error}
+          onSubmit={handleFacts}
+        />
+      </AppShell>
+    );
+  }
+
   if (screen === "results" && user && analysis) {
     return (
       <AppShell>
@@ -356,6 +410,8 @@ export function ReelsFactoryApp() {
           clientAccounts={clientAccounts}
           onSelectPlan={handleSelectPlan}
           loadingPlan={loadingPlan}
+          paymentsEnabled={paymentsEnabled}
+          quota={quota}
           onReanalyze={() => {
             if (user) void runAnalysis(user.id);
           }}
