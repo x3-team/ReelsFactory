@@ -58,6 +58,14 @@ export function ReelsFactoryApp() {
   const [factsBusy, setFactsBusy] = useState(false);
   const [paymentsEnabled, setPaymentsEnabled] = useState(true);
   const [quota, setQuota] = useState<QuotaSnapshot | null>(null);
+  const [prefillHandle, setPrefillHandle] = useState("");
+
+  useEffect(() => {
+    const fromLanding = new URLSearchParams(window.location.search).get(
+      "handle",
+    );
+    if (fromLanding) setPrefillHandle(fromLanding);
+  }, []);
 
   const displayName = useMemo(() => {
     if (user?.firstName) {
@@ -130,7 +138,7 @@ export function ReelsFactoryApp() {
       if (refreshed.latestAnalysis?.status === "COMPLETED") {
         setAnalysis(refreshed.latestAnalysis);
         setScreen("results");
-        window.history.replaceState({}, "", "/");
+        window.history.replaceState({}, "", "/app");
         return;
       }
     }
@@ -355,6 +363,7 @@ export function ReelsFactoryApp() {
         <TelegramBackButton show={false} />
         <OnboardingForm
           userName={displayName}
+          initialHandle={prefillHandle}
           loading={onboardingBusy}
           submitError={error}
           onSubmit={handleOnboarding}

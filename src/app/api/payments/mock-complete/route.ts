@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   await fulfillSuccessfulPayment(payment);
 
-  return NextResponse.redirect(`${appUrl()}/?paid=1`);
+  return NextResponse.redirect(`${appUrl()}/app?paid=1`);
 }
 
 export async function POST(request: Request) {

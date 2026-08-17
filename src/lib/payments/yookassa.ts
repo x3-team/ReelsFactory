@@ -62,7 +62,7 @@ export async function createYooKassaPayment(input: {
       capture: true,
       confirmation: {
         type: "redirect",
-        return_url: `${appUrl()}/?paid=1`,
+        return_url: `${appUrl()}/app?paid=1`,
       },
       description: `ReelsFactory — тариф «${plan.name}»`,
       metadata: {

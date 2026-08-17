@@ -44,6 +44,7 @@ export type QuotaSnapshot = {
   scriptsLimit: number;
 };
 
+
 export type VisualCues = {
   start0_3s?: string;
   midAction?: string;

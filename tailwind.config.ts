@@ -12,10 +12,17 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
+          "var(--font-onest)",
           "var(--font-geist-sans)",
           "Segoe UI",
           "Helvetica Neue",
           "Arial",
+          "sans-serif",
+        ],
+        display: [
+          "var(--font-unbounded)",
+          "var(--font-onest)",
+          "Segoe UI",
           "sans-serif",
         ],
       },
@@ -58,6 +65,31 @@ const config: Config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        /* Витрина: тёплая бумага, чернила, терракота, песок, сигнальный лайм */
+        cream: "hsl(var(--cream))",
+        ink: "hsl(var(--ink))",
+        clay: "hsl(var(--clay))",
+        sand: "hsl(var(--sand))",
+        signal: "hsl(var(--signal))",
+      },
+      keyframes: {
+        "prompter-scroll": {
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(-50%)" },
+        },
+        "marquee-x": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        "pulse-dot": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.45", transform: "scale(0.82)" },
+        },
+      },
+      animation: {
+        "prompter-scroll": "prompter-scroll 26s linear infinite",
+        "marquee-x": "marquee-x 34s linear infinite",
+        "pulse-dot": "pulse-dot 1.8s ease-in-out infinite",
       },
     },
   },
