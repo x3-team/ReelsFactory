@@ -128,7 +128,7 @@ export function TeleprompterMode({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0C0A09] text-[#F6F0E8]">
-      <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-5">
+      <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-2 pt-5">
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/40">
             Суфлёр · {reelSec} сек
@@ -160,7 +160,7 @@ export function TeleprompterMode({
       </div>
 
       <p
-        className="px-5 pb-1 text-center font-display text-[2.6rem] font-bold tabular-nums tracking-tight text-[#E07A5F]"
+        className="shrink-0 px-5 pb-1 text-center font-display text-[2.6rem] font-bold tabular-nums tracking-tight text-[#E07A5F]"
         aria-live="polite"
       >
         {formatTeleprompterClock(remainingSec)}
@@ -217,7 +217,7 @@ export function TeleprompterMode({
         </div>
       </div>
 
-      <div className="space-y-3 px-5 pb-7 pt-3">
+      <div className="shrink-0 space-y-3 px-5 pb-7 pt-3">
         <div className="flex items-center justify-center gap-2">
           {TELEPROMPTER_SPEEDS.map((speed) => (
             <button
