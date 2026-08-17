@@ -80,7 +80,11 @@ async function main() {
       title: script.title,
       format: script.format,
       durationSec: script.duration_sec,
+      hookOptions: script.hook_options,
       teleprompter: script.teleprompter_script,
+      caption: script.caption,
+      cta: script.cta,
+      visualCues: script.visual_cues,
       anchors: scriptHasSourceAnchor(script, source.texts),
     }));
 
@@ -112,7 +116,7 @@ async function main() {
     );
   }
 
-  const md = ["# CIS corpus — сценарии после guard", ""];
+  const md = ["# CIS corpus — сценарии после Fact Extractor & Viral Skeletons", ""];
   for (const row of rows) {
     md.push(
       `## @${row.handle}`,
@@ -124,16 +128,24 @@ async function main() {
       "",
       ...row.tips.map((tip) => `- ${tip}`),
       "",
+      "### Сценарии:",
+      "",
     );
-    for (const script of row.scripts) {
+    for (const s of row.scripts) {
       md.push(
-        `### ${script.durationSec}с — ${script.title}`,
+        `#### ${s.durationSec}с — ${s.title} (${s.format})`,
         "",
+        `- Хуки:`,
+        ...(s.hookOptions || []).map((h) => `  * ${h}`),
+        `- Суфлёр:`,
         "```",
-        script.teleprompter,
+        s.teleprompter,
         "```",
-        "",
-        `якоря: ${script.anchors.hits.join(", ") || "—"} · ok=${script.anchors.ok}`,
+        `- Подсказки кадра:`,
+        `  * 0–3с: ${s.visualCues?.start0_3s || "—"}`,
+        `  * середина: ${s.visualCues?.midAction || "—"}`,
+        `  * финал: ${s.visualCues?.finalCta || "—"}`,
+        `- Якоря: ${s.anchors.hits.join(", ") || "нет"} (ok=${s.anchors.ok})`,
         "",
       );
     }

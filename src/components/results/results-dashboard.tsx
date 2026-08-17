@@ -207,6 +207,7 @@ export function ResultsDashboard({
         <TeleprompterMode
           title={selected.title}
           script={selected.teleprompterScript}
+          visualCues={selected.visualCues}
           onClose={() => setTeleprompterOpen(false)}
         />
       )}
@@ -276,9 +277,17 @@ function ScriptCard({
           тарифе.
         </div>
       ) : (
-        <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-          {script.teleprompterScript}
-        </p>
+        <>
+          <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+            {script.teleprompterScript}
+          </p>
+          {script.visualCues?.start0_3s && (
+            <div className="mt-3 rounded-xl border border-border/70 bg-accent/30 p-3 text-xs text-muted-foreground">
+              <span className="font-semibold text-accent-foreground">Кадр 0–3с: </span>
+              {script.visualCues.start0_3s}
+            </div>
+          )}
+        </>
       )}
 
       <div className="mt-5 grid gap-2">

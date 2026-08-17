@@ -29,14 +29,21 @@ const SPEEDS = [
 export function TeleprompterMode({
   title,
   script,
+  visualCues,
   onClose,
 }: {
   title: string;
   script: string;
+  visualCues?: {
+    start0_3s?: string;
+    midAction?: string;
+    finalCta?: string;
+  } | null;
   onClose: () => void;
 }) {
   const [playing, setPlaying] = useState(false);
   const [speedId, setSpeedId] = useState<(typeof SPEEDS)[number]["id"]>("normal");
+  const [showCues, setShowCues] = useState(false);
   const [offset, setOffset] = useState(START_OFFSET);
   const frame = useRef<number>(0);
   const lastTs = useRef<number>(0);
@@ -97,15 +104,44 @@ export function TeleprompterMode({
           </p>
           <h2 className="mt-1 truncate text-sm text-white/70">{title}</h2>
         </div>
-        <button
-          type="button"
-          className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white"
-          onClick={onClose}
-          aria-label="Закрыть суфлёр"
-        >
-          <X className="size-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {visualCues && (
+            <button
+              type="button"
+              onClick={() => setShowCues((v) => !v)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                showCues ? "bg-[#E07A5F] text-white" : "bg-white/10 text-white/80 hover:bg-white/20",
+              )}
+            >
+              Кадр
+            </button>
+          )}
+          <button
+            type="button"
+            className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white"
+            onClick={onClose}
+            aria-label="Закрыть суфлёр"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
       </div>
+
+      {showCues && visualCues && (
+        <div className="mx-5 mb-2 rounded-2xl border border-white/15 bg-white/5 p-3 text-xs text-white/80 backdrop-blur">
+          <p className="font-semibold text-[#E07A5F]">Подсказки для камеры:</p>
+          {visualCues.start0_3s && (
+            <p className="mt-1"><span className="text-white/50">0–3с:</span> {visualCues.start0_3s}</p>
+          )}
+          {visualCues.midAction && (
+            <p className="mt-0.5"><span className="text-white/50">Середина:</span> {visualCues.midAction}</p>
+          )}
+          {visualCues.finalCta && (
+            <p className="mt-0.5"><span className="text-white/50">Финал:</span> {visualCues.finalCta}</p>
+          )}
+        </div>
+      )}
 
       <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden px-5">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-[#0C0A09] to-transparent" />
