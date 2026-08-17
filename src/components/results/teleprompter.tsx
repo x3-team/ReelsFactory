@@ -35,6 +35,7 @@ export function TeleprompterMode({
   durationSec,
   visualCues,
   onClose,
+  onMarkShot,
 }: {
   title: string;
   script: string;
@@ -44,10 +45,13 @@ export function TeleprompterMode({
     midAction?: string;
     finalCta?: string;
   } | null;
-  onClose: () => void;
+  onClose: (info: { started: boolean; markedShot?: boolean }) => void;
+  onMarkShot?: () => void;
 }) {
   const reelSec = reelDurationSec(durationSec);
   const [playing, setPlaying] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [finished, setFinished] = useState(false);
   const [speedId, setSpeedId] = useState<TeleprompterSpeedId>("normal");
   const [showCues, setShowCues] = useState(false);
   const [offset, setOffset] = useState(START_OFFSET);
@@ -78,6 +82,7 @@ export function TeleprompterMode({
     setRemainingSec(reelSec);
     setOffset(START_OFFSET);
     setPlaying(false);
+    setFinished(false);
   }
 
   useEffect(() => {
@@ -102,6 +107,7 @@ export function TeleprompterMode({
       if (remaining <= 0) {
         stopped = true;
         setPlaying(false);
+        setFinished(true);
         setOffset(floorOffset());
         return;
       }
@@ -151,7 +157,7 @@ export function TeleprompterMode({
           <button
             type="button"
             className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white"
-            onClick={onClose}
+            onClick={() => onClose({ started })}
             aria-label="Закрыть суфлёр"
           >
             <X className="size-5" />
@@ -239,7 +245,10 @@ export function TeleprompterMode({
           <button
             type="button"
             className="flex h-14 min-w-44 items-center justify-center gap-2 rounded-full bg-[#E07A5F] px-6 text-base font-semibold text-[#1A1410]"
-            onClick={() => setPlaying((value) => !value)}
+            onClick={() => {
+              setStarted(true);
+              setPlaying((value) => !value);
+            }}
           >
             {playing ? (
               <>
@@ -260,6 +269,30 @@ export function TeleprompterMode({
             <RotateCcw className="size-5" />
           </button>
         </div>
+        {finished ? (
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-center">
+            <p className="text-sm text-white/85">Время вышло. Отметить ролик снятым?</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="h-11 rounded-full bg-[#E07A5F] text-sm font-semibold text-[#1A1410]"
+                onClick={() => {
+                  onMarkShot?.();
+                  onClose({ started: true, markedShot: true });
+                }}
+              >
+                Снял
+              </button>
+              <button
+                type="button"
+                className="h-11 rounded-full border border-white/20 text-sm text-white/80"
+                onClick={() => onClose({ started: true })}
+              >
+                Пока нет
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

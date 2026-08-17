@@ -154,6 +154,8 @@ model ProfileAnalysis {
   sourceFacts      Json?
   /// Whisper дал пригодную речь (не музыка/заставка)
   voiceHeard       Boolean?
+  /// live-run | apify-reuse | null (mock/dev)
+  scrapeMode       String?
   errorMessage     String?
 
   scripts Script[]

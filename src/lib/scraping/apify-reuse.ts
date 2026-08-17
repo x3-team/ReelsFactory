@@ -4,6 +4,37 @@
  * That is reuse, not a mock and not a new scrape.
  */
 
+import {
+  APIFY_BLOCKED_NO_REUSE_MESSAGE,
+  APIFY_HARD_LIMIT_NO_REUSE_MESSAGE,
+} from "@/lib/ai/honesty-copy";
+
+export class ApifyBlockedError extends Error {
+  readonly status: number;
+  readonly hardLimit: boolean;
+
+  constructor(input: { status: number; hardLimit: boolean; message?: string }) {
+    super(
+      input.message ||
+        (input.hardLimit
+          ? APIFY_HARD_LIMIT_NO_REUSE_MESSAGE
+          : APIFY_BLOCKED_NO_REUSE_MESSAGE),
+    );
+    this.name = "ApifyBlockedError";
+    this.status = input.status;
+    this.hardLimit = input.hardLimit;
+  }
+}
+
+export function isApifyBlockedError(error: unknown): error is ApifyBlockedError {
+  return error instanceof ApifyBlockedError;
+}
+
+/** RapidAPI only after a non-limit Apify failure. 403 without reuse is a refusal. */
+export function shouldFallbackToRapidApi(error: unknown) {
+  return !isApifyBlockedError(error);
+}
+
 export function isApifyHardLimitBody(status: number, body: string) {
   const code = Number(status);
   if (code !== 402 && code !== 403) return false;

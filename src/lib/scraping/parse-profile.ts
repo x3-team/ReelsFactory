@@ -12,6 +12,7 @@ import {
   fetchTikTokViaApify,
   hasApifyCredentials,
 } from "@/lib/scraping/apify";
+import { shouldFallbackToRapidApi } from "@/lib/scraping/apify-reuse";
 import type { ScrapedProfile, ScrapedVideo } from "@/lib/types";
 
 function hasRapidApiCredentials() {
@@ -44,6 +45,7 @@ export async function parseProfile(input: {
         }
         return profile;
       } catch (error) {
+        if (!shouldFallbackToRapidApi(error)) throw error;
         console.error("Apify Instagram scrape failed, trying RapidAPI", error);
         if (!hasRapidApiCredentials()) throw error;
       }

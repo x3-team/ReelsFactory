@@ -11,6 +11,7 @@ import {
   shouldPauseForFacts,
   sourceCorpus,
 } from "@/lib/ai/source-anchors";
+import { APIFY_REUSE_TIP } from "@/lib/ai/honesty-copy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
 import { videosForWhisper, whisperSourceUrl } from "@/lib/content/scrape-limits";
 import { prisma } from "@/lib/prisma";
@@ -67,6 +68,14 @@ function parseFacts(value: unknown): string[] {
   return normalizeUserFacts(value.map((item) => String(item)));
 }
 
+function withReuseTip(tips: string[], scrapeMode?: string | null) {
+  if (scrapeMode !== "apify-reuse") return tips;
+  if (tips.some((tip) => /лимит apify|последнего сохранённого разбора/i.test(tip))) {
+    return tips;
+  }
+  return [APIFY_REUSE_TIP, ...tips].slice(0, 6);
+}
+
 function asScrapedProfile(raw: unknown, fallback: { handle: string; platform: string }): ScrapedProfile {
   const rec = raw && typeof raw === "object" ? (raw as ScrapedProfile) : null;
   if (!rec || !Array.isArray(rec.topVideos)) {
@@ -87,6 +96,7 @@ async function persistStrategy(input: {
   analysisId: string;
   strategy: StrategyPayload;
   voiceHeard: boolean;
+  scrapeMode?: string | null;
 }) {
   const paid = hasPaidAccess(input.user);
   const scriptsToSave = input.strategy.scripts.slice(0, SCRIPT_PACK_SIZE);
@@ -112,8 +122,12 @@ async function persistStrategy(input: {
         niche: input.strategy.niche,
         targetAudience: input.strategy.target_audience,
         contentPillars: pillars,
-        profileAuditTips: input.strategy.profile_audit_tips,
+        profileAuditTips: withReuseTip(
+          input.strategy.profile_audit_tips,
+          input.scrapeMode,
+        ),
         voiceHeard: input.voiceHeard,
+        scrapeMode: input.scrapeMode || null,
         errorMessage: null,
       },
     });
@@ -163,6 +177,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
 
     await markStatus(analysisId, AnalysisStatus.TRANSCRIBING, {
       rawProfileData: profile as unknown as Prisma.InputJsonValue,
+      scrapeMode: profile.scrapeMode || null,
     });
 
     const captionSide = [
@@ -207,10 +222,14 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       await markStatus(analysisId, AnalysisStatus.NEEDS_FACTS, {
         transcriptions,
         sourceStrength: source.strength,
-        profileAuditTips: [
-          WEAK_SOURCE_TIP,
-          "Напишите 3 конкретных факта: продукт, типичная ошибка клиента, цифра или приём. Без этого не соберём сценарий — не будем выдумывать.",
-        ],
+        profileAuditTips: withReuseTip(
+          [
+            WEAK_SOURCE_TIP,
+            "Напишите 3 конкретных факта: продукт, типичная ошибка клиента, цифра или приём. Без этого не соберём сценарий — не будем выдумывать.",
+          ],
+          profile.scrapeMode,
+        ),
+        scrapeMode: profile.scrapeMode || null,
         errorMessage: null,
       });
       return prisma.profileAnalysis.findUniqueOrThrow({
@@ -235,7 +254,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
       plan: user.subscriptionPlan,
     });
 
-    await persistStrategy({ user, analysisId, strategy, voiceHeard: source.voiceHeard });
+    await persistStrategy({ user, analysisId, strategy, voiceHeard: source.voiceHeard, scrapeMode: profile.scrapeMode });
 
     return prisma.profileAnalysis.findUniqueOrThrow({
       where: { id: analysisId },
@@ -329,6 +348,7 @@ export async function continueAnalysisWithFacts(input: {
       analysisId: input.analysisId,
       strategy,
       voiceHeard: source.voiceHeard,
+      scrapeMode: analysis.scrapeMode || profile.scrapeMode,
     });
 
     return prisma.profileAnalysis.findUniqueOrThrow({

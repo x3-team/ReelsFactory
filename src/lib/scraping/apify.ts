@@ -5,6 +5,8 @@ import {
 import {
   apifyInputMentionsHandle,
   handleFromApifyInput,
+  ApifyBlockedError,
+  isApifyHardLimitBody,
   shouldAttemptApifyReuse,
 } from "@/lib/scraping/apify-reuse";
 import {
@@ -165,9 +167,10 @@ async function runApifyActor<T>(
           error instanceof Error ? error.message : error,
         );
       }
-      throw new Error(
-        `Достигнут месячный лимит Apify (${status}). Новый run заблокирован, reuse не нашёл датасет.`,
-      );
+      throw new ApifyBlockedError({
+        status,
+        hardLimit: isApifyHardLimitBody(status, body),
+      });
     }
     throw new Error(`Apify ${actor} failed (${status}): ${body.slice(0, 300)}`);
   }
