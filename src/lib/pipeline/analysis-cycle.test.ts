@@ -26,6 +26,8 @@ import {
 import { assertAnalysisQuota, QuotaError } from "@/lib/billing/quota";
 import { enqueueAnalysis } from "@/lib/queue/analysis-queue";
 import { YOUTUBE_UNSUPPORTED_MESSAGE } from "@/lib/platform";
+import { updateScriptLifecycle } from "@/lib/scripts/lifecycle";
+import { countUnshotScripts, usersDueForWeeklyNudge } from "@/lib/telegram/bot";
 
 function dedupeConsecutive(values: string[]) {
   return values.filter((value, index) => index === 0 || value !== values[index - 1]);
@@ -204,6 +206,76 @@ test("weak duplicate captions pause on NEEDS_FACTS until 3 facts arrive", async 
   assert.equal(done.status, AnalysisStatus.COMPLETED);
   assert.equal(done.scripts.length, 3);
   assert.ok(done.scripts.every((script) => script.teleprompterScript.trim().length > 0));
+});
+
+test("shot/published on unlocked scripts; teasers stay locked", async () => {
+  process.env.MOCK_EXTERNAL_APIS = "true";
+  const user = await seedUser(SubscriptionPlan.FREE, "desertmsk", "instagram");
+  const analysis = await prisma.profileAnalysis.create({
+    data: {
+      userId: user.id,
+      socialHandle: user.socialHandle!,
+      platform: user.platform!,
+      status: AnalysisStatus.QUEUED,
+    },
+  });
+  const done = await runAnalysisForExisting(user, analysis.id);
+  const open = done.scripts.find((script) => !script.isTeaser);
+  const locked = done.scripts.find((script) => script.isTeaser);
+  assert.ok(open && locked);
+
+  const shot = await updateScriptLifecycle({
+    userId: user.id,
+    scriptId: open.id,
+    action: "shot",
+  });
+  assert.ok(shot.shotAt);
+  assert.equal(shot.publishedAt, null);
+
+  const published = await updateScriptLifecycle({
+    userId: user.id,
+    scriptId: open.id,
+    action: "published",
+  });
+  assert.ok(published.shotAt);
+  assert.ok(published.publishedAt);
+  assert.equal(await countUnshotScripts(user.id), 0);
+
+  await assert.rejects(
+    () =>
+      updateScriptLifecycle({
+        userId: user.id,
+        scriptId: locked.id,
+        action: "shot",
+      }),
+    /закрыт/,
+  );
+});
+
+test("weekly nudge candidates are users with unshot unlocked scripts", async () => {
+  process.env.MOCK_EXTERNAL_APIS = "true";
+  const user = await seedUser(SubscriptionPlan.START, "desertmsk", "instagram");
+  const analysis = await prisma.profileAnalysis.create({
+    data: {
+      userId: user.id,
+      socialHandle: user.socialHandle!,
+      platform: user.platform!,
+      status: AnalysisStatus.QUEUED,
+    },
+  });
+  const done = await runAnalysisForExisting(user, analysis.id);
+  assert.equal(done.status, AnalysisStatus.COMPLETED);
+  assert.equal(typeof done.voiceHeard, "boolean");
+
+  const due = await usersDueForWeeklyNudge();
+  assert.ok(due.some((row) => row.id === user.id && row._count.scripts >= 1));
+
+  await prisma.script.updateMany({
+    where: { userId: user.id },
+    data: { shotAt: new Date() },
+  });
+  const after = await usersDueForWeeklyNudge();
+  assert.equal(after.some((row) => row.id === user.id), false);
 });
 
 test("FREE quota is 1 pack per month", async () => {

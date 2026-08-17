@@ -88,6 +88,9 @@ model User {
   referrer      User?   @relation("UserReferrals", fields: [referrerId], references: [id])
   referredUsers User[]  @relation("UserReferrals")
 
+  /// Last weekly “unsthot scripts” Telegram nudge
+  lastNudgeAt DateTime?
+
   analyses          ProfileAnalysis[]
   scripts           Script[]
   payments          Payment[]
@@ -149,6 +152,8 @@ model ProfileAnalysis {
   sourceStrength   String?
   /// string[] — 3 факта от пользователя, если подписи слабые
   sourceFacts      Json?
+  /// Whisper дал пригодную речь (не музыка/заставка)
+  voiceHeard       Boolean?
   errorMessage     String?
 
   scripts Script[]
@@ -180,6 +185,9 @@ model Script {
   visualCues         Json?
   /// Free-plan teaser (1 script) vs full unlocked script
   isTeaser           Boolean @default(false)
+  /// Автор отметил, что ролик снят / опубликован
+  shotAt             DateTime?
+  publishedAt        DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

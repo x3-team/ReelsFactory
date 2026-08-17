@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Lock, Video } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Lock, Video } from "lucide-react";
 
 import { AgencyClientsPanel } from "@/components/agency/agency-clients-panel";
 import { PaywallDrawer } from "@/components/paywall/paywall-drawer";
@@ -9,7 +9,8 @@ import { ReferralShareBar } from "@/components/paywall/referral-share-bar";
 import { TeleprompterMode } from "@/components/results/teleprompter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { AppAnalysis, AppScript, AppUser } from "@/lib/client-api";
+import { VOICE_MISSING_TIP, shouldShowVoiceBanner } from "@/lib/ai/honesty-copy";
+import { api, type AppAnalysis, type AppScript, type AppUser } from "@/lib/client-api";
 import type { PlanId } from "@/lib/config";
 import { PLANS } from "@/lib/config";
 import { scriptDuration } from "@/lib/script-meta";
@@ -48,13 +49,20 @@ export function ResultsDashboard({
   onAnalyzeClient?: (clientAccountId: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState(analysis.scripts[0]?.id);
+  const [scripts, setScripts] = useState(analysis.scripts);
   const [teleprompterOpen, setTeleprompterOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    setScripts(analysis.scripts);
+    setSelectedId(analysis.scripts[0]?.id);
+  }, [analysis.scripts]);
 
   const selected = useMemo(
-    () => analysis.scripts.find((s) => s.id === selectedId) || analysis.scripts[0],
-    [analysis.scripts, selectedId],
+    () => scripts.find((s) => s.id === selectedId) || scripts[0],
+    [scripts, selectedId],
   );
 
   const tips = analysis.profileAuditTips || [];
@@ -62,6 +70,35 @@ export function ResultsDashboard({
   const isFree = user.subscriptionPlan === "FREE";
   const planLabel = PLANS[user.subscriptionPlan]?.name || user.subscriptionPlan;
   const selectedLocked = Boolean(isFree && selected?.isTeaser);
+  const voiceBanner = shouldShowVoiceBanner(analysis);
+
+  async function markLifecycle(action: "shot" | "published" | "ready") {
+    if (!selected || selectedLocked) return;
+    setLifecycleBusy(action);
+    try {
+      const data = await api<{ script: AppScript }>("/api/scripts/status", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.id,
+          scriptId: selected.id,
+          action,
+        }),
+      });
+      setScripts((prev) =>
+        prev.map((item) =>
+          item.id === data.script.id
+            ? {
+                ...item,
+                shotAt: data.script.shotAt,
+                publishedAt: data.script.publishedAt,
+              }
+            : item,
+        ),
+      );
+    } finally {
+      setLifecycleBusy(null);
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-5 p-5 pb-10">
@@ -84,6 +121,12 @@ export function ResultsDashboard({
           {planLabel}
         </Badge>
       </header>
+
+      {voiceBanner ? (
+        <div className="rounded-2xl border border-primary/30 bg-accent/50 p-4 text-sm leading-relaxed">
+          {VOICE_MISSING_TIP}
+        </div>
+      ) : null}
 
       {user.subscriptionPlan === "AGENCY" && onAnalyzeClient && (
         <AgencyClientsPanel
@@ -109,7 +152,7 @@ export function ResultsDashboard({
         </div>
 
         <div className="flex gap-2">
-          {analysis.scripts.map((script, index) => {
+          {scripts.map((script, index) => {
             const duration = scriptDuration(script, index);
             const locked = isFree && script.isTeaser;
             return (
@@ -129,14 +172,23 @@ export function ResultsDashboard({
                     {duration}
                   </span>
                   {locked ? <Lock className="size-3.5 text-muted-foreground" /> : null}
+                  {!locked && script.publishedAt ? (
+                    <Check className="size-3.5 text-primary" />
+                  ) : null}
                 </div>
-                <div className="text-xs text-muted-foreground">сек</div>
+                <div className="text-xs text-muted-foreground">
+                  {script.publishedAt
+                    ? "вышел"
+                    : script.shotAt
+                      ? "снят"
+                      : "сек"}
+                </div>
               </button>
             );
           })}
         </div>
 
-        {analysis.scripts.length === 0 && (
+        {scripts.length === 0 && (
           <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
             Сценарии не сохранились. Запусти анализ ещё раз — суфлёр должен
             содержать каркас хук → проблема → демо → CTA.
@@ -148,10 +200,11 @@ export function ResultsDashboard({
             script={selected}
             duration={scriptDuration(
               selected,
-              analysis.scripts.findIndex((item) => item.id === selected.id),
+              scripts.findIndex((item) => item.id === selected.id),
             )}
             referralUrl={referralUrl}
             locked={selectedLocked}
+            lifecycleBusy={lifecycleBusy}
             onShoot={() => {
               if (selectedLocked) {
                 setPaywallOpen(true);
@@ -160,6 +213,8 @@ export function ResultsDashboard({
               setTeleprompterOpen(true);
             }}
             onUnlock={() => setPaywallOpen(true)}
+            onShot={() => void markLifecycle("shot")}
+            onPublished={() => void markLifecycle("published")}
           />
         )}
       </section>
@@ -218,6 +273,10 @@ export function ResultsDashboard({
         <TeleprompterMode
           title={selected.title}
           script={selected.teleprompterScript}
+          durationSec={scriptDuration(
+            selected,
+            scripts.findIndex((item) => item.id === selected.id),
+          )}
           visualCues={selected.visualCues}
           onClose={() => setTeleprompterOpen(false)}
         />
@@ -242,17 +301,25 @@ function ScriptCard({
   duration,
   referralUrl,
   locked,
+  lifecycleBusy,
   onShoot,
   onUnlock,
+  onShot,
+  onPublished,
 }: {
   script: AppScript;
   duration: number;
   referralUrl: string;
   locked: boolean;
+  lifecycleBusy: string | null;
   onShoot: () => void;
   onUnlock: () => void;
+  onShot: () => void;
+  onPublished: () => void;
 }) {
   const hooks = Array.isArray(script.hookOptions) ? script.hookOptions : [];
+  const shot = Boolean(script.shotAt);
+  const published = Boolean(script.publishedAt);
 
   return (
     <article className="rounded-3xl border bg-card p-5 shadow-sm">
@@ -307,6 +374,28 @@ function ScriptCard({
           <Video className="size-4" />
           {locked ? "Открыть и снимать" : "Снимать"}
         </Button>
+        {!locked && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={shot ? "secondary" : "outline"}
+              className="h-11 rounded-2xl"
+              disabled={Boolean(lifecycleBusy)}
+              onClick={onShot}
+            >
+              {shot ? <Check className="size-4" /> : null}
+              {shot ? "Снят" : "Снял"}
+            </Button>
+            <Button
+              variant={published ? "secondary" : "outline"}
+              className="h-11 rounded-2xl"
+              disabled={Boolean(lifecycleBusy)}
+              onClick={onPublished}
+            >
+              {published ? <Check className="size-4" /> : null}
+              {published ? "Вышел" : "Опубликовал"}
+            </Button>
+          </div>
+        )}
         {locked && (
           <Button
             variant="outline"

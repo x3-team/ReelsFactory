@@ -61,6 +61,8 @@ export type AppScript = {
   cta: string;
   isTeaser: boolean;
   visualCues?: VisualCues | null;
+  shotAt?: string | null;
+  publishedAt?: string | null;
 };
 
 export type AppAnalysis = {
@@ -75,5 +77,6 @@ export type AppAnalysis = {
   errorMessage?: string | null;
   sourceStrength?: string | null;
   sourceFacts?: string[] | null;
+  voiceHeard?: boolean | null;
   scripts: AppScript[];
 };
