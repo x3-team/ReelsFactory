@@ -42,9 +42,10 @@ export const PLANS = {
 } as const;
 
 export type PlanId = keyof typeof PLANS;
+export type PaidPlanId = Exclude<PlanId, "FREE">;
 
 export const CHECKOUT_PLANS = (Object.keys(PLANS) as PlanId[]).filter(
-  (id) => PLANS[id].forSale,
+  (id): id is PaidPlanId => PLANS[id].forSale,
 );
 
 export const PAYMENTS_UNAVAILABLE_MESSAGE =

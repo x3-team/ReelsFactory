@@ -74,7 +74,7 @@ Always base the hook structure and teleprompter skeleton on the provided viral_s
 7) Не копируй транскрипт целиком и не делай закадровый пересказ ролика. Возьми якорь и собери НОВЫЙ устный каркас хук → проблема → демо → CTA.
 8) Три якоря — три разных продукта/приёма из source_anchors. Не повторяй один десерт в 30с и 45с, если в профиле есть другие.
 9) Не выдумывай технологию, которой нет во входе: «температура сиропа», «завиток», «агар», «термометр» — только если эти слова есть в transcriptions/captions.
-10) Если transcriptions пустые или голос не разобрали — НЕ притворяйся, что слышала речь. Пиши только из captions/bio. Первой строкой profile_audit_tips скажи, что сценарии по подписям. Музыка, заставка, «Thank you for watching», чужой язык — это не речь.
+10) Если transcriptions пустые или голос не разобрали — НЕ притворяйся, что слышала речь. Пиши только из captions/bio. Пометь сценарии как caption-sourced: первой строкой profile_audit_tips — что источник подписи и био, не голос рилса. Запрещены «как в ролике сказано», «ты говоришь в этом ролике». Музыка, заставка, «Thank you for watching», чужой язык, файл слишком большой — это не речь. 15/30/45 — три разных угла из реальных фактов подписей. Не выдумывай продукт, которого нет в captions/bio.
 11) Если source_strength = weak или empty: подписи пустые, хэштеги или один и тот же копипаст. НЕ пиши, что стратегия «огонь» / сильная / вирусная. НЕ выдумывай упражнения (ноги/пресс/суперсет), граммовки, законы, температуры и приёмы, которых нет во входе. Три коротких сценария строго из bio + этой подписи. Первой строкой tips — что материала мало.
 12) visual_cues: дай 3 короткие подсказки по кадру (0-3с, середина, CTA) без загромождения текста суфлера.
 13) niche / tips — по-человечески, без корпоративного тона.`;
@@ -153,10 +153,11 @@ export function buildStrategyUserPrompt(
       },
       transcriptions: source.usableVoice,
       voice_heard: source.voiceHeard,
+      caption_sourced: !source.voiceHeard,
       source_strength: source.strength,
       voice_note: source.voiceHeard
         ? "Голос разобрали. Якорь можно брать из transcriptions или captions."
-        : "Голос не разобрали (тишина, музыка, заставка или чужой язык). НЕ пиши «как в ролике сказано». Только captions/bio. Пометь это в profile_audit_tips.",
+        : "Голос не разобрали (тишина, слишком большой файл, не аудио, музыка, заставка или чужой язык). caption_sourced=true. НЕ пиши «как в ролике сказано». Только captions/bio. Первой строкой tips — что сценарии по подписям.",
       source_note:
         source.strength === "ok"
           ? "Подписей достаточно. Не выдумывай технологию, которой нет во входе."
@@ -197,7 +198,7 @@ function finalizeStrategy(
     voiceHeard: source.voiceHeard,
     strength: source.strength,
   });
-  assertStrategyAnchored(strategy, source.texts, source.strength);
+  assertStrategyAnchored(strategy, source.texts, source.strength, source.voiceHeard);
   return strategy;
 }
 

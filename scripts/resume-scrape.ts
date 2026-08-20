@@ -13,11 +13,8 @@ import { dirname, join } from "node:path";
 import { generateStrategy } from "@/lib/ai/generate-strategy";
 import { llmModel } from "@/lib/ai/aitunnel";
 import { transcribeAudio } from "@/lib/ai/transcribe";
-import {
-  WHISPER_MAX_VIDEOS,
-  videosForWhisper,
-  whisperSourceUrl,
-} from "@/lib/content/scrape-limits";
+import { selectWhisperSources } from "@/lib/ai/whisper-media";
+import { WHISPER_MAX_VIDEOS, whisperSourceUrl } from "@/lib/content/scrape-limits";
 import { lookupCorpus } from "@/lib/test-corpus";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
@@ -178,16 +175,8 @@ async function runOne(handle: string, whisperBudget: number) {
   const whisperLimit = Math.min(WHISPER_MAX_VIDEOS, whisperBudget);
   const transcriptions: Array<{ source: string; mocked: boolean; text: string }> = [];
 
-  for (const video of videosForWhisper(profile.topVideos).slice(0, whisperLimit)) {
-    const audio = whisperSourceUrl(video) || "";
-    if (!audio) {
-      transcriptions.push({
-        source: "caption",
-        mocked: true,
-        text: video.caption || "",
-      });
-      continue;
-    }
+  const jobs = await selectWhisperSources(profile.topVideos, { max: whisperLimit });
+  for (const { video, url: audio } of jobs) {
     const result = await transcribeAudio({
       audioUrl: audio,
       hint: video.caption,

@@ -17,11 +17,8 @@ import {
   sourceCorpus,
 } from "@/lib/ai/source-anchors";
 import { transcribeAudio } from "@/lib/ai/transcribe";
-import {
-  WHISPER_MAX_VIDEOS,
-  videosForWhisper,
-  whisperSourceUrl,
-} from "@/lib/content/scrape-limits";
+import { selectWhisperSources } from "@/lib/ai/whisper-media";
+import { WHISPER_MAX_VIDEOS, whisperSourceUrl } from "@/lib/content/scrape-limits";
 import { lookupCorpus } from "@/lib/test-corpus";
 import { parseProfile } from "@/lib/scraping/parse-profile";
 import type { Platform } from "@/lib/platform";
@@ -92,21 +89,9 @@ async function whisperTop3(profile: ScrapedProfile) {
     usable: boolean;
   }> = [];
 
-  for (const video of videosForWhisper(profile.topVideos).slice(0, WHISPER_MAX_VIDEOS)) {
-    const audio = whisperSourceUrl(video) || "";
-    if (!audio) {
-      items.push({
-        id: video.id,
-        views: video.views,
-        caption: video.caption || "",
-        hasMedia: false,
-        source: "no-media",
-        mocked: true,
-        raw: "",
-        usable: false,
-      });
-      continue;
-    }
+  for (const { video, url: audio } of await selectWhisperSources(profile.topVideos, {
+    max: WHISPER_MAX_VIDEOS,
+  })) {
     const result = await transcribeAudio({
       audioUrl: audio,
       hint: video.caption,

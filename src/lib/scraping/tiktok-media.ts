@@ -1,4 +1,9 @@
 import { CAPTION_VIDEOS_LIMIT } from "@/lib/content/scrape-limits";
+import {
+  isHttpMediaUrl as isSharedHttpMediaUrl,
+  looksLikeAudioMediaUrl,
+  looksLikeVideoMediaUrl,
+} from "@/lib/content/whisper-url";
 import type { ScrapedVideo } from "@/lib/types";
 
 /**
@@ -60,11 +65,7 @@ export function isTikTokWatchPage(url: string) {
 }
 
 export function isHttpMediaUrl(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  const url = value.trim();
-  if (!/^https?:\/\//i.test(url)) return false;
-  if (isTikTokWatchPage(url)) return false;
-  return true;
+  return isSharedHttpMediaUrl(value);
 }
 
 function firstMediaUrl(...candidates: unknown[]): string | undefined {
@@ -87,11 +88,22 @@ function firstMediaUrl(...candidates: unknown[]): string | undefined {
  * - musicMeta.playUrl — audio/mpeg (ID3), качается
  * При shouldDownloadVideos=true появляются videoUrl и mediaUrls на сторадже Apify.
  */
+function classifyPlayUrl(url: string | undefined): {
+  audioUrl?: string;
+  videoUrl?: string;
+} {
+  if (!url) return {};
+  if (looksLikeAudioMediaUrl(url)) return { audioUrl: url };
+  if (looksLikeVideoMediaUrl(url)) return { videoUrl: url };
+  // musicMeta.playUrl без audio-признака — не считаем голосом, проба решит как video.
+  return { videoUrl: url };
+}
+
 export function pickTikTokMediaUrls(item: TikTokActorItem): {
   audioUrl?: string;
   videoUrl?: string;
 } {
-  const audioUrl = firstMediaUrl(item.musicMeta?.playUrl, item.music?.playUrl);
+  const play = classifyPlayUrl(firstMediaUrl(item.musicMeta?.playUrl, item.music?.playUrl));
   const videoUrl = firstMediaUrl(
     item.videoUrl,
     item.mediaUrls,
@@ -102,8 +114,9 @@ export function pickTikTokMediaUrls(item: TikTokActorItem): {
     item.video?.downloadAddr,
     item.video?.playUrl,
     item.downloadAddr,
+    play.videoUrl,
   );
-  return { audioUrl, videoUrl };
+  return { audioUrl: play.audioUrl, videoUrl };
 }
 
 export function tiktokWhisperUrl(item: TikTokActorItem | ScrapedVideo) {
@@ -131,7 +144,7 @@ export function mapTikTokActorItems(
         caption: item.text || "",
         views,
         likes: item.diggCount || item.stats?.diggCount,
-        audioUrl: media.audioUrl || media.videoUrl,
+        audioUrl: media.audioUrl,
         videoUrl: media.videoUrl,
         durationSec: item.videoMeta?.duration,
       } satisfies ScrapedVideo;

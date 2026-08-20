@@ -19,6 +19,9 @@ const OVEN_CARD = /\d+\s*°\s*[cf]\b|\d+\s*[-–—]\s*\d+\s*分/i;
 const SOURCE_HYPE =
   /стратег\w*\s+огонь|контент\s+огонь|вирусн|контент-машин|сильн(ая|ые|ый)\s+(стратег|контент|тем)/i;
 
+const HEARD_VOICE_CLAIMS =
+  /как в ролике сказано|как слышно в (ролике|рилсе)|голос из рилса|ты говоришь в (этом )?(ролике|рилсе)|в ролике ты говоришь|текст в камеру с (этого )?рилса/i;
+
 const STOPWORDS = new Set(
   [
     "этот",
@@ -416,6 +419,7 @@ export function assertStrategyAnchored(
   strategy: StrategyPayload,
   sourceTexts: string[],
   strength: CaptionSourceStrength = "ok",
+  voiceHeard = true,
 ): void {
   if (!sourceTexts.some((item) => item.trim())) return;
   const failed: string[] = [];
@@ -436,6 +440,10 @@ export function assertStrategyAnchored(
   assertNoUngroundedTerms(strategy, sourceTexts);
   assertNoHypeWhenWeak(strategy, strength);
   assertLowInventionWhenWeak(strategy, sourceTexts, strength);
+  if (!voiceHeard) {
+    assertNoHeardVoiceClaims(strategy);
+    assertCaptionSourcedMark(strategy);
+  }
 }
 
 const UNGROUNDED_TERMS = [
@@ -447,6 +455,26 @@ const UNGROUNDED_TERMS = [
   "калорийн",
   "эскроу",
 ] as const;
+
+export function assertNoHeardVoiceClaims(strategy: StrategyPayload): void {
+  for (const script of strategy.scripts) {
+    const text = `${script.title}\n${script.teleprompter_script}\n${(script.hook_options || []).join("\n")}\n${script.caption}`;
+    if (HEARD_VOICE_CLAIMS.test(text)) {
+      throw new SourceAnchorError(
+        `Сценарий «${script.title}» притворяется, что слышал ролик. Голоса нет — только подписи.`,
+      );
+    }
+  }
+}
+
+export function assertCaptionSourcedMark(strategy: StrategyPayload): void {
+  const tips = strategy.profile_audit_tips.join("\n");
+  if (!/подпис|caption-sourced/i.test(tips)) {
+    throw new SourceAnchorError(
+      "Голос пустой — сценарии должны быть помечены как caption-sourced (подписи/био).",
+    );
+  }
+}
 
 export function assertNoUngroundedTerms(
   strategy: StrategyPayload,

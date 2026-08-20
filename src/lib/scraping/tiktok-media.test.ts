@@ -146,6 +146,37 @@ test("mapTikTokActorItems fills audioUrl and ranks top-8 by views", () => {
   );
 });
 
+test("video-looking musicMeta.playUrl is not audioUrl", () => {
+  const picked = pickTikTokMediaUrls(
+    eugeniusLike({
+      musicMeta: {
+        playUrl: "https://v16-webapp-prime.tiktok.com/video/tos/useast2a/file.mp4",
+      },
+      videoUrl: "",
+      mediaUrls: [],
+    }),
+  );
+  assert.equal(picked.audioUrl, undefined);
+  assert.equal(
+    picked.videoUrl,
+    "https://v16-webapp-prime.tiktok.com/video/tos/useast2a/file.mp4",
+  );
+  const mapped = mapTikTokActorItems(
+    [
+      eugeniusLike({
+        musicMeta: {
+          playUrl: "https://v16-webapp-prime.tiktok.com/video/tos/useast2a/file.mp4",
+        },
+        videoUrl: "",
+        mediaUrls: [],
+      }),
+    ],
+    "krava_nakormit",
+  );
+  assert.equal(mapped[0].audioUrl, undefined);
+  assert.ok(mapped[0].videoUrl?.includes("/video/tos/"));
+});
+
 test("webVideoUrl never becomes audioUrl", () => {
   const mapped = mapTikTokActorItems(
     [

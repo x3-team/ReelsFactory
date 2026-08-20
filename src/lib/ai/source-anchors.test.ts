@@ -26,6 +26,8 @@ import { normalizeStrategy } from "@/lib/ai/normalize-strategy";
 import {
   VOICE_MISSING_TIP,
   WEAK_SOURCE_TIP,
+  assertCaptionSourcedMark,
+  assertNoHeardVoiceClaims,
   assertStrategyAnchored,
   captionSourceStrength,
   extractAnchorPhrases,
@@ -195,6 +197,51 @@ test("invented syrup/agar fails when captions never mention them", () => {
     (error: Error) =>
       error.name === "SourceAnchorError" && /выдумал «сироп»/i.test(error.message),
   );
+});
+
+test("empty voice must stay caption-sourced and not invent a heard reel", () => {
+  const corpus = sourceCorpus({
+    bio: DESERTMSK_LIVE_PROFILE.bio,
+    captions: DESERTMSK_LIVE_CAPTIONS,
+    transcriptions: [],
+  });
+  assert.equal(corpus.voiceHeard, false);
+
+  const heard = {
+    ...anchoredZefirScript,
+    teleprompter_script:
+      "0–3с: Как в ролике сказано — зефир ломается кусочками.\n3–8с: После отсаживания он должен отламываться.\n8–12с: Не тяни массу.\n12–15с: Сохрани.",
+  };
+  const unmarked = normalizeStrategy({
+    niche: "Десерты",
+    target_audience: "Кондитеры",
+    content_pillars: [{ title: "Зефир", description: "Готовность" }],
+    profile_audit_tips: ["Цену не копируй в каждый ролик."],
+    scripts: [heard, heard, heard],
+  });
+  assert.throws(
+    () => assertNoHeardVoiceClaims(unmarked),
+    (error: Error) =>
+      error.name === "SourceAnchorError" && /слышал ролик/i.test(error.message),
+  );
+  assert.throws(
+    () => assertCaptionSourcedMark(unmarked),
+    (error: Error) => /caption-sourced|подпис/i.test(error.message),
+  );
+
+  const honest = withSourceHonestyTips(
+    normalizeStrategy({
+      niche: "Десерты",
+      target_audience: "Кондитеры",
+      content_pillars: [{ title: "Зефир", description: "Готовность" }],
+      profile_audit_tips: ["Цену не копируй в каждый ролик."],
+      scripts: [anchoredZefirScript],
+    }),
+    { voiceHeard: false, strength: corpus.strength },
+  );
+  assert.match(honest.profile_audit_tips[0] || "", /caption-sourced|подпис/i);
+  assert.doesNotThrow(() => assertNoHeardVoiceClaims(honest));
+  assert.doesNotThrow(() => assertCaptionSourcedMark(honest));
 });
 
 test("empty transcriptions inject a captions-only audit tip", () => {
