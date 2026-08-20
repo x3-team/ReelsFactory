@@ -55,7 +55,7 @@ export function TeleprompterMode({
   const [speedId, setSpeedId] = useState<TeleprompterSpeedId>("normal");
   const [showCues, setShowCues] = useState(false);
   const [offset, setOffset] = useState(START_OFFSET);
-  const [remainingSec, setRemainingSec] = useState(reelSec);
+  const [remainingSec, setRemainingSec] = useState<number>(reelSec);
   const frame = useRef<number>(0);
   const lastTs = useRef<number>(0);
   const elapsedMs = useRef<number>(0);
