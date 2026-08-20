@@ -13,7 +13,7 @@ import {
 } from "@/lib/ai/source-anchors";
 import { APIFY_REUSE_TIP } from "@/lib/ai/honesty-copy";
 import { transcribeAudio } from "@/lib/ai/transcribe";
-import { videosForWhisper, whisperSourceUrl } from "@/lib/content/scrape-limits";
+import { selectWhisperSources } from "@/lib/ai/whisper-media";
 import { prisma } from "@/lib/prisma";
 import { assertSupportedPlatform, type Platform } from "@/lib/platform";
 import { parseProfile } from "@/lib/scraping/parse-profile";
@@ -187,9 +187,7 @@ export async function runAnalysisForExisting(user: User, analysisId: string) {
     const expectCyrillic = profileLooksCyrillic(captionSide);
     const sourceStems = contentStems(captionSide.join("\n"));
     const transcriptions: string[] = [];
-    for (const video of videosForWhisper(profile.topVideos)) {
-      const audioUrl = whisperSourceUrl(video);
-      if (!audioUrl) continue;
+    for (const { video, url: audioUrl } of await selectWhisperSources(profile.topVideos)) {
       const { text, mocked } = await transcribeAudio({
         audioUrl,
         hint: video.caption,

@@ -5,6 +5,7 @@ import {
   CAPTION_VIDEOS_LIMIT,
   WHISPER_MAX_VIDEOS,
   videosForWhisper,
+  whisperSourceUrl,
 } from "@/lib/content/scrape-limits";
 
 test("Whisper stays on top-3, not every reel", () => {
@@ -51,5 +52,21 @@ test("videosForWhisper prefers rows with audio/video over watch-page-only", () =
   assert.deepEqual(
     videosForWhisper(mixed).map((v) => v.id),
     ["audio", "file", "later"],
+  );
+});
+
+test("whisperSourceUrl skips watch pages and prefers audio-looking URL", () => {
+  assert.equal(
+    whisperSourceUrl({
+      audioUrl: "https://www.tiktok.com/@eugenius_official/video/1",
+      videoUrl: "https://v16m.tiktokcdn-us.com/a.mp3",
+    }),
+    "https://v16m.tiktokcdn-us.com/a.mp3",
+  );
+  assert.equal(
+    whisperSourceUrl({
+      audioUrl: "https://instagram.com/reel/abc/",
+    }),
+    undefined,
   );
 });

@@ -62,6 +62,7 @@ test("strategy prompt asks for spoken teleprompter, not office slogans", () => {
   assert.match(STRATEGY_SYSTEM_PROMPT, /огонь/i);
   assert.match(STRATEGY_SYSTEM_PROMPT, /GUARDRAIL/i);
   assert.match(STRATEGY_SYSTEM_PROMPT, /visual_cues/i);
+  assert.match(STRATEGY_SYSTEM_PROMPT, /caption-sourced/i);
   assert.doesNotMatch(STRATEGY_SYSTEM_PROMPT, /не пересказывай дословно транскрипт/i);
   assert.doesNotMatch(STRATEGY_SYSTEM_PROMPT, /nano|haiku|gemini|flash-lite/i);
 });
