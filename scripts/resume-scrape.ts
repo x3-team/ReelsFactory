@@ -3,7 +3,8 @@
  *
  *   pnpm scrape:resume -- --ping-only
  *   pnpm scrape:resume
- *   HANDLES=ksenia_makarchuk__,prodasha_live pnpm scrape:resume
+ *   HANDLES=karinakross,victoriabonya pnpm scrape:resume
+ *   FORCE_RESCRAPE=1 HANDLES=desertmsk pnpm scrape:resume
  *
  * Does not print tokens. Writes artifacts under /opt/cursor/artifacts and /tmp.
  */
@@ -26,12 +27,23 @@ import type { ScrapedProfile } from "@/lib/types";
 const ARTIFACT_DIR = process.env.ARTIFACT_DIR || "/opt/cursor/artifacts";
 const FALLBACK_DIR = "/tmp/apify-resume";
 
-const DEFAULT_HANDLES = [
+/** Live-снято 16.08.2026 — не гоняем повторно без FORCE_RESCRAPE=1 */
+const ALREADY_SCRAPED_2026_08_16 = [
   "ksenia_makarchuk__",
   "agre_daria_fit",
   "prodasha_live",
   "eugenius_official",
   "desertmsk",
+];
+
+/** Ещё не снятые live из docs/CIS_TEST_CORPUS.md (без YouTube и @tanyatgym). */
+const DEFAULT_HANDLES = [
+  "karinakross",
+  "victoriabonya",
+  "goar_avetisyan",
+  "krava_nakormit",
+  "homm9k",
+  "botagozomarova2",
 ];
 
 type PingReport = {
@@ -121,11 +133,15 @@ async function pingApify(): Promise<PingReport> {
 
 function handlesFromEnv() {
   const raw = process.env.HANDLES || "";
-  if (!raw.trim()) return DEFAULT_HANDLES;
-  return raw
-    .split(/[,\s]+/)
-    .map((item) => item.replace(/^@/, "").trim())
-    .filter(Boolean);
+  const listed = raw.trim()
+    ? raw
+        .split(/[,\s]+/)
+        .map((item) => item.replace(/^@/, "").trim())
+        .filter(Boolean)
+    : DEFAULT_HANDLES;
+  if (process.env.FORCE_RESCRAPE === "1") return listed;
+  const skip = new Set(ALREADY_SCRAPED_2026_08_16);
+  return listed.filter((handle) => !skip.has(handle));
 }
 
 function platformFor(handle: string): Platform {
@@ -246,7 +262,7 @@ function renderReport(input: {
   results: Array<Awaited<ReturnType<typeof runOne>> | { handle: string; error: string }>;
 }) {
   const lines = [
-    "# Apify resume — 16.08.2026",
+    `# Apify resume — ${new Date().toISOString().slice(0, 10)}`,
     "",
     "## Ping",
     "",
@@ -329,13 +345,10 @@ async function main() {
 
   const handles = handlesFromEnv();
   const results: Array<Awaited<ReturnType<typeof runOne>> | { handle: string; error: string }> = [];
-  let whisperLeft = 3;
 
   for (const handle of handles) {
     try {
-      const budget = whisperLeft > 0 ? Math.min(2, whisperLeft) : 0;
-      const row = await runOne(handle, budget);
-      whisperLeft -= row.whisper.live;
+      const row = await runOne(handle, WHISPER_MAX_VIDEOS);
       results.push(row);
       const name = handle.replace(/[^a-z0-9_]+/gi, "_");
       await writeJson(join(FALLBACK_DIR, `${name}.json`), row);

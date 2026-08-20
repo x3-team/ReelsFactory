@@ -39,3 +39,4 @@ pnpm scrape:resume
 ```
 
 Прогон 16.08.2026: `docs/APIFY_RESUME_2026-08-16.md`.
+Прогон 20.08.2026: `docs/APIFY_RESUME_2026-08-20.md`.
